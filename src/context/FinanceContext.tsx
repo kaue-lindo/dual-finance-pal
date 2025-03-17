@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 type User = {
   id: string;
@@ -54,11 +55,14 @@ type FinanceContextType = {
   finances: Record<string, UserFinances>;
   login: (userId: string, remember: boolean) => void;
   logout: () => void;
-  addExpense: (expense: Omit<Expense, 'id'>) => void;
-  addIncome: (income: Omit<Income, 'id'>) => void;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  addIncome: (income: Omit<Income, 'id'>) => Promise<void>;
   addInvestment: (investment: Omit<Investment, 'id'>) => void;
   calculateBalance: () => number;
+  getMonthlyExpenseTotal: () => number;
+  getFutureTransactions: () => { date: Date; description: string; amount: number; type: 'income' | 'expense' }[];
   simulateExpense: (expense: Omit<Expense, 'id'>) => number;
+  fetchTransactions: () => Promise<void>;
 };
 
 // Predefined users
@@ -96,29 +100,92 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [finances, setFinances] = useState<Record<string, UserFinances>>(defaultFinances);
+  const [loading, setLoading] = useState(true);
 
   // Load data from localStorage on initial render
   useEffect(() => {
     const savedUser = localStorage.getItem('financeCurrentUser');
-    const savedFinances = localStorage.getItem('financeData');
     
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
     }
     
-    if (savedFinances) {
-      setFinances(JSON.parse(savedFinances));
-    }
+    setLoading(false);
   }, []);
 
-  // Save data to localStorage when it changes
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('financeCurrentUser', JSON.stringify(currentUser));
+    if (currentUser && !loading) {
+      fetchTransactions();
     }
-    
-    localStorage.setItem('financeData', JSON.stringify(finances));
-  }, [currentUser, finances]);
+  }, [currentUser, loading]);
+
+  const fetchTransactions = async () => {
+    if (!currentUser) return;
+
+    try {
+      // Fetch expenses and incomes from Supabase
+      const { data, error } = await supabase
+        .from('finances')
+        .select('*')
+        .eq('user_id', currentUser.id);
+
+      if (error) {
+        console.error('Error fetching finances:', error);
+        return;
+      }
+
+      const incomes: Income[] = [];
+      const expenses: Expense[] = [];
+
+      // Process the data
+      data.forEach(item => {
+        if (item.type === 'income') {
+          incomes.push({
+            id: item.id,
+            description: item.description,
+            amount: item.amount,
+            date: new Date(item.date),
+            recurring: item.recurring
+          });
+        } else {
+          expenses.push({
+            id: item.id,
+            description: item.description,
+            amount: item.amount,
+            category: item.category,
+            date: new Date(item.date),
+            recurring: item.recurring ? {
+              type: item.recurring_type,
+              days: item.recurring_days
+            } : undefined,
+            installment: item.installment_total ? {
+              total: item.installment_total,
+              current: item.installment_current,
+              remaining: item.installment_total - item.installment_current
+            } : undefined
+          });
+        }
+      });
+
+      setFinances(prev => ({
+        ...prev,
+        [currentUser.id]: {
+          ...prev[currentUser.id],
+          incomes,
+          expenses,
+          balance: calculateBalanceFromData(incomes, expenses)
+        }
+      }));
+    } catch (error) {
+      console.error('Error in fetchTransactions:', error);
+    }
+  };
+
+  const calculateBalanceFromData = (incomes: Income[], expenses: Expense[]) => {
+    const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    return totalIncome - totalExpenses;
+  };
 
   const login = (userId: string, remember: boolean) => {
     const user = predefinedUsers.find(u => u.id === userId);
@@ -127,6 +194,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (remember) {
         localStorage.setItem('financeCurrentUser', JSON.stringify(user));
       }
+      fetchTransactions();
     }
   };
 
@@ -135,45 +203,107 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.removeItem('financeCurrentUser');
   };
 
-  const addExpense = (expense: Omit<Expense, 'id'>) => {
+  const addExpense = async (expense: Omit<Expense, 'id'>) => {
     if (!currentUser) return;
     
-    const newExpense: Expense = {
-      ...expense,
-      id: Date.now().toString(),
-    };
-    
-    setFinances(prev => ({
-      ...prev,
-      [currentUser.id]: {
-        ...prev[currentUser.id],
-        expenses: [...prev[currentUser.id].expenses, newExpense],
-      },
-    }));
+    try {
+      const { data, error } = await supabase
+        .from('finances')
+        .insert({
+          user_id: currentUser.id,
+          type: 'expense',
+          description: expense.description,
+          amount: expense.amount,
+          category: expense.category,
+          date: expense.date.toISOString(),
+          recurring: !!expense.recurring,
+          recurring_type: expense.recurring?.type,
+          recurring_days: expense.recurring?.days,
+          installment_total: expense.installment?.total,
+          installment_current: expense.installment?.current || 1
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding expense:', error);
+        return;
+      }
+
+      // Update the local state with the new expense
+      const newExpense: Expense = {
+        id: data.id,
+        description: data.description,
+        amount: data.amount,
+        category: data.category,
+        date: new Date(data.date),
+        recurring: data.recurring ? {
+          type: data.recurring_type,
+          days: data.recurring_days
+        } : undefined,
+        installment: data.installment_total ? {
+          total: data.installment_total,
+          current: data.installment_current,
+          remaining: data.installment_total - data.installment_current
+        } : undefined
+      };
+
+      setFinances(prev => ({
+        ...prev,
+        [currentUser.id]: {
+          ...prev[currentUser.id],
+          expenses: [...prev[currentUser.id].expenses, newExpense],
+          balance: prev[currentUser.id].balance - expense.amount
+        }
+      }));
+    } catch (error) {
+      console.error('Error in addExpense:', error);
+    }
   };
 
-  const addIncome = (income: Omit<Income, 'id'>) => {
+  const addIncome = async (income: Omit<Income, 'id'>) => {
     if (!currentUser) return;
     
-    const newIncome: Income = {
-      ...income,
-      id: Date.now().toString(),
-    };
-    
-    setFinances(prev => ({
-      ...prev,
-      [currentUser.id]: {
-        ...prev[currentUser.id].incomes ? 
-        {
+    try {
+      const { data, error } = await supabase
+        .from('finances')
+        .insert({
+          user_id: currentUser.id,
+          type: 'income',
+          description: income.description,
+          amount: income.amount,
+          category: 'income',
+          date: income.date.toISOString(),
+          recurring: income.recurring
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding income:', error);
+        return;
+      }
+
+      // Update the local state with the new income
+      const newIncome: Income = {
+        id: data.id,
+        description: data.description,
+        amount: data.amount,
+        date: new Date(data.date),
+        recurring: data.recurring
+      };
+
+      setFinances(prev => ({
+        ...prev,
+        [currentUser.id]: {
           ...prev[currentUser.id],
           incomes: [...prev[currentUser.id].incomes, newIncome],
-        } : 
-        {
-          ...prev[currentUser.id],
-          incomes: [newIncome],
-        },
-      },
-    }));
+          balance: prev[currentUser.id].balance + income.amount
+        }
+      }));
+    } catch (error) {
+      console.error('Error in addIncome:', error);
+    }
   };
 
   const addInvestment = (investment: Omit<Investment, 'id'>) => {
@@ -207,6 +337,156 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return totalIncome - totalExpenses;
   };
 
+  const getMonthlyExpenseTotal = () => {
+    if (!currentUser) return 0;
+    
+    const userFinances = finances[currentUser.id];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    // Calculate total expenses for the current month
+    return userFinances.expenses.reduce((sum, expense) => {
+      const expenseDate = new Date(expense.date);
+      const isCurrentMonth = expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+      
+      if (isCurrentMonth) {
+        return sum + expense.amount;
+      }
+      
+      // Handle recurring expenses
+      if (expense.recurring) {
+        if (expense.recurring.type === 'daily') {
+          // Calculate daily expenses for the month
+          const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+          return sum + (expense.amount * daysInMonth);
+        }
+        
+        if (expense.recurring.type === 'weekly') {
+          // Approximately 4 weeks in a month
+          return sum + (expense.amount * 4);
+        }
+        
+        if (expense.recurring.type === 'monthly' && expense.recurring.days) {
+          // Sum expenses for all selected days in the month
+          return sum + (expense.amount * expense.recurring.days.length);
+        }
+      }
+      
+      return sum;
+    }, 0);
+  };
+
+  const getFutureTransactions = () => {
+    if (!currentUser) return [];
+    
+    const userFinances = finances[currentUser.id];
+    const today = new Date();
+    const futureTransactions: { date: Date; description: string; amount: number; type: 'income' | 'expense' }[] = [];
+    
+    // Get future expenses (including installments and recurring)
+    userFinances.expenses.forEach(expense => {
+      const expenseDate = new Date(expense.date);
+      
+      // Future one-time expenses
+      if (expenseDate > today && !expense.recurring && !expense.installment) {
+        futureTransactions.push({
+          date: expenseDate,
+          description: expense.description,
+          amount: expense.amount,
+          type: 'expense'
+        });
+      }
+      
+      // Installment expenses
+      if (expense.installment && expense.installment.remaining > 0) {
+        const installmentAmount = expense.amount;
+        
+        // Create future transactions for each remaining installment
+        for (let i = 1; i <= expense.installment.remaining; i++) {
+          const futureDate = new Date(expenseDate);
+          futureDate.setMonth(futureDate.getMonth() + i);
+          
+          futureTransactions.push({
+            date: futureDate,
+            description: `${expense.description} (${expense.installment.current + i}/${expense.installment.total})`,
+            amount: installmentAmount,
+            type: 'expense'
+          });
+        }
+      }
+      
+      // Recurring expenses
+      if (expense.recurring) {
+        const nextThreeMonths = [
+          new Date(today.getFullYear(), today.getMonth() + 1, 1),
+          new Date(today.getFullYear(), today.getMonth() + 2, 1),
+          new Date(today.getFullYear(), today.getMonth() + 3, 1)
+        ];
+        
+        nextThreeMonths.forEach(month => {
+          if (expense.recurring?.type === 'monthly' && expense.recurring.days) {
+            expense.recurring.days.forEach(day => {
+              const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
+              
+              // Only add if it's in the future
+              if (futureDate > today) {
+                futureTransactions.push({
+                  date: futureDate,
+                  description: `${expense.description} (Mensal)`,
+                  amount: expense.amount,
+                  type: 'expense'
+                });
+              }
+            });
+          } else if (expense.recurring?.type === 'weekly') {
+            // Add for each week in the month
+            for (let week = 0; week < 4; week++) {
+              const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
+              
+              if (futureDate > today) {
+                futureTransactions.push({
+                  date: futureDate,
+                  description: `${expense.description} (Semanal)`,
+                  amount: expense.amount,
+                  type: 'expense'
+                });
+              }
+            }
+          }
+        });
+      }
+    });
+    
+    // Add future recurring incomes
+    userFinances.incomes.forEach(income => {
+      if (income.recurring) {
+        // Assume monthly recurring for incomes
+        const nextThreeMonths = [
+          new Date(today.getFullYear(), today.getMonth() + 1, 1),
+          new Date(today.getFullYear(), today.getMonth() + 2, 1),
+          new Date(today.getFullYear(), today.getMonth() + 3, 1)
+        ];
+        
+        nextThreeMonths.forEach(month => {
+          const futureDate = new Date(month);
+          futureDate.setDate(new Date(income.date).getDate()); // Keep same day of month
+          
+          if (futureDate > today) {
+            futureTransactions.push({
+              date: futureDate,
+              description: `${income.description} (Mensal)`,
+              amount: income.amount,
+              type: 'income'
+            });
+          }
+        });
+      }
+    });
+    
+    // Sort by date
+    return futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+  };
+
   const simulateExpense = (expense: Omit<Expense, 'id'>) => {
     if (!currentUser) return 0;
     
@@ -229,7 +509,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addIncome,
         addInvestment,
         calculateBalance,
+        getMonthlyExpenseTotal,
+        getFutureTransactions,
         simulateExpense,
+        fetchTransactions
       }}
     >
       {children}

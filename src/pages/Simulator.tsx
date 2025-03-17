@@ -7,17 +7,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   ArrowLeft, 
   Calculator, 
-  TrendingUp
+  TrendingUp,
+  Calendar as CalendarIcon,
+  Repeat
 } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { format } from 'date-fns';
 
 const Simulator = () => {
-  const { currentUser, calculateBalance, simulateExpense } = useFinance();
+  const { currentUser, calculateBalance, simulateExpense, getFutureTransactions } = useFinance();
   const navigate = useNavigate();
 
   // Expense simulation
@@ -25,12 +30,15 @@ const Simulator = () => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [installments, setInstallments] = useState('1');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringType, setRecurringType] = useState<'monthly' | 'weekly'>('monthly');
+  const [date, setDate] = useState<Date | undefined>(new Date());
   
   // Results
   const [simulationResults, setSimulationResults] = useState<{
     currentBalance: number;
     afterExpense: number;
-    monthlyData: { month: string; balance: number }[];
+    monthlyData: { month: string; balance: number, withExpense: number }[];
   } | null>(null);
 
   if (!currentUser) {
@@ -39,12 +47,15 @@ const Simulator = () => {
   }
 
   const handleSimulate = () => {
-    if (!amount) return;
+    if (!amount || !date) return;
 
     const expenseAmount = parseFloat(amount);
     const currentBalance = calculateBalance();
     const months = parseInt(installments);
     const monthlyPayment = expenseAmount / months;
+    
+    // Get future transactions to incorporate into simulation
+    const futureTransactions = getFutureTransactions();
     
     // Generate forecast for the next 6 months
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -52,12 +63,53 @@ const Simulator = () => {
     
     const monthlyData = Array.from({ length: 6 }, (_, i) => {
       const monthIndex = (currentMonth + i) % 12;
-      const installmentImpact = i < months ? monthlyPayment : 0;
-      const balance = currentBalance - (monthlyPayment * Math.min(i + 1, months));
+      const monthYear = new Date().getFullYear() + Math.floor((currentMonth + i) / 12);
+      const monthDate = new Date(monthYear, monthIndex, 1);
+      const nextMonthDate = new Date(monthYear, monthIndex + 1, 0); // Last day of month
+      
+      // Calculate impact of existing future transactions for this month
+      let futureTransactionsImpact = 0;
+      futureTransactions.forEach(transaction => {
+        const transactionDate = new Date(transaction.date);
+        if (
+          transactionDate >= monthDate && 
+          transactionDate <= nextMonthDate
+        ) {
+          futureTransactionsImpact += transaction.type === 'income' ? 
+            transaction.amount : -transaction.amount;
+        }
+      });
+      
+      // Calculate impact of the simulated expense for this month
+      let simulatedExpenseImpact = 0;
+      
+      // For installments
+      if (!isRecurring && i < months) {
+        simulatedExpenseImpact = -monthlyPayment;
+      }
+      // For recurring expenses
+      else if (isRecurring) {
+        if (recurringType === 'monthly') {
+          simulatedExpenseImpact = -expenseAmount;
+        } else if (recurringType === 'weekly') {
+          // Roughly 4 weeks per month
+          simulatedExpenseImpact = -expenseAmount * 4;
+        }
+      }
+      
+      // Calculate balances
+      const baseBalance = i === 0 ? 
+        currentBalance : 
+        monthlyData[i-1].balance + futureTransactionsImpact;
+      
+      const withExpenseBalance = i === 0 ? 
+        currentBalance + simulatedExpenseImpact : 
+        monthlyData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact;
       
       return {
-        month: monthNames[monthIndex],
-        balance,
+        month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,
+        balance: baseBalance,
+        withExpense: withExpenseBalance
       };
     });
 
@@ -134,25 +186,91 @@ const Simulator = () => {
               </div>
             </div>
 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Repeat size={18} className="text-white" />
+                <Label htmlFor="recurring" className="text-white">Despesa Recorrente</Label>
+              </div>
+              <div className="flex items-center">
+                <Button 
+                  variant={isRecurring ? "default" : "outline"}
+                  size="sm"
+                  className={`mr-2 ${isRecurring ? "bg-finance-blue" : "bg-finance-dark-lighter text-gray-400"}`}
+                  onClick={() => setIsRecurring(true)}
+                >
+                  Sim
+                </Button>
+                <Button 
+                  variant={!isRecurring ? "default" : "outline"}
+                  size="sm"
+                  className={`${!isRecurring ? "bg-finance-blue" : "bg-finance-dark-lighter text-gray-400"}`}
+                  onClick={() => setIsRecurring(false)}
+                >
+                  Não
+                </Button>
+              </div>
+            </div>
+
+            {isRecurring ? (
+              <div>
+                <Label className="text-white">Tipo de Recorrência</Label>
+                <Select
+                  value={recurringType}
+                  onValueChange={(value) => setRecurringType(value as 'monthly' | 'weekly')}
+                >
+                  <SelectTrigger className="finance-input mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-finance-dark-lighter border-finance-dark">
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="simulationInstallments" className="text-white">Parcelas</Label>
+                <Select
+                  value={installments}
+                  onValueChange={setInstallments}
+                >
+                  <SelectTrigger className="finance-input mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-finance-dark-lighter border-finance-dark">
+                    <SelectItem value="1">À vista</SelectItem>
+                    <SelectItem value="2">2x</SelectItem>
+                    <SelectItem value="3">3x</SelectItem>
+                    <SelectItem value="4">4x</SelectItem>
+                    <SelectItem value="5">5x</SelectItem>
+                    <SelectItem value="6">6x</SelectItem>
+                    <SelectItem value="12">12x</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="simulationInstallments" className="text-white">Parcelas</Label>
-              <Select
-                value={installments}
-                onValueChange={setInstallments}
-              >
-                <SelectTrigger className="finance-input mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-finance-dark-lighter border-finance-dark">
-                  <SelectItem value="1">À vista</SelectItem>
-                  <SelectItem value="2">2x</SelectItem>
-                  <SelectItem value="3">3x</SelectItem>
-                  <SelectItem value="4">4x</SelectItem>
-                  <SelectItem value="5">5x</SelectItem>
-                  <SelectItem value="6">6x</SelectItem>
-                  <SelectItem value="12">12x</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-white">Data Inicial</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full finance-input mt-1 flex justify-between items-center"
+                  >
+                    {date ? format(date, 'dd/MM/yyyy') : 'Selecione uma data'}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-finance-dark-lighter border-finance-dark" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <Button 
@@ -181,7 +299,7 @@ const Simulator = () => {
 
               <div className="flex justify-between">
                 <span className="text-gray-400">Após a Compra:</span>
-                <span className="text-white font-bold">
+                <span className={`font-bold ${simulationResults.afterExpense >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {formatCurrency(simulationResults.afterExpense)}
                 </span>
               </div>
@@ -198,11 +316,22 @@ const Simulator = () => {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#27292f', borderColor: '#333' }}
                       labelStyle={{ color: '#fff' }}
-                      formatter={(value) => [formatCurrency(value as number), 'Saldo']}
+                      formatter={(value) => [formatCurrency(value as number), '']}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      name="Sem o gasto"
+                      dataKey="balance" 
+                      stroke="#4ade80" 
+                      strokeWidth={2}
+                      dot={{ fill: '#4ade80', r: 4 }}
+                      activeDot={{ r: 6 }}
                     />
                     <Line 
                       type="monotone" 
-                      dataKey="balance" 
+                      name="Com o gasto"
+                      dataKey="withExpense" 
                       stroke="#0e84de" 
                       strokeWidth={2}
                       dot={{ fill: '#0e84de', r: 4 }}
@@ -215,8 +344,33 @@ const Simulator = () => {
               <div className="p-3 bg-finance-dark-lighter rounded-lg">
                 <p className="text-gray-400 text-sm">
                   Esta simulação mostra como sua situação financeira estará nos próximos 
-                  6 meses se você realizar esta compra{installments !== '1' ? ' parcelada' : ''}.
+                  6 meses se você realizar esta {isRecurring ? 'despesa recorrente' : `compra${installments !== '1' ? ' parcelada' : ''}`}.
                 </p>
+              </div>
+              
+              {simulationResults.monthlyData.some(data => data.withExpense < 0) && (
+                <div className="p-3 bg-red-950/40 rounded-lg border border-red-800/50">
+                  <p className="text-red-400 text-sm font-semibold">
+                    Atenção: Seu saldo ficará negativo em algum momento nos próximos meses
+                    se realizar esta despesa.
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex justify-end">
+                <Button 
+                  onClick={() => navigate('/dashboard')}
+                  variant="outline"
+                  className="mr-2 bg-finance-dark-lighter border-finance-dark text-white"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="finance-btn"
+                  onClick={() => isRecurring ? navigate('/expenses') : navigate('/expenses')}
+                >
+                  Adicionar Despesa
+                </Button>
               </div>
             </div>
           </Card>
