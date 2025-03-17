@@ -11,6 +11,7 @@ import AddIncome from "./pages/AddIncome";
 import Expenses from "./pages/Expenses";
 import Investments from "./pages/Investments";
 import Simulator from "./pages/Simulator";
+import FutureTransactions from "./pages/FutureTransactions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/investments" element={<Investments />} />
             <Route path="/simulator" element={<Simulator />} />
+            <Route path="/future-transactions" element={<FutureTransactions />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

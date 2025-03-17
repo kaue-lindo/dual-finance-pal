@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -31,17 +30,14 @@ const Dashboard = () => {
   const balance = calculateBalance();
   const expenseTotal = getMonthlyExpenseTotal();
 
-  // Get the percentages for the circular indicator
   const percentage = Math.min(Math.max((balance / (balance + expenseTotal)) * 100, 0), 100) || 75;
 
-  // Calculate statistics
   const statistics = {
     balance,
     expenses: expenseTotal,
     remaining: balance - expenseTotal
   };
 
-  // Mock expense categories for demonstration
   const recentExpenses = userFinances.expenses.slice(0, 3).map(expense => ({
     icon: getCategoryIcon(expense.category),
     category: getCategoryName(expense.category),
@@ -96,7 +92,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
-      {/* Header */}
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-8">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={handleLogout}>
@@ -153,7 +148,6 @@ const Dashboard = () => {
         </TabsList>
         
         <TabsContent value="expenses">
-          {/* Recent expenses */}
           <Card className="finance-card mt-4">
             <h2 className="text-lg font-semibold text-white mb-4">Despesas Recentes</h2>
             {recentExpenses.length > 0 ? (
@@ -248,6 +242,7 @@ const Dashboard = () => {
               <Button 
                 variant="ghost" 
                 className="w-full mt-4 text-finance-blue"
+                onClick={() => navigate('/future-transactions')}
               >
                 Ver Todas Transações
                 <ChevronRight size={16} className="ml-1" />
@@ -257,7 +252,6 @@ const Dashboard = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
         <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
           <Home size={24} className="text-finance-blue" />

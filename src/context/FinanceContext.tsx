@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type User = {
   id: string;
@@ -8,12 +8,15 @@ type User = {
   profileImage?: string;
 };
 
+type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'other';
+
 type Expense = {
   id: string;
   description: string;
   amount: number;
   category: string;
   date: Date;
+  sourceCategory?: IncomeCategory;
   recurring?: {
     type: 'daily' | 'weekly' | 'monthly';
     days?: number[]; // Days of month for monthly recurring
@@ -30,6 +33,7 @@ type Income = {
   description: string;
   amount: number;
   date: Date;
+  category: IncomeCategory;
   recurring?: boolean;
 };
 
@@ -49,6 +53,16 @@ type UserFinances = {
   balance: number;
 };
 
+type FutureTransaction = {
+  id: string;
+  date: Date;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  sourceCategory?: string;
+};
+
 type FinanceContextType = {
   currentUser: User | null;
   users: User[];
@@ -60,9 +74,26 @@ type FinanceContextType = {
   addInvestment: (investment: Omit<Investment, 'id'>) => void;
   calculateBalance: () => number;
   getMonthlyExpenseTotal: () => number;
-  getFutureTransactions: () => { date: Date; description: string; amount: number; type: 'income' | 'expense' }[];
+  getFutureTransactions: () => FutureTransaction[];
   simulateExpense: (expense: Omit<Expense, 'id'>) => number;
   fetchTransactions: () => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  getIncomeCategories: () => { value: IncomeCategory; label: string }[];
+};
+
+// Income categories mapping
+const incomeCategories = [
+  { value: 'salary' as IncomeCategory, label: 'Salário' },
+  { value: 'food-allowance' as IncomeCategory, label: 'Vale Alimentação' },
+  { value: 'transportation-allowance' as IncomeCategory, label: 'Vale Transporte' },
+  { value: 'other' as IncomeCategory, label: 'Outros' },
+];
+
+// Expense categories that should be allocated from specific income sources
+const categoryAllocationMap: Record<string, IncomeCategory> = {
+  'food': 'food-allowance',
+  'transport': 'transportation-allowance',
+  // All others will default to 'salary' or 'other'
 };
 
 // Predefined users
@@ -145,6 +176,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             description: item.description,
             amount: parseFloat(item.amount.toString()),
             date: new Date(item.date),
+            category: item.category || 'other',
             recurring: item.recurring
           });
         } else {
@@ -154,6 +186,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             amount: parseFloat(item.amount.toString()),
             category: item.category || 'other',
             date: new Date(item.date),
+            sourceCategory: item.source_category,
             recurring: item.recurring_type ? {
               type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
               days: item.recurring_days
@@ -206,6 +239,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
     if (!currentUser) return;
     
+    // Determine source category based on expense category
+    const sourceCategory = categoryAllocationMap[expense.category] || 'salary';
+    
     try {
       const { data, error } = await supabase
         .from('finances')
@@ -215,6 +251,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           description: expense.description,
           amount: expense.amount,
           category: expense.category,
+          source_category: sourceCategory,
           date: expense.date.toISOString(),
           recurring: !!expense.recurring,
           recurring_type: expense.recurring?.type,
@@ -227,6 +264,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) {
         console.error('Error adding expense:', error);
+        toast.error('Erro ao adicionar despesa');
         return;
       }
 
@@ -237,6 +275,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         amount: parseFloat(data.amount.toString()),
         category: data.category || 'other',
         date: new Date(data.date),
+        sourceCategory: data.source_category,
         recurring: data.recurring_type ? {
           type: data.recurring_type as 'daily' | 'weekly' | 'monthly',
           days: data.recurring_days
@@ -256,8 +295,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           balance: prev[currentUser.id].balance - expense.amount
         }
       }));
+      
+      toast.success('Despesa adicionada com sucesso');
     } catch (error) {
       console.error('Error in addExpense:', error);
+      toast.error('Erro ao adicionar despesa');
     }
   };
 
@@ -272,7 +314,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           type: 'income',
           description: income.description,
           amount: income.amount,
-          category: 'income',
+          category: income.category || 'other',
           date: income.date.toISOString(),
           recurring: income.recurring
         })
@@ -281,6 +323,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) {
         console.error('Error adding income:', error);
+        toast.error('Erro ao adicionar receita');
         return;
       }
 
@@ -290,6 +333,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         description: data.description,
         amount: parseFloat(data.amount.toString()),
         date: new Date(data.date),
+        category: data.category || 'other',
         recurring: data.recurring
       };
 
@@ -301,8 +345,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           balance: prev[currentUser.id].balance + income.amount
         }
       }));
+      
+      toast.success('Receita adicionada com sucesso');
     } catch (error) {
       console.error('Error in addIncome:', error);
+      toast.error('Erro ao adicionar receita');
     }
   };
 
@@ -376,24 +423,27 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 0);
   };
 
-  const getFutureTransactions = () => {
+  const getFutureTransactions = (): FutureTransaction[] => {
     if (!currentUser) return [];
     
     const userFinances = finances[currentUser.id];
     const today = new Date();
-    const futureTransactions: { date: Date; description: string; amount: number; type: 'income' | 'expense' }[] = [];
+    const futureTransactions: FutureTransaction[] = [];
     
     // Get future expenses (including installments and recurring)
     userFinances.expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
-      // Future one-time expenses
-      if (expenseDate > today && !expense.recurring && !expense.installment) {
+      // Add the original transaction if it's in the future
+      if (expenseDate > today) {
         futureTransactions.push({
+          id: expense.id,
           date: expenseDate,
           description: expense.description,
           amount: expense.amount,
-          type: 'expense'
+          type: 'expense',
+          category: expense.category,
+          sourceCategory: expense.sourceCategory
         });
       }
       
@@ -407,10 +457,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           futureDate.setMonth(futureDate.getMonth() + i);
           
           futureTransactions.push({
+            id: `${expense.id}-installment-${i}`,
             date: futureDate,
             description: `${expense.description} (${expense.installment.current + i}/${expense.installment.total})`,
             amount: installmentAmount,
-            type: 'expense'
+            type: 'expense',
+            category: expense.category,
+            sourceCategory: expense.sourceCategory
           });
         }
       }
@@ -431,10 +484,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               // Only add if it's in the future
               if (futureDate > today) {
                 futureTransactions.push({
+                  id: `${expense.id}-recurring-${month.getMonth()}-${day}`,
                   date: futureDate,
                   description: `${expense.description} (Mensal)`,
                   amount: expense.amount,
-                  type: 'expense'
+                  type: 'expense',
+                  category: expense.category,
+                  sourceCategory: expense.sourceCategory
                 });
               }
             });
@@ -445,10 +501,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               
               if (futureDate > today) {
                 futureTransactions.push({
+                  id: `${expense.id}-recurring-weekly-${month.getMonth()}-${week}`,
                   date: futureDate,
                   description: `${expense.description} (Semanal)`,
                   amount: expense.amount,
-                  type: 'expense'
+                  type: 'expense',
+                  category: expense.category,
+                  sourceCategory: expense.sourceCategory
                 });
               }
             }
@@ -459,6 +518,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     // Add future recurring incomes
     userFinances.incomes.forEach(income => {
+      // Add the original income if it's in the future
+      const incomeDate = new Date(income.date);
+      if (incomeDate > today) {
+        futureTransactions.push({
+          id: income.id,
+          date: incomeDate,
+          description: income.description,
+          amount: income.amount,
+          type: 'income',
+          category: income.category
+        });
+      }
+      
       if (income.recurring) {
         // Assume monthly recurring for incomes
         const nextThreeMonths = [
@@ -473,10 +545,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           
           if (futureDate > today) {
             futureTransactions.push({
+              id: `${income.id}-recurring-${month.getMonth()}`,
               date: futureDate,
               description: `${income.description} (Mensal)`,
               amount: income.amount,
-              type: 'income'
+              type: 'income',
+              category: income.category
             });
           }
         });
@@ -497,6 +571,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return currentBalance - expense.amount;
   };
 
+  const deleteTransaction = async (id: string) => {
+    if (!currentUser) return;
+    
+    try {
+      const { error } = await supabase
+        .from('finances')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting transaction:', error);
+        throw new Error('Error deleting transaction');
+      }
+
+      // Update local state
+      await fetchTransactions();
+    } catch (error) {
+      console.error('Error in deleteTransaction:', error);
+      throw error;
+    }
+  };
+
+  const getIncomeCategories = () => {
+    return incomeCategories;
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -512,7 +612,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getMonthlyExpenseTotal,
         getFutureTransactions,
         simulateExpense,
-        fetchTransactions
+        fetchTransactions,
+        deleteTransaction,
+        getIncomeCategories
       }}
     >
       {children}

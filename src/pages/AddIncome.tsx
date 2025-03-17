@@ -1,136 +1,212 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, ArrowLeft, CalendarClock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useFinance } from '@/context/FinanceContext';
-import { ArrowLeft, Plus, Minus } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency } from '@/lib/utils';
-import InvestmentCalculator from '@/components/InvestmentCalculator';
+import { useFinance } from '@/context/FinanceContext';
+import { toast } from 'sonner';
+
+const formSchema = z.object({
+  description: z.string().min(1, { message: 'A descrição é obrigatória' }),
+  amount: z.string().min(1, { message: 'O valor é obrigatório' }),
+  date: z.date(),
+  category: z.string().min(1, { message: 'A categoria é obrigatória' }),
+  recurring: z.boolean().default(false),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 const AddIncome = () => {
-  const { currentUser, addIncome } = useFinance();
+  const { addIncome, getIncomeCategories } = useFinance();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const categories = getIncomeCategories();
 
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [activeTab, setActiveTab] = useState('income');
-
-  if (!currentUser) {
-    navigate('/login');
-    return null;
-  }
-
-  const handleAddIncome = () => {
-    if (!description || !amount) {
-      toast({
-        title: 'Erro',
-        description: 'Por favor, preencha todos os campos',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    addIncome({
-      description,
-      amount: parseFloat(amount),
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      description: '',
+      amount: '',
       date: new Date(),
-      recurring: isRecurring,
-    });
+      category: 'salary',
+      recurring: false,
+    },
+  });
 
-    toast({
-      title: 'Sucesso',
-      description: 'Entrada adicionada com sucesso',
-    });
+  const onSubmit = async (data: FormValues) => {
+    setIsLoading(true);
+    try {
+      const amount = parseFloat(data.amount.replace(',', '.'));
+      
+      if (isNaN(amount)) {
+        toast.error('Valor inválido');
+        return;
+      }
 
-    // Reset form
-    setDescription('');
-    setAmount('');
-    setIsRecurring(false);
+      await addIncome({
+        description: data.description,
+        amount,
+        date: data.date,
+        category: data.category as any,
+        recurring: data.recurring,
+      });
 
-    // Redirect to dashboard
-    navigate('/dashboard');
+      toast.success('Entrada adicionada com sucesso!');
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error adding income:', error);
+      toast.error('Erro ao adicionar entrada');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-finance-dark pb-20">
+    <div className="min-h-screen bg-finance-dark">
       {/* Header */}
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft size={24} className="text-white" />
           </Button>
-          <h1 className="text-xl font-bold text-white">Entrada de Saldo</h1>
-          <div className="w-10"></div>
+          <h1 className="text-xl font-bold text-white">Adicionar Entrada</h1>
+          <div className="w-9"></div>
         </div>
       </div>
 
-      <Tabs defaultValue="income" className="mt-6 px-4" onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 bg-finance-dark-lighter">
-          <TabsTrigger value="income">Renda</TabsTrigger>
-          <TabsTrigger value="investment">Investimentos</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="income">
-          <Card className="finance-card mt-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="description" className="text-white">Descrição</Label>
-                <Input 
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ex: Salário"
-                  className="finance-input mt-1"
-                />
-              </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 space-y-6">
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Descrição</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Ex: Salário" className="bg-finance-dark-card text-white border-finance-dark-lighter" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <div>
-                <Label htmlFor="amount" className="text-white">Valor</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">R$</span>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0,00"
-                    className="finance-input pl-10"
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Valor (R$)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    placeholder="0,00" 
+                    className="bg-finance-dark-card text-white border-finance-dark-lighter" 
+                    inputMode="decimal"
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Data de recebimento</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full flex justify-between items-center bg-finance-dark-card text-white border-finance-dark-lighter",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Categoria</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="bg-finance-dark-card text-white border-finance-dark-lighter">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="recurring"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between p-4 rounded-lg bg-finance-dark-card border border-finance-dark-lighter">
+                <div className="flex items-center gap-2">
+                  <CalendarClock size={20} className="text-finance-blue" />
+                  <FormLabel className="text-white !m-0">Entrada recorrente (mensal)</FormLabel>
                 </div>
-              </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="recurring" className="text-white">Renda Recorrente</Label>
-                <Switch
-                  id="recurring"
-                  checked={isRecurring}
-                  onCheckedChange={setIsRecurring}
-                  className="data-[state=checked]:bg-finance-blue"
-                />
-              </div>
-
-              <Button 
-                onClick={handleAddIncome}
-                className="w-full finance-btn"
-              >
-                Adicionar Entrada
-              </Button>
-            </div>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="investment">
-          <InvestmentCalculator />
-        </TabsContent>
-      </Tabs>
+          <Button type="submit" className="w-full finance-btn" disabled={isLoading}>
+            {isLoading ? 'Adicionando...' : 'Adicionar Entrada'}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 };
