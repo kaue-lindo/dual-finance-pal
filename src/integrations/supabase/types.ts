@@ -9,6 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      finances: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          installment_current: number | null
+          installment_total: number | null
+          recurring: boolean | null
+          recurring_days: number[] | null
+          recurring_type: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          installment_current?: number | null
+          installment_total?: number | null
+          recurring?: boolean | null
+          recurring_days?: number[] | null
+          recurring_type?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          installment_current?: number | null
+          installment_total?: number | null
+          recurring?: boolean | null
+          recurring_days?: number[] | null
+          recurring_type?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           created_at: string

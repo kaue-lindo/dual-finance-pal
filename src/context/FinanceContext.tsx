@@ -143,7 +143,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           incomes.push({
             id: item.id,
             description: item.description,
-            amount: item.amount,
+            amount: parseFloat(item.amount),
             date: new Date(item.date),
             recurring: item.recurring
           });
@@ -151,8 +151,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           expenses.push({
             id: item.id,
             description: item.description,
-            amount: item.amount,
-            category: item.category,
+            amount: parseFloat(item.amount),
+            category: item.category || 'other',
             date: new Date(item.date),
             recurring: item.recurring ? {
               type: item.recurring_type,
@@ -234,8 +234,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const newExpense: Expense = {
         id: data.id,
         description: data.description,
-        amount: data.amount,
-        category: data.category,
+        amount: parseFloat(data.amount),
+        category: data.category || 'other',
         date: new Date(data.date),
         recurring: data.recurring ? {
           type: data.recurring_type,
@@ -288,7 +288,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const newIncome: Income = {
         id: data.id,
         description: data.description,
-        amount: data.amount,
+        amount: parseFloat(data.amount),
         date: new Date(data.date),
         recurring: data.recurring
       };
