@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -61,7 +62,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -96,6 +97,26 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-finance-dark text-foreground;
   }
+}
+
+.finance-card {
+  @apply bg-finance-dark-card rounded-xl p-4 shadow-lg;
+}
+
+.finance-input {
+  @apply bg-finance-dark-lighter text-white rounded-lg p-3 w-full border-none focus:outline-none focus:ring-2 focus:ring-finance-blue;
+}
+
+.finance-btn {
+  @apply bg-finance-blue hover:bg-finance-blue-dark text-white rounded-lg p-3 transition-colors;
+}
+
+.finance-btn-icon {
+  @apply bg-finance-blue hover:bg-finance-blue-dark text-white rounded-full p-2 transition-colors;
+}
+
+.navbar-icon {
+  @apply p-2 rounded-full hover:bg-finance-dark-lighter transition-colors;
 }
