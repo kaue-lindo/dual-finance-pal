@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -176,7 +177,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             description: item.description,
             amount: parseFloat(item.amount.toString()),
             date: new Date(item.date),
-            category: item.category || 'other',
+            category: (item.category || 'other') as IncomeCategory,
             recurring: item.recurring
           });
         } else {
@@ -186,7 +187,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             amount: parseFloat(item.amount.toString()),
             category: item.category || 'other',
             date: new Date(item.date),
-            sourceCategory: item.source_category,
+            sourceCategory: item.source_category as IncomeCategory | undefined,
             recurring: item.recurring_type ? {
               type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
               days: item.recurring_days
@@ -275,7 +276,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         amount: parseFloat(data.amount.toString()),
         category: data.category || 'other',
         date: new Date(data.date),
-        sourceCategory: data.source_category,
+        sourceCategory: data.source_category as IncomeCategory | undefined,
         recurring: data.recurring_type ? {
           type: data.recurring_type as 'daily' | 'weekly' | 'monthly',
           days: data.recurring_days
@@ -314,7 +315,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           type: 'income',
           description: income.description,
           amount: income.amount,
-          category: income.category || 'other',
+          category: income.category,
           date: income.date.toISOString(),
           recurring: income.recurring
         })
@@ -333,7 +334,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         description: data.description,
         amount: parseFloat(data.amount.toString()),
         date: new Date(data.date),
-        category: data.category || 'other',
+        category: data.category as IncomeCategory,
         recurring: data.recurring
       };
 

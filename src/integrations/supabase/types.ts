@@ -22,6 +22,7 @@ export type Database = {
           recurring: boolean | null
           recurring_days: number[] | null
           recurring_type: string | null
+          source_category: string | null
           type: string
           updated_at: string
           user_id: string
@@ -38,6 +39,7 @@ export type Database = {
           recurring?: boolean | null
           recurring_days?: number[] | null
           recurring_type?: string | null
+          source_category?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -54,6 +56,7 @@ export type Database = {
           recurring?: boolean | null
           recurring_days?: number[] | null
           recurring_type?: string | null
+          source_category?: string | null
           type?: string
           updated_at?: string
           user_id?: string
