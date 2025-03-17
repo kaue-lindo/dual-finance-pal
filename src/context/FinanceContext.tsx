@@ -143,7 +143,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           incomes.push({
             id: item.id,
             description: item.description,
-            amount: parseFloat(item.amount),
+            amount: parseFloat(item.amount.toString()),
             date: new Date(item.date),
             recurring: item.recurring
           });
@@ -151,11 +151,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           expenses.push({
             id: item.id,
             description: item.description,
-            amount: parseFloat(item.amount),
+            amount: parseFloat(item.amount.toString()),
             category: item.category || 'other',
             date: new Date(item.date),
-            recurring: item.recurring ? {
-              type: item.recurring_type,
+            recurring: item.recurring_type ? {
+              type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
               days: item.recurring_days
             } : undefined,
             installment: item.installment_total ? {
@@ -234,11 +234,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const newExpense: Expense = {
         id: data.id,
         description: data.description,
-        amount: parseFloat(data.amount),
+        amount: parseFloat(data.amount.toString()),
         category: data.category || 'other',
         date: new Date(data.date),
-        recurring: data.recurring ? {
-          type: data.recurring_type,
+        recurring: data.recurring_type ? {
+          type: data.recurring_type as 'daily' | 'weekly' | 'monthly',
           days: data.recurring_days
         } : undefined,
         installment: data.installment_total ? {
@@ -288,7 +288,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const newIncome: Income = {
         id: data.id,
         description: data.description,
-        amount: parseFloat(data.amount),
+        amount: parseFloat(data.amount.toString()),
         date: new Date(data.date),
         recurring: data.recurring
       };
