@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,7 @@ import Simulator from "./pages/Simulator";
 import FutureTransactions from "./pages/FutureTransactions";
 import FutureTransactionsGraph from "./pages/FutureTransactionsGraph";
 import NotFound from "./pages/NotFound";
+import AllTransactions from './pages/AllTransactions';
 
 const queryClient = new QueryClient();
 
@@ -34,6 +34,7 @@ const App = () => (
             <Route path="/simulator" element={<Simulator />} />
             <Route path="/future-transactions" element={<FutureTransactions />} />
             <Route path="/future-graphs" element={<FutureTransactionsGraph />} />
+            <Route path="/all-transactions" element={<AllTransactions />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

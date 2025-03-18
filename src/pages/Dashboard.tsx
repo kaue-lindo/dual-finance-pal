@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { useFinance } from '@/context/FinanceContext';
 import { CircularProgressIndicator } from '@/components/CircularProgressIndicator';
-import { BarChart, Search, Home, Settings, ArrowLeft, DollarSign, ShoppingCart, Car, Utensils, Calendar, TrendingUp, ChevronRight, PieChart } from 'lucide-react';
+import { BarChart, Search, Home, Settings, ArrowLeft, DollarSign, ShoppingCart, Car, Utensils, Calendar, TrendingUp, ChevronRight, PieChart, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,14 @@ const Dashboard = () => {
     color: getCategoryColor(expense.category),
     description: expense.description,
     date: expense.date
+  }));
+
+  const recentIncomes = userFinances.incomes.slice(0, 3).map(income => ({
+    id: income.id,
+    description: income.description,
+    amount: income.amount,
+    category: income.category,
+    date: income.date
   }));
 
   function getCategoryIcon(category: string) {
@@ -159,10 +167,14 @@ const Dashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 mt-6">
-        <TabsList className="grid grid-cols-2 bg-finance-dark-lighter">
+        <TabsList className="grid grid-cols-3 bg-finance-dark-lighter">
           <TabsTrigger value="expenses" className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4" />
             <span>Despesas</span>
+          </TabsTrigger>
+          <TabsTrigger value="incomes" className="flex items-center gap-2">
+            <Receipt className="w-4 h-4" />
+            <span>Entradas</span>
           </TabsTrigger>
           <TabsTrigger value="future" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
@@ -227,9 +239,75 @@ const Dashboard = () => {
               <Button 
                 variant="ghost" 
                 className="w-full mt-4 text-finance-blue"
-                onClick={() => navigate('/expenses')}
+                onClick={() => navigate('/all-transactions')}
               >
                 Ver Todas Despesas
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="incomes">
+          <Card className="finance-card mt-4">
+            <h2 className="text-lg font-semibold text-white mb-4">Entradas Recentes</h2>
+            {recentIncomes.length > 0 ? (
+              <div className="space-y-4">
+                {recentIncomes.map((income, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <DollarSign className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-white">{income.description}</p>
+                        <p className="text-xs text-green-400">{income.category}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="text-right mr-3">
+                        <p className="text-green-400">
+                          +{formatCurrency(income.amount)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {format(new Date(income.date), 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-400 hover:text-red-400"
+                        onClick={() => handleDeleteExpense(income.id)}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 py-6">
+                <p>Nenhuma entrada registrada</p>
+                <Button 
+                  className="mt-4 finance-btn"
+                  onClick={() => navigate('/add-income')}
+                >
+                  Adicionar Entrada
+                </Button>
+              </div>
+            )}
+            
+            {recentIncomes.length > 0 && (
+              <Button 
+                variant="ghost" 
+                className="w-full mt-4 text-finance-blue"
+                onClick={() => navigate('/all-transactions')}
+              >
+                Ver Todas Entradas
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
@@ -332,8 +410,8 @@ const Dashboard = () => {
         <button className="navbar-icon" onClick={() => navigate('/investments')}>
           <BarChart className="w-6 h-6 text-white" />
         </button>
-        <button className="navbar-icon" onClick={() => navigate('/simulator')}>
-          <TrendingUp className="w-6 h-6 text-white" />
+        <button className="navbar-icon" onClick={() => navigate('/all-transactions')}>
+          <Receipt className="w-6 h-6 text-white" />
         </button>
       </div>
     </div>
