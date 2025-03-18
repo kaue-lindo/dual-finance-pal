@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -38,17 +37,14 @@ const FutureTransactionsGraph = () => {
   }, [currentUser, finances]);
 
   const prepareChartData = () => {
-    // Get all future transactions
     const transactions = getFutureTransactions();
     const currentBalance = calculateBalance();
     const totalInvestments = getTotalInvestments();
     const categoryExpenses = getCategoryExpenses();
     
-    // 1. Prepare data for the monthly projection (line chart)
     const today = new Date();
     const monthlyData: Record<string, any> = {};
     
-    // Initialize data for the next 12 months
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(today, i);
       const monthKey = format(monthDate, 'MMM/yy');
@@ -63,11 +59,9 @@ const FutureTransactionsGraph = () => {
       };
     }
     
-    // Add transaction data to each month
     transactions.forEach(transaction => {
       const monthKey = format(transaction.date, 'MMM/yy');
       
-      // Skip if the month is not in our projection window
       if (!monthlyData[monthKey]) return;
       
       if (transaction.type === 'income') {
@@ -77,20 +71,17 @@ const FutureTransactionsGraph = () => {
       }
     });
     
-    // Calculate running balance
     let runningBalance = currentBalance;
     Object.keys(monthlyData).sort((a, b) => {
       return monthlyData[a].date.getTime() - monthlyData[b].date.getTime();
     }).forEach(monthKey => {
       if (monthKey === format(today, 'MMM/yy')) {
-        // Current month already has the balance
         runningBalance = monthlyData[monthKey].balance;
       } else {
         runningBalance = runningBalance + monthlyData[monthKey].income - monthlyData[monthKey].expense;
         monthlyData[monthKey].balance = runningBalance;
       }
       
-      // For investment growth, add projected returns
       if (monthKey === format(addMonths(today, 3), 'MMM/yy') ||
           monthKey === format(addMonths(today, 6), 'MMM/yy') ||
           monthKey === format(addMonths(today, 12), 'MMM/yy')) {
@@ -101,11 +92,9 @@ const FutureTransactionsGraph = () => {
       }
     });
     
-    // Convert to array for chart
     const monthsArray = Object.values(monthlyData);
     setFutureMonths(monthsArray);
     
-    // 2. Prepare data for category pie chart
     const categoryDataForChart = categoryExpenses.map(item => ({
       name: formatCategoryName(item.category),
       value: item.amount,
@@ -113,7 +102,6 @@ const FutureTransactionsGraph = () => {
     }));
     setCategoryData(categoryDataForChart);
     
-    // 3. Prepare data for distribution pie chart
     const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
     const distributionDataForChart = [
       { name: 'Saldo Disponível', value: currentBalance, color: '#2EC4B6' },
@@ -141,7 +129,6 @@ const FutureTransactionsGraph = () => {
 
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
-      {/* Header */}
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
@@ -152,25 +139,23 @@ const FutureTransactionsGraph = () => {
         </div>
       </div>
 
-      {/* Chart Type Tabs */}
       <div className="px-4 mt-6">
         <Tabs value={activeChartTab} onValueChange={setActiveChartTab}>
           <TabsList className="grid grid-cols-3 bg-finance-dark-lighter">
             <TabsTrigger value="line" className="flex items-center gap-2">
-              <LineChartIcon size={16} />
+              <LineChartIcon className="w-4 h-4" />
               <span>Projeção</span>
             </TabsTrigger>
             <TabsTrigger value="pie" className="flex items-center gap-2">
-              <PieChart size={16} />
+              <PieChart className="w-4 h-4" />
               <span>Categorias</span>
             </TabsTrigger>
             <TabsTrigger value="distribution" className="flex items-center gap-2">
-              <BarChart3 size={16} />
+              <BarChart3 className="w-4 h-4" />
               <span>Distribuição</span>
             </TabsTrigger>
           </TabsList>
           
-          {/* Line Chart - Monthly Projections */}
           <TabsContent value="line">
             <Card className="finance-card mt-4">
               <h2 className="text-lg font-semibold text-white mb-4">Projeção de Saldo nos Próximos Meses</h2>
@@ -198,7 +183,6 @@ const FutureTransactionsGraph = () => {
             </Card>
           </TabsContent>
           
-          {/* Pie Chart - Expenses by Category */}
           <TabsContent value="pie">
             <Card className="finance-card mt-4">
               <h2 className="text-lg font-semibold text-white mb-4">Despesas por Categoria</h2>
@@ -233,7 +217,6 @@ const FutureTransactionsGraph = () => {
             </Card>
           </TabsContent>
           
-          {/* Distribution Chart - Balance/Investment/Expenses */}
           <TabsContent value="distribution">
             <Card className="finance-card mt-4">
               <h2 className="text-lg font-semibold text-white mb-4">Distribuição do seu Dinheiro</h2>
@@ -274,40 +257,39 @@ const FutureTransactionsGraph = () => {
             className="finance-btn mr-3"
             onClick={() => navigate('/future-transactions')}
           >
-            <Calendar size={16} className="mr-1" />
+            <Calendar className="w-4 h-4 mr-1" />
             Ver Transações
           </Button>
           <Button 
             className="finance-btn-secondary"
             onClick={() => navigate('/simulator')}
           >
-            <TrendingUp size={16} className="mr-1" />
+            <TrendingUp className="w-4 h-4 mr-1" />
             Simulador
           </Button>
         </div>
       </div>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
         <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
-          <Home size={24} className="text-white" />
+          <Home className="w-6 h-6 text-white" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/expenses')}>
-          <ShoppingCart size={24} className="text-white" />
+          <ShoppingCart className="w-6 h-6 text-white" />
         </button>
         <div className="-mt-8">
           <button 
             className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
             onClick={() => navigate('/add-income')}
           >
-            <DollarSign size={24} className="text-white" />
+            <DollarSign className="w-6 h-6 text-white" />
           </button>
         </div>
         <button className="navbar-icon" onClick={() => navigate('/investments')}>
-          <BarChart size={24} className="text-white" />
+          <BarChart3 className="w-6 h-6 text-white" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/simulator')}>
-          <TrendingUp size={24} className="text-white" />
+          <TrendingUp className="w-6 h-6 text-white" />
         </button>
       </div>
     </div>
