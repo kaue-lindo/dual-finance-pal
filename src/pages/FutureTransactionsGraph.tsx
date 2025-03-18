@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -95,18 +96,26 @@ const FutureTransactionsGraph = () => {
     const monthsArray = Object.values(monthlyData);
     setFutureMonths(monthsArray);
     
-    const categoryDataForChart = categoryExpenses.map(item => ({
-      name: formatCategoryName(item.category),
-      value: item.amount,
-      category: item.category
-    }));
+    // Enhanced category data with more details for better tooltips
+    const categoryDataForChart = categoryExpenses.map(item => {
+      const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
+      const percentage = totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0;
+      
+      return {
+        name: formatCategoryName(item.category),
+        value: item.amount,
+        category: item.category,
+        percentage: percentage.toFixed(1),
+        user: currentUser?.name || 'Usuário',
+      };
+    });
     setCategoryData(categoryDataForChart);
     
     const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
     const distributionDataForChart = [
-      { name: 'Saldo Disponível', value: currentBalance, color: '#2EC4B6' },
-      { name: 'Investimentos', value: totalInvestments, color: '#FF9F1C' },
-      { name: 'Despesas', value: totalExpenses, color: '#FF6B6B' }
+      { name: 'Saldo Disponível', value: currentBalance, color: '#2EC4B6', percentage: ((currentBalance / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) },
+      { name: 'Investimentos', value: totalInvestments, color: '#FF9F1C', percentage: ((totalInvestments / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) },
+      { name: 'Despesas', value: totalExpenses, color: '#FF6B6B', percentage: ((totalExpenses / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) }
     ];
     setDistributionData(distributionDataForChart);
   };
@@ -127,12 +136,41 @@ const FutureTransactionsGraph = () => {
     return null;
   };
 
+  const CategoryTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-finance-dark-card p-3 border border-finance-dark-lighter rounded-md">
+          <p className="text-gray-200 font-medium">{data.name}</p>
+          <p className="text-sm text-white">Valor: {formatCurrency(data.value)}</p>
+          <p className="text-sm text-white">Percentual: {data.percentage}%</p>
+          <p className="text-sm text-white">Usuário: {data.user}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const DistributionTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-finance-dark-card p-3 border border-finance-dark-lighter rounded-md">
+          <p className="text-gray-200 font-medium">{data.name}</p>
+          <p className="text-sm text-white">Valor: {formatCurrency(data.value)}</p>
+          <p className="text-sm text-white">Percentual: {data.percentage}%</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft size={24} className="text-white" />
+            <ArrowLeft className="w-6 h-6 text-white" />
           </Button>
           <h1 className="text-xl font-bold text-white">Previsões Futuras</h1>
           <div className="w-10"></div>
@@ -197,13 +235,13 @@ const FutureTransactionsGraph = () => {
                       cy="50%"
                       outerRadius={80}
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percentage }) => `${name}: ${percentage}%`}
                     >
                       {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                    <Tooltip content={<CategoryTooltip />} />
                     <Legend />
                   </RechartsPie>
                 </ResponsiveContainer>
@@ -231,13 +269,13 @@ const FutureTransactionsGraph = () => {
                       cy="50%"
                       outerRadius={80}
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percentage }) => `${name}: ${percentage}%`}
                     >
                       {distributionData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                    <Tooltip content={<DistributionTooltip />} />
                     <Legend />
                   </RechartsPie>
                 </ResponsiveContainer>

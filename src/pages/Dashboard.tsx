@@ -43,7 +43,8 @@ const Dashboard = () => {
   const realIncome = getRealIncome();
   const totalInvestments = getTotalInvestments();
 
-  const percentage = Math.min(Math.max((balance / (balance + expenseTotal)) * 100, 0), 100) || 75;
+  // Fix: Calculate percentage based on income and expenses
+  const percentage = Math.min(Math.max((balance / realIncome) * 100, 0), 100) || 75;
 
   const statistics = {
     income: realIncome,

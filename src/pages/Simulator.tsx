@@ -39,6 +39,7 @@ const Simulator = () => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [installments, setInstallments] = useState('1');
+  const [customInstallments, setCustomInstallments] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringType, setRecurringType] = useState<'monthly' | 'weekly'>('monthly');
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -55,12 +56,19 @@ const Simulator = () => {
     return null;
   }
 
+  const getActualInstallments = () => {
+    if (installments === 'custom') {
+      return parseInt(customInstallments) || 1;
+    }
+    return parseInt(installments);
+  };
+
   const handleSimulate = () => {
     if (!amount || !date) return;
 
     const expenseAmount = parseFloat(amount);
     const currentBalance = calculateBalance();
-    const months = parseInt(installments);
+    const months = getActualInstallments();
     const monthlyPayment = expenseAmount / months;
     const totalInvestments = getTotalInvestments();
     
@@ -272,16 +280,38 @@ const Simulator = () => {
                   <SelectTrigger className="finance-input mt-1">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-finance-dark-lighter border-finance-dark">
+                  <SelectContent className="bg-finance-dark-lighter border-finance-dark max-h-60 overflow-y-auto">
                     <SelectItem value="1">À vista</SelectItem>
                     <SelectItem value="2">2x</SelectItem>
                     <SelectItem value="3">3x</SelectItem>
                     <SelectItem value="4">4x</SelectItem>
                     <SelectItem value="5">5x</SelectItem>
                     <SelectItem value="6">6x</SelectItem>
+                    <SelectItem value="10">10x</SelectItem>
                     <SelectItem value="12">12x</SelectItem>
+                    <SelectItem value="18">18x</SelectItem>
+                    <SelectItem value="24">24x</SelectItem>
+                    <SelectItem value="36">36x</SelectItem>
+                    <SelectItem value="48">48x</SelectItem>
+                    <SelectItem value="60">60x</SelectItem>
+                    <SelectItem value="custom">Personalizado</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {installments === 'custom' && (
+                  <div className="mt-2">
+                    <Label htmlFor="customInstallments" className="text-white">Número de Parcelas</Label>
+                    <Input
+                      id="customInstallments"
+                      type="number"
+                      value={customInstallments}
+                      onChange={(e) => setCustomInstallments(e.target.value)}
+                      placeholder="Digite o número de parcelas"
+                      className="finance-input mt-1"
+                      min="1"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -384,7 +414,7 @@ const Simulator = () => {
               <div className="p-3 bg-finance-dark-lighter rounded-lg">
                 <p className="text-gray-400 text-sm">
                   Esta simulação mostra como sua situação financeira estará nos próximos 
-                  6 meses se você realizar esta {isRecurring ? 'despesa recorrente' : `compra${installments !== '1' ? ' parcelada' : ''}`}.
+                  6 meses se você realizar esta {isRecurring ? 'despesa recorrente' : `compra${getActualInstallments() !== 1 ? ` parcelada em ${getActualInstallments()}x` : ''}`}.
                   Os rendimentos de investimentos também são considerados na projeção.
                 </p>
               </div>
