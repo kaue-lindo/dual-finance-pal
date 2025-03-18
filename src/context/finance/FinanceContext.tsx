@@ -168,14 +168,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } : undefined
       };
 
-      setFinances(prev => ({
-        ...prev,
-        [currentUser.id]: {
-          ...prev[currentUser.id],
-          expenses: [...prev[currentUser.id].expenses, newExpense],
-          balance: prev[currentUser.id].balance - expense.amount
-        }
-      }));
+      setFinances(prev => {
+        const updatedExpenses = [...prev[currentUser.id].expenses, newExpense];
+        const updatedIncomes = [...prev[currentUser.id].incomes];
+        
+        return {
+          ...prev,
+          [currentUser.id]: {
+            ...prev[currentUser.id],
+            expenses: updatedExpenses,
+            balance: calculateBalanceFromData(updatedIncomes, updatedExpenses)
+          }
+        };
+      });
       
       toast.success('Despesa adicionada com sucesso');
     } catch (error) {
@@ -217,14 +222,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         recurring: data.recurring
       };
 
-      setFinances(prev => ({
-        ...prev,
-        [currentUser.id]: {
-          ...prev[currentUser.id],
-          incomes: [...prev[currentUser.id].incomes, newIncome],
-          balance: prev[currentUser.id].balance + income.amount
-        }
-      }));
+      setFinances(prev => {
+        const updatedIncomes = [...prev[currentUser.id].incomes, newIncome];
+        const updatedExpenses = [...prev[currentUser.id].expenses];
+        
+        return {
+          ...prev,
+          [currentUser.id]: {
+            ...prev[currentUser.id],
+            incomes: updatedIncomes,
+            balance: calculateBalanceFromData(updatedIncomes, updatedExpenses)
+          }
+        };
+      });
       
       toast.success('Receita adicionada com sucesso');
     } catch (error) {
@@ -291,12 +301,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!currentUser) return 0;
     
     const userFinances = finances[currentUser.id];
-    
-    const totalIncome = userFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
-    
-    const totalExpenses = userFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    
-    return totalIncome - totalExpenses;
+    return calculateBalanceFromData(userFinances.incomes, userFinances.expenses);
   };
 
   const getMonthlyExpenseTotal = () => {
@@ -500,6 +505,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       if (!id.includes('-installment-') && !id.includes('-recurring-') && !id.includes('-growth-')) {
+        console.log('Deleting transaction with ID:', id);
+        
         const { error } = await supabase
           .from('finances')
           .delete()
@@ -507,7 +514,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         if (error) {
           console.error('Error deleting transaction:', error);
-          throw new Error('Error deleting transaction');
+          toast.error('Erro ao remover transação');
+          return;
         }
         
         await fetchTransactions();
@@ -524,6 +532,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         
         if (baseId) {
+          console.log('Deleting base transaction with ID:', baseId);
+          
           const { error } = await supabase
             .from('finances')
             .delete()

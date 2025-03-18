@@ -20,7 +20,8 @@ const Dashboard = () => {
     getMonthlyExpenseTotal, 
     getFutureTransactions,
     getRealIncome,
-    getTotalInvestments
+    getTotalInvestments,
+    deleteTransaction
   } = useFinance();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('expenses');
@@ -54,6 +55,7 @@ const Dashboard = () => {
   };
 
   const recentExpenses = userFinances.expenses.slice(0, 3).map(expense => ({
+    id: expense.id,
     icon: getCategoryIcon(expense.category),
     category: getCategoryName(expense.category),
     amount: expense.amount,
@@ -65,13 +67,13 @@ const Dashboard = () => {
   function getCategoryIcon(category: string) {
     switch (category) {
       case 'food':
-        return <Utensils size={18} style={{ color: getCategoryColor(category) }} />;
+        return <Utensils className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
       case 'transport':
-        return <Car size={18} style={{ color: getCategoryColor(category) }} />;
+        return <Car className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
       case 'shopping':
-        return <ShoppingCart size={18} style={{ color: getCategoryColor(category) }} />;
+        return <ShoppingCart className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
       default:
-        return <DollarSign size={18} style={{ color: getCategoryColor(category) }} />;
+        return <DollarSign className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
     }
   }
 
@@ -105,16 +107,24 @@ const Dashboard = () => {
     navigate('/login');
   };
 
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      await deleteTransaction(id);
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-8">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={handleLogout}>
-            <ArrowLeft size={24} className="text-white" />
+            <ArrowLeft className="w-6 h-6 text-white" />
           </Button>
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/simulator')}>
-            <Settings size={24} className="text-white" />
+            <Settings className="w-6 h-6 text-white" />
           </Button>
         </div>
 
@@ -151,11 +161,11 @@ const Dashboard = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 mt-6">
         <TabsList className="grid grid-cols-2 bg-finance-dark-lighter">
           <TabsTrigger value="expenses" className="flex items-center gap-2">
-            <ShoppingCart size={16} />
+            <ShoppingCart className="w-4 h-4" />
             <span>Despesas</span>
           </TabsTrigger>
           <TabsTrigger value="future" className="flex items-center gap-2">
-            <Calendar size={16} />
+            <Calendar className="w-4 h-4" />
             <span>Agenda</span>
           </TabsTrigger>
         </TabsList>
@@ -176,13 +186,27 @@ const Dashboard = () => {
                         <p className="text-xs" style={{ color: expense.color }}>{expense.category}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-red-400">
-                        -{formatCurrency(expense.amount)}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {format(new Date(expense.date), 'dd/MM/yyyy')}
-                      </p>
+                    <div className="flex items-center">
+                      <div className="text-right mr-3">
+                        <p className="text-red-400">
+                          -{formatCurrency(expense.amount)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {format(new Date(expense.date), 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-400 hover:text-red-400"
+                        onClick={() => handleDeleteExpense(expense.id)}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -206,7 +230,7 @@ const Dashboard = () => {
                 onClick={() => navigate('/expenses')}
               >
                 Ver Todas Despesas
-                <ChevronRight size={16} className="ml-1" />
+                <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
           </Card>
@@ -215,7 +239,7 @@ const Dashboard = () => {
         <TabsContent value="future">
           <Card className="finance-card mt-4">
             <div className="flex items-center gap-2 mb-4">
-              <Calendar size={20} className="text-finance-blue" />
+              <Calendar className="w-5 h-5 text-finance-blue" />
               <h2 className="text-lg font-semibold text-white">Transações Futuras</h2>
             </div>
             
@@ -226,8 +250,8 @@ const Dashboard = () => {
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full ${transaction.type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center`}>
                         {transaction.type === 'income' ? 
-                          <DollarSign size={18} className="text-green-400" /> : 
-                          <ShoppingCart size={18} style={{ color: getCategoryColor(transaction.category) }} />
+                          <DollarSign className="w-4 h-4 text-green-400" /> : 
+                          <ShoppingCart className="w-4 h-4" style={{ color: getCategoryColor(transaction.category) }} />
                         }
                       </div>
                       <div>
@@ -237,10 +261,24 @@ const Dashboard = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={transaction.type === 'income' ? 'text-green-400' : 'text-red-400'}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </p>
+                    <div className="flex items-center">
+                      <div className="text-right mr-3">
+                        <p className={transaction.type === 'income' ? 'text-green-400' : 'text-red-400'}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-400 hover:text-red-400"
+                        onClick={() => handleDeleteExpense(transaction.id)}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -259,16 +297,16 @@ const Dashboard = () => {
                   onClick={() => navigate('/future-transactions')}
                 >
                   Ver Lista de Transações
-                  <ChevronRight size={16} className="ml-1" />
+                  <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
                 <Button 
                   variant="ghost" 
                   className="w-full text-finance-blue"
                   onClick={() => navigate('/future-graphs')}
                 >
-                  <PieChart size={16} className="mr-1" />
+                  <PieChart className="w-4 h-4 mr-1" />
                   Ver Gráficos de Previsão
-                  <ChevronRight size={16} className="ml-1" />
+                  <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             )}
@@ -278,24 +316,24 @@ const Dashboard = () => {
 
       <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
         <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
-          <Home size={24} className="text-finance-blue" />
+          <Home className="w-6 h-6 text-finance-blue" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/expenses')}>
-          <ShoppingCart size={24} className="text-white" />
+          <ShoppingCart className="w-6 h-6 text-white" />
         </button>
         <div className="-mt-8">
           <button 
             className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
             onClick={() => navigate('/add-income')}
           >
-            <DollarSign size={24} className="text-white" />
+            <DollarSign className="w-6 h-6 text-white" />
           </button>
         </div>
         <button className="navbar-icon" onClick={() => navigate('/investments')}>
-          <BarChart size={24} className="text-white" />
+          <BarChart className="w-6 h-6 text-white" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/simulator')}>
-          <TrendingUp size={24} className="text-white" />
+          <TrendingUp className="w-6 h-6 text-white" />
         </button>
       </div>
     </div>
