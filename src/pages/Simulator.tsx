@@ -14,15 +14,24 @@ import {
   Calculator, 
   TrendingUp,
   Calendar as CalendarIcon,
-  Repeat
+  Repeat,
+  AlertCircle
 } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { format } from 'date-fns';
+import { format, addMonths } from 'date-fns';
+import { getCategoryColor } from '@/utils/chartUtils';
 
 const Simulator = () => {
-  const { currentUser, calculateBalance, simulateExpense, getFutureTransactions } = useFinance();
+  const { 
+    currentUser, 
+    calculateBalance, 
+    simulateExpense, 
+    getFutureTransactions,
+    getTotalInvestments,
+    getProjectedInvestmentReturn 
+  } = useFinance();
   const navigate = useNavigate();
 
   // Expense simulation
@@ -38,7 +47,7 @@ const Simulator = () => {
   const [simulationResults, setSimulationResults] = useState<{
     currentBalance: number;
     afterExpense: number;
-    monthlyData: { month: string; balance: number, withExpense: number }[];
+    monthlyData: { month: string; balance: number, withExpense: number, investments: number }[];
   } | null>(null);
 
   if (!currentUser) {
@@ -53,6 +62,7 @@ const Simulator = () => {
     const currentBalance = calculateBalance();
     const months = parseInt(installments);
     const monthlyPayment = expenseAmount / months;
+    const totalInvestments = getTotalInvestments();
     
     // Get future transactions to incorporate into simulation
     const futureTransactions = getFutureTransactions();
@@ -97,19 +107,23 @@ const Simulator = () => {
         }
       }
       
+      // Calculate investment returns for this period
+      const investmentReturn = i === 0 ? 0 : getProjectedInvestmentReturn(i);
+      
       // Calculate balances
       const baseBalance = i === 0 ? 
         currentBalance : 
-        monthlyData[i-1].balance + futureTransactionsImpact;
+        monthlyData[i-1].balance + futureTransactionsImpact + investmentReturn;
       
       const withExpenseBalance = i === 0 ? 
         currentBalance + simulatedExpenseImpact : 
-        monthlyData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact;
+        monthlyData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturn;
       
       return {
         month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,
         balance: baseBalance,
-        withExpense: withExpenseBalance
+        withExpense: withExpenseBalance,
+        investments: totalInvestments + investmentReturn
       };
     });
 
@@ -118,6 +132,22 @@ const Simulator = () => {
       afterExpense: currentBalance - expenseAmount,
       monthlyData,
     });
+  };
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-finance-dark-card p-3 border border-finance-dark-lighter rounded-md">
+          <p className="text-gray-200 font-medium">{`${label}`}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
+              {`${entry.name}: ${formatCurrency(entry.value)}`}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -162,10 +192,15 @@ const Simulator = () => {
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent className="bg-finance-dark-lighter border-finance-dark">
+                  <SelectItem value="food">Alimentação</SelectItem>
+                  <SelectItem value="transport">Transporte</SelectItem>
                   <SelectItem value="electronics">Eletrônicos</SelectItem>
                   <SelectItem value="appliances">Eletrodomésticos</SelectItem>
                   <SelectItem value="furniture">Móveis</SelectItem>
                   <SelectItem value="clothing">Vestuário</SelectItem>
+                  <SelectItem value="entertainment">Entretenimento</SelectItem>
+                  <SelectItem value="bills">Contas</SelectItem>
+                  <SelectItem value="shopping">Compras</SelectItem>
                   <SelectItem value="other">Outros</SelectItem>
                 </SelectContent>
               </Select>
@@ -313,11 +348,7 @@ const Simulator = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                     <XAxis dataKey="month" stroke="#999" />
                     <YAxis stroke="#999" />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#27292f', borderColor: '#333' }}
-                      labelStyle={{ color: '#fff' }}
-                      formatter={(value) => [formatCurrency(value as number), '']}
-                    />
+                    <Tooltip content={CustomTooltip} />
                     <Legend />
                     <Line 
                       type="monotone" 
@@ -337,6 +368,15 @@ const Simulator = () => {
                       dot={{ fill: '#0e84de', r: 4 }}
                       activeDot={{ r: 6 }}
                     />
+                    <Line 
+                      type="monotone" 
+                      name="Investimentos"
+                      dataKey="investments" 
+                      stroke="#FF9F1C" 
+                      strokeWidth={2}
+                      dot={{ fill: '#FF9F1C', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -345,29 +385,33 @@ const Simulator = () => {
                 <p className="text-gray-400 text-sm">
                   Esta simulação mostra como sua situação financeira estará nos próximos 
                   6 meses se você realizar esta {isRecurring ? 'despesa recorrente' : `compra${installments !== '1' ? ' parcelada' : ''}`}.
+                  Os rendimentos de investimentos também são considerados na projeção.
                 </p>
               </div>
               
               {simulationResults.monthlyData.some(data => data.withExpense < 0) && (
                 <div className="p-3 bg-red-950/40 rounded-lg border border-red-800/50">
-                  <p className="text-red-400 text-sm font-semibold">
-                    Atenção: Seu saldo ficará negativo em algum momento nos próximos meses
-                    se realizar esta despesa.
-                  </p>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={18} className="text-red-400 mt-0.5" />
+                    <p className="text-red-400 text-sm">
+                      Seu saldo ficará negativo em algum momento nos próximos meses
+                      se realizar esta despesa. Considere reduzir o valor ou aumentar suas fontes de receita.
+                    </p>
+                  </div>
                 </div>
               )}
               
               <div className="flex justify-end">
                 <Button 
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/future-graphs')}
                   variant="outline"
                   className="mr-2 bg-finance-dark-lighter border-finance-dark text-white"
                 >
-                  Cancelar
+                  Ver Projeções
                 </Button>
                 <Button 
                   className="finance-btn"
-                  onClick={() => isRecurring ? navigate('/expenses') : navigate('/expenses')}
+                  onClick={() => navigate('/expenses')}
                 >
                   Adicionar Despesa
                 </Button>

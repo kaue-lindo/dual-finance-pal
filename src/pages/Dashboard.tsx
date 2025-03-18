@@ -1,16 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { useFinance } from '@/context/FinanceContext';
 import { CircularProgressIndicator } from '@/components/CircularProgressIndicator';
-import { BarChart, Search, Home, Settings, ArrowLeft, DollarSign, ShoppingCart, Car, Utensils, Calendar, TrendingUp, ChevronRight } from 'lucide-react';
+import { BarChart, Search, Home, Settings, ArrowLeft, DollarSign, ShoppingCart, Car, Utensils, Calendar, TrendingUp, ChevronRight, PieChart } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getCategoryColor } from '@/utils/chartUtils';
 
 const Dashboard = () => {
-  const { currentUser, finances, calculateBalance, logout, getMonthlyExpenseTotal, getFutureTransactions } = useFinance();
+  const { 
+    currentUser, 
+    finances, 
+    calculateBalance, 
+    logout, 
+    getMonthlyExpenseTotal, 
+    getFutureTransactions,
+    getRealIncome,
+    getTotalInvestments
+  } = useFinance();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('expenses');
   const [futureTransactions, setFutureTransactions] = useState<any[]>([]);
@@ -29,20 +40,23 @@ const Dashboard = () => {
   const userFinances = finances[currentUser.id];
   const balance = calculateBalance();
   const expenseTotal = getMonthlyExpenseTotal();
+  const realIncome = getRealIncome();
+  const totalInvestments = getTotalInvestments();
 
   const percentage = Math.min(Math.max((balance / (balance + expenseTotal)) * 100, 0), 100) || 75;
 
   const statistics = {
-    balance,
+    income: realIncome,
     expenses: expenseTotal,
-    remaining: balance - expenseTotal
+    balance: balance,
+    investments: totalInvestments
   };
 
   const recentExpenses = userFinances.expenses.slice(0, 3).map(expense => ({
     icon: getCategoryIcon(expense.category),
     category: getCategoryName(expense.category),
     amount: expense.amount,
-    increase: false,
+    color: getCategoryColor(expense.category),
     description: expense.description,
     date: expense.date
   }));
@@ -50,13 +64,13 @@ const Dashboard = () => {
   function getCategoryIcon(category: string) {
     switch (category) {
       case 'food':
-        return <Utensils size={18} />;
+        return <Utensils size={18} style={{ color: getCategoryColor(category) }} />;
       case 'transport':
-        return <Car size={18} />;
+        return <Car size={18} style={{ color: getCategoryColor(category) }} />;
       case 'shopping':
-        return <ShoppingCart size={18} />;
+        return <ShoppingCart size={18} style={{ color: getCategoryColor(category) }} />;
       default:
-        return <DollarSign size={18} />;
+        return <DollarSign size={18} style={{ color: getCategoryColor(category) }} />;
     }
   }
 
@@ -120,17 +134,15 @@ const Dashboard = () => {
         <div className="flex justify-around mt-6 mb-4">
           <div className="text-center">
             <p className="text-gray-400 text-xs">Entradas</p>
-            <p className="text-green-400 font-semibold">{formatCurrency(statistics.balance)}</p>
+            <p className="text-green-400 font-semibold">{formatCurrency(statistics.income)}</p>
           </div>
           <div className="text-center">
             <p className="text-gray-400 text-xs">Gastos</p>
             <p className="text-red-400 font-semibold">{formatCurrency(statistics.expenses)}</p>
           </div>
           <div className="text-center">
-            <p className="text-gray-400 text-xs">Restante</p>
-            <p className={`${statistics.remaining >= 0 ? 'text-green-400' : 'text-red-400'} font-semibold`}>
-              {formatCurrency(statistics.remaining)}
-            </p>
+            <p className="text-gray-400 text-xs">Investido</p>
+            <p className="text-amber-400 font-semibold">{formatCurrency(statistics.investments)}</p>
           </div>
         </div>
       </div>
@@ -160,12 +172,12 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-white">{expense.description}</p>
-                        <p className="text-xs text-gray-400">{expense.category}</p>
+                        <p className="text-xs" style={{ color: expense.color }}>{expense.category}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-red-400">
-                        -R${expense.amount.toFixed(2)}
+                        -{formatCurrency(expense.amount)}
                       </p>
                       <p className="text-xs text-gray-400">
                         {format(new Date(expense.date), 'dd/MM/yyyy')}
@@ -214,7 +226,7 @@ const Dashboard = () => {
                       <div className={`w-8 h-8 rounded-full ${transaction.type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center`}>
                         {transaction.type === 'income' ? 
                           <DollarSign size={18} className="text-green-400" /> : 
-                          <ShoppingCart size={18} className="text-red-400" />
+                          <ShoppingCart size={18} style={{ color: getCategoryColor(transaction.category) }} />
                         }
                       </div>
                       <div>
@@ -238,15 +250,26 @@ const Dashboard = () => {
               </div>
             )}
             
-            {futureTransactions.length > 5 && (
-              <Button 
-                variant="ghost" 
-                className="w-full mt-4 text-finance-blue"
-                onClick={() => navigate('/future-transactions')}
-              >
-                Ver Todas Transações
-                <ChevronRight size={16} className="ml-1" />
-              </Button>
+            {futureTransactions.length > 0 && (
+              <div className="flex flex-col space-y-2 mt-4">
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-finance-blue"
+                  onClick={() => navigate('/future-transactions')}
+                >
+                  Ver Lista de Transações
+                  <ChevronRight size={16} className="ml-1" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-finance-blue"
+                  onClick={() => navigate('/future-graphs')}
+                >
+                  <PieChart size={16} className="mr-1" />
+                  Ver Gráficos de Previsão
+                  <ChevronRight size={16} className="ml-1" />
+                </Button>
+              </div>
             )}
           </Card>
         </TabsContent>

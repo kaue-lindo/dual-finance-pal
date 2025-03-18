@@ -12,6 +12,7 @@ import Expenses from "./pages/Expenses";
 import Investments from "./pages/Investments";
 import Simulator from "./pages/Simulator";
 import FutureTransactions from "./pages/FutureTransactions";
+import FutureTransactionsGraph from "./pages/FutureTransactionsGraph";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/investments" element={<Investments />} />
             <Route path="/simulator" element={<Simulator />} />
             <Route path="/future-transactions" element={<FutureTransactions />} />
+            <Route path="/future-graphs" element={<FutureTransactionsGraph />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -248,13 +248,53 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: Date.now().toString(),
     };
     
-    setFinances(prev => ({
-      ...prev,
-      [currentUser.id]: {
-        ...prev[currentUser.id],
-        investments: [...prev[currentUser.id].investments, newInvestment],
-      },
-    }));
+    // Update finances
+    setFinances(prev => {
+      const currentFinances = prev[currentUser.id];
+      const newBalance = currentFinances.balance - investment.amount;
+      
+      return {
+        ...prev,
+        [currentUser.id]: {
+          ...currentFinances,
+          investments: [...currentFinances.investments, newInvestment],
+          balance: newBalance, // Deduct the investment amount from balance
+        },
+      };
+    });
+    
+    toast.success('Investimento adicionado com sucesso');
+  };
+
+  const deleteInvestment = (id: string) => {
+    if (!currentUser) return;
+    
+    // Find the investment to be deleted
+    const userFinances = finances[currentUser.id];
+    const investment = userFinances.investments.find(inv => inv.id === id);
+    
+    if (!investment) {
+      toast.error('Investimento não encontrado');
+      return;
+    }
+    
+    // Update finances
+    setFinances(prev => {
+      const currentFinances = prev[currentUser.id];
+      const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
+      const newBalance = currentFinances.balance + investment.amount; // Add back the investment amount
+      
+      return {
+        ...prev,
+        [currentUser.id]: {
+          ...currentFinances,
+          investments: newInvestments,
+          balance: newBalance,
+        },
+      };
+    });
+    
+    toast.success('Investimento removido com sucesso');
   };
 
   const calculateBalance = () => {
@@ -443,6 +483,38 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
     });
+
+    // Add investments as future transactions
+    userFinances.investments.forEach(investment => {
+      // Calculate future value based on investment rate
+      const months = 12; // Show investment growth for 12 months
+      const rate = investment.rate / 100; // Convert percentage to decimal
+      
+      // Get monthly or annual rate
+      const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
+      
+      // Project investment value for the next year
+      for (let i = 1; i <= months; i++) {
+        const futureDate = new Date();
+        futureDate.setMonth(futureDate.getMonth() + i);
+        
+        // Calculate compound interest
+        const growthFactor = Math.pow(1 + effectiveRate, i);
+        const futureValue = investment.amount * growthFactor;
+        const growthAmount = futureValue - investment.amount;
+        
+        if (i === 3 || i === 6 || i === 12) { // Show quarterly and annual projections
+          futureTransactions.push({
+            id: `${investment.id}-growth-${i}`,
+            date: futureDate,
+            description: `${investment.description} (Rendimento ${i} meses)`,
+            amount: growthAmount,
+            type: 'income',
+            category: 'investment-return'
+          });
+        }
+      }
+    });
     
     // Sort by date
     return futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -462,26 +534,113 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!currentUser) return;
     
     try {
-      const { error } = await supabase
-        .from('finances')
-        .delete()
-        .eq('id', id);
+      // Check if it's a regular transaction (stored in Supabase)
+      if (!id.includes('-installment-') && !id.includes('-recurring-') && !id.includes('-growth-')) {
+        // Delete from Supabase
+        const { error } = await supabase
+          .from('finances')
+          .delete()
+          .eq('id', id);
 
-      if (error) {
-        console.error('Error deleting transaction:', error);
-        throw new Error('Error deleting transaction');
+        if (error) {
+          console.error('Error deleting transaction:', error);
+          throw new Error('Error deleting transaction');
+        }
+        
+        // Update local state
+        await fetchTransactions();
+        toast.success('Transação removida com sucesso');
+      } else {
+        // It's a generated future transaction (not in Supabase)
+        // Extract the base transaction ID
+        let baseId;
+        if (id.includes('-installment-')) {
+          baseId = id.split('-installment-')[0];
+        } else if (id.includes('-recurring-')) {
+          baseId = id.split('-recurring-')[0];
+        } else if (id.includes('-growth-')) {
+          // For investment growth entries, we just remove from UI since they're calculated
+          toast.success('Transação removida da visualização');
+          return;
+        }
+        
+        if (baseId) {
+          // Find and delete the base transaction
+          const { error } = await supabase
+            .from('finances')
+            .delete()
+            .eq('id', baseId);
+
+          if (error) {
+            console.error('Error deleting base transaction:', error);
+            toast.error('Erro ao remover transação');
+          } else {
+            // Update local state
+            await fetchTransactions();
+            toast.success('Transação e suas futuras ocorrências removidas com sucesso');
+          }
+        }
       }
-
-      // Update local state
-      await fetchTransactions();
     } catch (error) {
       console.error('Error in deleteTransaction:', error);
-      throw error;
+      toast.error('Erro ao remover transação');
     }
   };
 
   const getIncomeCategories = () => {
     return incomeCategories;
+  };
+
+  const getTotalInvestments = () => {
+    if (!currentUser) return 0;
+    return finances[currentUser.id].investments.reduce((sum, investment) => sum + investment.amount, 0);
+  };
+
+  const getProjectedInvestmentReturn = (months = 12) => {
+    if (!currentUser) return 0;
+    
+    const userFinances = finances[currentUser.id];
+    let totalReturn = 0;
+    
+    userFinances.investments.forEach(investment => {
+      const rate = investment.rate / 100; // Convert percentage to decimal
+      const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
+      
+      // Calculate compound interest
+      const growthFactor = Math.pow(1 + effectiveRate, months);
+      const futureValue = investment.amount * growthFactor;
+      const growthAmount = futureValue - investment.amount;
+      
+      totalReturn += growthAmount;
+    });
+    
+    return totalReturn;
+  };
+
+  const getCategoryExpenses = () => {
+    if (!currentUser) return [];
+    
+    const userFinances = finances[currentUser.id];
+    const categoryMap: Record<string, number> = {};
+    
+    // Sum expenses by category
+    userFinances.expenses.forEach(expense => {
+      const category = expense.category || 'other';
+      categoryMap[category] = (categoryMap[category] || 0) + expense.amount;
+    });
+    
+    // Convert to array of objects
+    return Object.entries(categoryMap).map(([category, amount]) => ({
+      category,
+      amount
+    }));
+  };
+
+  const getRealIncome = () => {
+    if (!currentUser) return 0;
+    
+    const userFinances = finances[currentUser.id];
+    return userFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
   };
 
   return (
@@ -495,13 +654,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addExpense,
         addIncome,
         addInvestment,
+        deleteInvestment,
         calculateBalance,
         getMonthlyExpenseTotal,
         getFutureTransactions,
         simulateExpense,
         fetchTransactions,
         deleteTransaction,
-        getIncomeCategories
+        getIncomeCategories,
+        getTotalInvestments,
+        getProjectedInvestmentReturn,
+        getCategoryExpenses,
+        getRealIncome
       }}
     >
       {children}

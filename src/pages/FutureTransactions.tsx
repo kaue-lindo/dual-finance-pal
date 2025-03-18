@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, DollarSign, ShoppingCart, Trash, Calendar, Home, BarChart, TrendingUp, Filter, Plus } from 'lucide-react';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
+import { ArrowLeft, DollarSign, ShoppingCart, Trash, Calendar, Home, BarChart, TrendingUp, Filter, Plus, PieChart } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { getCategoryColor } from '@/utils/chartUtils';
 
 type TransactionType = {
   id: string;
@@ -38,6 +38,7 @@ const FutureTransactions = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentUser) {
@@ -67,6 +68,7 @@ const FutureTransactions = () => {
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    setTransactionToDelete(null);
     try {
       await deleteTransaction(id);
       toast.success("Transação removida com sucesso");
@@ -111,9 +113,10 @@ const FutureTransactions = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="navbar-icon opacity-0"
+            className="navbar-icon"
+            onClick={() => navigate('/future-graphs')}
           >
-            <ArrowLeft size={24} className="text-white" />
+            <PieChart size={24} className="text-white" />
           </Button>
         </div>
       </div>
@@ -176,7 +179,7 @@ const FutureTransactions = () => {
       </div>
 
       {/* Transactions List */}
-      <div className="px-4">
+      <div className="px-4 mb-24">
         <Card className="finance-card">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Calendar size={20} className="text-finance-blue" />
@@ -191,7 +194,7 @@ const FutureTransactions = () => {
                     <div className={`w-8 h-8 rounded-full ${transaction.type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center`}>
                       {transaction.type === 'income' ? 
                         <DollarSign size={18} className="text-green-400" /> : 
-                        <ShoppingCart size={18} className="text-red-400" />
+                        <ShoppingCart size={18} style={{ color: getCategoryColor(transaction.category) }} />
                       }
                     </div>
                     <div>
@@ -200,7 +203,7 @@ const FutureTransactions = () => {
                         <span className="text-gray-400">
                           {format(new Date(transaction.date), 'dd/MM/yyyy')}
                         </span>
-                        <span className="text-gray-400">
+                        <span style={{ color: getCategoryColor(transaction.category) }}>
                           {transaction.category}
                         </span>
                         {transaction.sourceCategory && (
@@ -217,14 +220,37 @@ const FutureTransactions = () => {
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                       </p>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                      onClick={() => handleDeleteTransaction(transaction.id)}
-                    >
-                      <Trash size={16} />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                          onClick={() => setTransactionToDelete(transaction.id)}
+                        >
+                          <Trash size={16} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-finance-dark-card border-finance-dark-lighter">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-white">Confirmar exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {transaction.id.includes('-installment-') || transaction.id.includes('-recurring-') ? 
+                              "Isso excluirá a transação original e todas as suas ocorrências futuras. Essa ação não pode ser desfeita." : 
+                              "Tem certeza que deseja excluir esta transação? Essa ação não pode ser desfeita."}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="bg-finance-dark-lighter text-white border-finance-dark">Cancelar</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => handleDeleteTransaction(transaction.id)}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}
@@ -251,6 +277,16 @@ const FutureTransactions = () => {
             </div>
           )}
         </Card>
+        
+        <div className="flex justify-center mt-4">
+          <Button 
+            className="finance-btn"
+            onClick={() => navigate('/future-graphs')}
+          >
+            <PieChart size={16} className="mr-1" />
+            Ver Gráficos de Previsão
+          </Button>
+        </div>
       </div>
 
       {/* Bottom Navigation */}
