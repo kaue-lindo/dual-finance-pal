@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,7 +25,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [finances, setFinances] = useState<Record<string, UserFinances>>(defaultFinances);
   const [loading, setLoading] = useState(true);
 
-  // Load data from localStorage on initial render
   useEffect(() => {
     const savedUser = localStorage.getItem('financeCurrentUser');
     
@@ -47,7 +45,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!currentUser) return;
 
     try {
-      // Fetch expenses and incomes from Supabase
       const { data, error } = await supabase
         .from('finances')
         .select('*')
@@ -61,7 +58,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const incomes: Income[] = [];
       const expenses: Expense[] = [];
 
-      // Process the data
       data.forEach(item => {
         if (item.type === 'income') {
           incomes.push({
@@ -126,7 +122,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
     if (!currentUser) return;
     
-    // Determine source category based on expense category
     const sourceCategory = categoryAllocationMap[expense.category] || 'salary';
     
     try {
@@ -155,7 +150,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      // Update the local state with the new expense
       const newExpense: Expense = {
         id: data.id,
         description: data.description,
@@ -214,7 +208,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      // Update the local state with the new income
       const newIncome: Income = {
         id: data.id,
         description: data.description,
@@ -248,7 +241,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: Date.now().toString(),
     };
     
-    // Update finances
     setFinances(prev => {
       const currentFinances = prev[currentUser.id];
       const newBalance = currentFinances.balance - investment.amount;
@@ -258,7 +250,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         [currentUser.id]: {
           ...currentFinances,
           investments: [...currentFinances.investments, newInvestment],
-          balance: newBalance, // Deduct the investment amount from balance
+          balance: newBalance,
         },
       };
     });
@@ -269,7 +261,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteInvestment = (id: string) => {
     if (!currentUser) return;
     
-    // Find the investment to be deleted
     const userFinances = finances[currentUser.id];
     const investment = userFinances.investments.find(inv => inv.id === id);
     
@@ -278,11 +269,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
     
-    // Update finances
     setFinances(prev => {
       const currentFinances = prev[currentUser.id];
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
-      const newBalance = currentFinances.balance + investment.amount; // Add back the investment amount
+      const newBalance = currentFinances.balance + investment.amount;
       
       return {
         ...prev,
@@ -302,10 +292,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const userFinances = finances[currentUser.id];
     
-    // Calculate total income
     const totalIncome = userFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
     
-    // Calculate total expenses
     const totalExpenses = userFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
     
     return totalIncome - totalExpenses;
@@ -318,7 +306,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
-    // Calculate total expenses for the current month
     return userFinances.expenses.reduce((sum, expense) => {
       const expenseDate = new Date(expense.date);
       const isCurrentMonth = expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
@@ -327,21 +314,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return sum + expense.amount;
       }
       
-      // Handle recurring expenses
       if (expense.recurring) {
         if (expense.recurring.type === 'daily') {
-          // Calculate daily expenses for the month
           const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
           return sum + (expense.amount * daysInMonth);
         }
         
         if (expense.recurring.type === 'weekly') {
-          // Approximately 4 weeks in a month
           return sum + (expense.amount * 4);
         }
         
         if (expense.recurring.type === 'monthly' && expense.recurring.days) {
-          // Sum expenses for all selected days in the month
           return sum + (expense.amount * expense.recurring.days.length);
         }
       }
@@ -357,11 +340,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const today = new Date();
     const futureTransactions: FutureTransaction[] = [];
     
-    // Get future expenses (including installments and recurring)
     userFinances.expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
-      // Add the original transaction if it's in the future
       if (expenseDate > today) {
         futureTransactions.push({
           id: expense.id,
@@ -374,11 +355,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
       
-      // Installment expenses
       if (expense.installment && expense.installment.remaining > 0) {
         const installmentAmount = expense.amount;
         
-        // Create future transactions for each remaining installment
         for (let i = 1; i <= expense.installment.remaining; i++) {
           const futureDate = new Date(expenseDate);
           futureDate.setMonth(futureDate.getMonth() + i);
@@ -395,7 +374,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
       
-      // Recurring expenses
       if (expense.recurring) {
         const nextThreeMonths = [
           new Date(today.getFullYear(), today.getMonth() + 1, 1),
@@ -408,7 +386,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             expense.recurring.days.forEach(day => {
               const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
               
-              // Only add if it's in the future
               if (futureDate > today) {
                 futureTransactions.push({
                   id: `${expense.id}-recurring-${month.getMonth()}-${day}`,
@@ -422,7 +399,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               }
             });
           } else if (expense.recurring?.type === 'weekly') {
-            // Add for each week in the month
             for (let week = 0; week < 4; week++) {
               const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
               
@@ -443,10 +419,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
     
-    // Add future recurring incomes
     userFinances.incomes.forEach(income => {
-      // Add the original income if it's in the future
       const incomeDate = new Date(income.date);
+      
       if (incomeDate > today) {
         futureTransactions.push({
           id: income.id,
@@ -459,7 +434,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       
       if (income.recurring) {
-        // Assume monthly recurring for incomes
         const nextThreeMonths = [
           new Date(today.getFullYear(), today.getMonth() + 1, 1),
           new Date(today.getFullYear(), today.getMonth() + 2, 1),
@@ -468,7 +442,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         
         nextThreeMonths.forEach(month => {
           const futureDate = new Date(month);
-          futureDate.setDate(new Date(income.date).getDate()); // Keep same day of month
+          futureDate.setDate(new Date(income.date).getDate());
           
           if (futureDate > today) {
             futureTransactions.push({
@@ -484,26 +458,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
-    // Add investments as future transactions
     userFinances.investments.forEach(investment => {
-      // Calculate future value based on investment rate
-      const months = 12; // Show investment growth for 12 months
-      const rate = investment.rate / 100; // Convert percentage to decimal
-      
-      // Get monthly or annual rate
+      const months = 12;
+      const rate = investment.rate / 100;
       const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
       
-      // Project investment value for the next year
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date();
         futureDate.setMonth(futureDate.getMonth() + i);
         
-        // Calculate compound interest
         const growthFactor = Math.pow(1 + effectiveRate, i);
         const futureValue = investment.amount * growthFactor;
         const growthAmount = futureValue - investment.amount;
         
-        if (i === 3 || i === 6 || i === 12) { // Show quarterly and annual projections
+        if (i === 3 || i === 6 || i === 12) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
             date: futureDate,
@@ -516,17 +484,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
     
-    // Sort by date
     return futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
   };
 
   const simulateExpense = (expense: Omit<Expense, 'id'>) => {
     if (!currentUser) return 0;
     
-    // Current balance
     const currentBalance = calculateBalance();
     
-    // Return the new balance after the simulated expense
     return currentBalance - expense.amount;
   };
 
@@ -534,9 +499,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!currentUser) return;
     
     try {
-      // Check if it's a regular transaction (stored in Supabase)
       if (!id.includes('-installment-') && !id.includes('-recurring-') && !id.includes('-growth-')) {
-        // Delete from Supabase
         const { error } = await supabase
           .from('finances')
           .delete()
@@ -547,25 +510,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error('Error deleting transaction');
         }
         
-        // Update local state
         await fetchTransactions();
         toast.success('Transação removida com sucesso');
       } else {
-        // It's a generated future transaction (not in Supabase)
-        // Extract the base transaction ID
         let baseId;
         if (id.includes('-installment-')) {
           baseId = id.split('-installment-')[0];
         } else if (id.includes('-recurring-')) {
           baseId = id.split('-recurring-')[0];
         } else if (id.includes('-growth-')) {
-          // For investment growth entries, we just remove from UI since they're calculated
           toast.success('Transação removida da visualização');
           return;
         }
         
         if (baseId) {
-          // Find and delete the base transaction
           const { error } = await supabase
             .from('finances')
             .delete()
@@ -575,7 +533,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             console.error('Error deleting base transaction:', error);
             toast.error('Erro ao remover transação');
           } else {
-            // Update local state
             await fetchTransactions();
             toast.success('Transação e suas futuras ocorrências removidas com sucesso');
           }
@@ -603,10 +560,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
-      const rate = investment.rate / 100; // Convert percentage to decimal
+      const rate = investment.rate / 100;
       const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
       
-      // Calculate compound interest
       const growthFactor = Math.pow(1 + effectiveRate, months);
       const futureValue = investment.amount * growthFactor;
       const growthAmount = futureValue - investment.amount;
@@ -623,13 +579,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const userFinances = finances[currentUser.id];
     const categoryMap: Record<string, number> = {};
     
-    // Sum expenses by category
     userFinances.expenses.forEach(expense => {
       const category = expense.category || 'other';
       categoryMap[category] = (categoryMap[category] || 0) + expense.amount;
     });
     
-    // Convert to array of objects
     return Object.entries(categoryMap).map(([category, amount]) => ({
       category,
       amount
