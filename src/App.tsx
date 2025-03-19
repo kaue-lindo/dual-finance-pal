@@ -15,6 +15,7 @@ import FutureTransactions from "./pages/FutureTransactions";
 import FutureTransactionsGraph from "./pages/FutureTransactionsGraph";
 import NotFound from "./pages/NotFound";
 import AllTransactions from './pages/AllTransactions';
+import Settings from './pages/Settings';
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/future-transactions" element={<FutureTransactions />} />
             <Route path="/future-graphs" element={<FutureTransactionsGraph />} />
             <Route path="/all-transactions" element={<AllTransactions />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

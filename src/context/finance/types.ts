@@ -77,4 +77,5 @@ export type FinanceContextType = {
   getProjectedInvestmentReturn: (months?: number) => number;
   getCategoryExpenses: () => { category: string; amount: number }[];
   getRealIncome: () => number;
+  updateUserProfile: (userData: { name?: string, avatarUrl?: string }) => void;
 };

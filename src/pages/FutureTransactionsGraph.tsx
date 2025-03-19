@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useFinance } from '@/context/FinanceContext';
 import { format, addMonths } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, PieChart, BarChart3, LineChart as LineChartIcon, Home, ShoppingCart, DollarSign, Calendar, TrendingUp } from 'lucide-react';
+import { ArrowLeft, PieChart, BarChart3, LineChart as LineChartIcon, Home, ShoppingCart, DollarSign, Calendar, TrendingUp, Receipt } from 'lucide-react';
 import { BarChart, Bar, PieChart as RechartsPie, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ResponsiveContainer } from 'recharts';
 import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
 
@@ -96,7 +95,6 @@ const FutureTransactionsGraph = () => {
     const monthsArray = Object.values(monthlyData);
     setFutureMonths(monthsArray);
     
-    // Enhanced category data with more details for better tooltips
     const categoryDataForChart = categoryExpenses.map(item => {
       const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
       const percentage = totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0;
@@ -326,8 +324,8 @@ const FutureTransactionsGraph = () => {
         <button className="navbar-icon" onClick={() => navigate('/investments')}>
           <BarChart3 className="w-6 h-6 text-white" />
         </button>
-        <button className="navbar-icon" onClick={() => navigate('/simulator')}>
-          <TrendingUp className="w-6 h-6 text-white" />
+        <button className="navbar-icon" onClick={() => navigate('/all-transactions')}>
+          <Receipt className="w-6 h-6 text-white" />
         </button>
       </div>
     </div>

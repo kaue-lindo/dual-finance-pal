@@ -30,15 +30,22 @@ const Dashboard = () => {
   useEffect(() => {
     if (currentUser) {
       setFutureTransactions(getFutureTransactions());
+    } else {
+      navigate('/login');
     }
-  }, [currentUser, finances]);
+  }, [currentUser, finances, getFutureTransactions, navigate]);
 
   if (!currentUser) {
-    navigate('/login');
     return null;
   }
 
-  const userFinances = finances[currentUser.id];
+  const userFinances = finances[currentUser.id] || { 
+    incomes: [], 
+    expenses: [], 
+    investments: [], 
+    balance: 0 
+  };
+  
   const balance = calculateBalance();
   const expenseTotal = getMonthlyExpenseTotal();
   const realIncome = getRealIncome();
@@ -131,12 +138,26 @@ const Dashboard = () => {
             <ArrowLeft className="w-6 h-6 text-white" />
           </Button>
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
-          <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/simulator')}>
+          <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/settings')}>
             <Settings className="w-6 h-6 text-white" />
           </Button>
         </div>
 
         <div className="flex flex-col items-center">
+          {/* Display user avatar if available */}
+          {currentUser.avatarUrl && (
+            <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border-2 border-finance-blue">
+              <img 
+                src={currentUser.avatarUrl} 
+                alt="User avatar" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          
+          {/* User name */}
+          <p className="text-white mb-3">Olá, {currentUser.name}</p>
+          
           <CircularProgressIndicator 
             value={percentage} 
             size={150} 
