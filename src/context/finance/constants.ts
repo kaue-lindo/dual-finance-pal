@@ -5,6 +5,8 @@ export type User = {
   id: string;
   name: string;
   profileImage?: string;
+  avatarUrl?: string;
+  email?: string;
 };
 
 // Income categories mapping
@@ -28,11 +30,15 @@ export const predefinedUsers: User[] = [
     id: 'user1',
     name: 'Usuário 1',
     profileImage: '/profile1.jpg',
+    avatarUrl: '/profile1.jpg',
+    email: 'usuario1@exemplo.com',
   },
   {
     id: 'user2',
     name: 'Usuário 2',
     profileImage: '/profile2.jpg',
+    avatarUrl: '/profile2.jpg',
+    email: 'usuario2@exemplo.com',
   },
 ];
 
