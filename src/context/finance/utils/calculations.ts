@@ -1,6 +1,7 @@
 
-import { Income, Expense } from './types';
+import { Income, Expense } from '../types';
 
+// Calculate balance from income and expense data
 export const calculateBalanceFromData = (incomes: Income[], expenses: Expense[]): number => {
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -21,11 +22,4 @@ export const calculateTotalExpenses = (expenses: Expense[]): number => {
 export const calculateMonthlyPayment = (total: number, months: number): number => {
   if (months <= 0) return total;
   return total / months;
-};
-
-// Calculate projected value based on growth rate
-export const calculateProjectedValue = (principal: number, rate: number, months: number): number => {
-  // Convert annual rate to monthly
-  const monthlyRate = rate / 12 / 100;
-  return principal * Math.pow(1 + monthlyRate, months);
 };

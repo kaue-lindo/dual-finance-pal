@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
-import { calculateBalanceFromData } from '../utils';
+import { calculateBalanceFromData } from '../utils/calculations';
 
 export const useTransactions = (
   currentUser: any,
