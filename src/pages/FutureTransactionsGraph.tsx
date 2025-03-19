@@ -18,7 +18,8 @@ const FutureTransactionsGraph = () => {
     getTotalInvestments,
     getCategoryExpenses,
     getProjectedInvestmentReturn,
-    calculateBalance
+    calculateBalance,
+    getRealIncome
   } = useFinance();
   const navigate = useNavigate();
   
@@ -37,14 +38,19 @@ const FutureTransactionsGraph = () => {
   }, [currentUser, finances]);
 
   const prepareChartData = () => {
+    if (!currentUser) return;
+    
     const transactions = getFutureTransactions();
+    // Get actual balance without investments
     const currentBalance = calculateBalance();
     const totalInvestments = getTotalInvestments();
     const categoryExpenses = getCategoryExpenses();
+    const totalIncome = getRealIncome();
     
     const today = new Date();
     const monthlyData: Record<string, any> = {};
     
+    // Initialize monthly data structure
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(today, i);
       const monthKey = format(monthDate, 'MMM/yy');
@@ -56,21 +62,33 @@ const FutureTransactionsGraph = () => {
         income: 0,
         expense: 0,
         investment: 0,
+        investmentReturn: 0
       };
     }
     
+    // Add all transaction data to monthly buckets
     transactions.forEach(transaction => {
       const monthKey = format(transaction.date, 'MMM/yy');
       
       if (!monthlyData[monthKey]) return;
       
       if (transaction.type === 'income') {
-        monthlyData[monthKey].income += transaction.amount;
+        if (transaction.category === 'investment-return') {
+          monthlyData[monthKey].investmentReturn += transaction.amount;
+        } else {
+          monthlyData[monthKey].income += transaction.amount;
+        }
       } else {
-        monthlyData[monthKey].expense += transaction.amount;
+        // Track investments separately from regular expenses
+        if (transaction.category === 'investment') {
+          monthlyData[monthKey].investment += transaction.amount;
+        } else {
+          monthlyData[monthKey].expense += transaction.amount;
+        }
       }
     });
     
+    // Calculate running balance
     let runningBalance = currentBalance;
     Object.keys(monthlyData).sort((a, b) => {
       return monthlyData[a].date.getTime() - monthlyData[b].date.getTime();
@@ -78,23 +96,20 @@ const FutureTransactionsGraph = () => {
       if (monthKey === format(today, 'MMM/yy')) {
         runningBalance = monthlyData[monthKey].balance;
       } else {
-        runningBalance = runningBalance + monthlyData[monthKey].income - monthlyData[monthKey].expense;
+        // Update running balance with net flow
+        runningBalance = runningBalance + 
+                        monthlyData[monthKey].income + 
+                        monthlyData[monthKey].investmentReturn - 
+                        monthlyData[monthKey].expense -
+                        monthlyData[monthKey].investment;
         monthlyData[monthKey].balance = runningBalance;
-      }
-      
-      if (monthKey === format(addMonths(today, 3), 'MMM/yy') ||
-          monthKey === format(addMonths(today, 6), 'MMM/yy') ||
-          monthKey === format(addMonths(today, 12), 'MMM/yy')) {
-        
-        const monthsFromNow = Math.round((monthlyData[monthKey].date.getTime() - today.getTime()) / (30 * 24 * 60 * 60 * 1000));
-        const investmentReturn = getProjectedInvestmentReturn(monthsFromNow);
-        monthlyData[monthKey].investment = investmentReturn;
       }
     });
     
     const monthsArray = Object.values(monthlyData);
     setFutureMonths(monthsArray);
     
+    // Prepare category data for pie chart
     const categoryDataForChart = categoryExpenses.map(item => {
       const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
       const percentage = totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0;
@@ -109,7 +124,10 @@ const FutureTransactionsGraph = () => {
     });
     setCategoryData(categoryDataForChart);
     
+    // Calculate the available balance correctly for distribution chart
     const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
+    
+    // Create distribution data for pie chart
     const distributionDataForChart = [
       { name: 'Saldo Disponível', value: currentBalance, color: '#2EC4B6', percentage: ((currentBalance / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) },
       { name: 'Investimentos', value: totalInvestments, color: '#FF9F1C', percentage: ((totalInvestments / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) },
@@ -194,7 +212,7 @@ const FutureTransactionsGraph = () => {
           
           <TabsContent value="line">
             <Card className="finance-card mt-4">
-              <h2 className="text-lg font-semibold text-white mb-4">Projeção de Saldo nos Próximos Meses</h2>
+              <h2 className="text-lg font-semibold text-white mb-4">Projeção Financeira - Próximos Meses</h2>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={futureMonths}>
@@ -206,14 +224,16 @@ const FutureTransactionsGraph = () => {
                     <Line type="monotone" dataKey="balance" name="Saldo" stroke="#2EC4B6" strokeWidth={2} dot={{ stroke: '#2EC4B6', strokeWidth: 2, r: 4 }} />
                     <Line type="monotone" dataKey="income" name="Entradas" stroke="#8AC926" strokeWidth={2} dot={{ stroke: '#8AC926', strokeWidth: 2, r: 4 }} />
                     <Line type="monotone" dataKey="expense" name="Saídas" stroke="#FF6B6B" strokeWidth={2} dot={{ stroke: '#FF6B6B', strokeWidth: 2, r: 4 }} />
-                    <Line type="monotone" dataKey="investment" name="Rendimentos" stroke="#FF9F1C" strokeWidth={2} dot={{ stroke: '#FF9F1C', strokeWidth: 2, r: 4 }} />
+                    <Line type="monotone" dataKey="investment" name="Investimentos" stroke="#FF9F1C" strokeWidth={2} dot={{ stroke: '#FF9F1C', strokeWidth: 2, r: 4 }} />
+                    <Line type="monotone" dataKey="investmentReturn" name="Rendimentos" stroke="#9D4EDD" strokeWidth={2} dot={{ stroke: '#9D4EDD', strokeWidth: 2, r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-6 p-3 bg-finance-dark-lighter rounded-lg">
                 <p className="text-gray-300 text-sm">
                   Esta projeção mostra como seu saldo financeiro vai evoluir nos próximos meses, considerando todas as 
-                  entradas e saídas programadas e recorrentes, além dos rendimentos previstos dos seus investimentos.
+                  entradas e saídas programadas e recorrentes. Os investimentos são mostrados como saídas do saldo disponível, 
+                  enquanto os rendimentos projetados são calculados mensalmente.
                 </p>
               </div>
             </Card>

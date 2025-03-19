@@ -1,7 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
 import { calculateBalanceFromData } from '../utils/calculations';
+import { getMonthlyReturn } from '../utils/projections';
 
 export const useTransactions = (
   currentUser: any,
@@ -12,6 +14,7 @@ export const useTransactions = (
     if (!currentUser) return;
 
     try {
+      console.log("Fetching transactions for user:", currentUser.id);
       const { data, error } = await supabase
         .from('finances')
         .select('*')
@@ -22,6 +25,7 @@ export const useTransactions = (
         return;
       }
 
+      console.log("Fetched transaction data:", data);
       const incomes: Income[] = [];
       const expenses: Expense[] = [];
       const investments: Investment[] = [];
@@ -78,10 +82,16 @@ export const useTransactions = (
         }
       });
 
+      // Combine with any existing investments that might not be in the database yet
       const existingInvestments = finances[currentUser.id]?.investments || [];
-      const combinedInvestments = [...investments, ...existingInvestments];
+      const existingIds = new Set(investments.map(inv => inv.id));
+      const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
+      const combinedInvestments = [...investments, ...uniqueExistingInvestments];
       
+      // Calculate the correct balance excluding investment amounts
       const calculatedBalance = calculateBalanceFromData(incomes, expenses);
+      const totalInvestmentsAmount = combinedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      const availableBalance = calculatedBalance - totalInvestmentsAmount;
       
       setFinances(prev => ({
         ...prev,
@@ -90,7 +100,7 @@ export const useTransactions = (
           incomes,
           expenses,
           investments: combinedInvestments,
-          balance: calculatedBalance
+          balance: availableBalance
         }
       }));
     } catch (error) {
@@ -161,10 +171,18 @@ export const useTransactions = (
     
     const monthsToLookAhead = 24;
     
+    // Process expenses
     userFinances.expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
-      if (expenseDate > today) {
+      // Include current month's expenses in the projections
+      const currentMonth = today.getMonth();
+      const expenseMonth = expenseDate.getMonth();
+      const expenseYear = expenseDate.getFullYear();
+      const currentYear = today.getFullYear();
+      
+      // Add all current and future expenses
+      if ((expenseMonth === currentMonth && expenseYear === currentYear) || expenseDate > today) {
         futureTransactions.push({
           id: expense.id,
           date: expenseDate,
@@ -176,6 +194,7 @@ export const useTransactions = (
         });
       }
       
+      // Process installment payments
       if (expense.installment && expense.installment.remaining > 0) {
         const installmentAmount = expense.amount;
         
@@ -195,9 +214,11 @@ export const useTransactions = (
         }
       }
       
+      // Process recurring expenses
       if (expense.recurring) {
         const nextMonths = [];
-        for (let i = 1; i <= monthsToLookAhead; i++) {
+        for (let i = 0; i <= monthsToLookAhead; i++) {
+          // Start with current month for recurring expenses
           nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
         }
         
@@ -206,7 +227,9 @@ export const useTransactions = (
             expense.recurring.days.forEach(day => {
               const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
               
-              if (futureDate > today) {
+              // Include the current month's recurring expenses too
+              if (futureDate.getTime() >= today.setHours(0, 0, 0, 0) || 
+                 (futureDate.getMonth() === today.getMonth() && futureDate.getFullYear() === today.getFullYear())) {
                 futureTransactions.push({
                   id: `${expense.id}-recurring-${month.getMonth()}-${day}`,
                   date: futureDate,
@@ -222,7 +245,8 @@ export const useTransactions = (
             for (let week = 0; week < 4; week++) {
               const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
               
-              if (futureDate > today) {
+              if (futureDate.getTime() >= today.setHours(0, 0, 0, 0) || 
+                 (futureDate.getMonth() === today.getMonth() && futureDate.getFullYear() === today.getFullYear())) {
                 futureTransactions.push({
                   id: `${expense.id}-recurring-weekly-${month.getMonth()}-${week}`,
                   date: futureDate,
@@ -239,10 +263,17 @@ export const useTransactions = (
       }
     });
     
+    // Process incomes
     userFinances.incomes.forEach(income => {
       const incomeDate = new Date(income.date);
       
-      if (incomeDate > today) {
+      // Include current month's incomes
+      const currentMonth = today.getMonth();
+      const incomeMonth = incomeDate.getMonth();
+      const incomeYear = incomeDate.getFullYear();
+      const currentYear = today.getFullYear();
+      
+      if ((incomeMonth === currentMonth && incomeYear === currentYear) || incomeDate > today) {
         futureTransactions.push({
           id: income.id,
           date: incomeDate,
@@ -253,9 +284,11 @@ export const useTransactions = (
         });
       }
       
+      // Process recurring incomes
       if (income.recurring) {
         const nextMonths = [];
-        for (let i = 1; i <= monthsToLookAhead; i++) {
+        for (let i = 0; i <= monthsToLookAhead; i++) {
+          // Start with current month for recurring incomes
           nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
         }
         
@@ -263,7 +296,8 @@ export const useTransactions = (
           const futureDate = new Date(month);
           futureDate.setDate(new Date(income.date).getDate());
           
-          if (futureDate > today) {
+          if (futureDate.getTime() >= today.setHours(0, 0, 0, 0) || 
+             (futureDate.getMonth() === today.getMonth() && futureDate.getFullYear() === today.getFullYear())) {
             futureTransactions.push({
               id: `${income.id}-recurring-${month.getMonth()}`,
               date: futureDate,
@@ -277,25 +311,47 @@ export const useTransactions = (
       }
     });
 
+    // Process investments with updated monthly returns calculation
     userFinances.investments.forEach(investment => {
       const months = 24;
-      const rate = investment.rate / 100;
-      const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
       
+      // Add the initial investment as an expense in the cash flow
+      const investmentDate = new Date(investment.startDate);
+      const currentMonth = today.getMonth();
+      const investmentMonth = investmentDate.getMonth();
+      const investmentYear = investmentDate.getFullYear();
+      const currentYear = today.getFullYear();
+      
+      if ((investmentMonth === currentMonth && investmentYear === currentYear) || investmentDate > today) {
+        futureTransactions.push({
+          id: `${investment.id}-initial`,
+          date: investmentDate,
+          description: `${investment.description} (Investimento Inicial)`,
+          amount: investment.amount,
+          type: 'expense',
+          category: 'investment'
+        });
+      }
+      
+      // Calculate and add projected returns
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date();
         futureDate.setMonth(futureDate.getMonth() + i);
         
-        const growthFactor = Math.pow(1 + effectiveRate, i);
-        const futureValue = investment.amount * growthFactor;
-        const growthAmount = futureValue - investment.amount;
+        // Calculate returns using the correct formula based on rate period
+        const isPeriodMonthly = investment.period === 'monthly';
+        const monthlyReturn = getMonthlyReturn(investment.amount, investment.rate, isPeriodMonthly);
         
+        // For compound interest growth, calculate total growth after i months
+        const compoundGrowth = investment.amount * Math.pow(1 + (isPeriodMonthly ? investment.rate / 100 : (investment.rate / 12) / 100), i) - investment.amount;
+        
+        // Include monthly returns at key intervals (3, 6, 12, 24 months)
         if (i === 3 || i === 6 || i === 12 || i === 24) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
             date: futureDate,
             description: `${investment.description} (Rendimento ${i} meses)`,
-            amount: growthAmount,
+            amount: compoundGrowth,
             type: 'income',
             category: 'investment-return'
           });

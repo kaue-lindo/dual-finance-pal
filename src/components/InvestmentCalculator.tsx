@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatPercentage } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
+import { calculateCompoundInterest } from '@/context/finance/utils/projections';
 
 const InvestmentCalculator = () => {
   const { currentUser, addInvestment, calculateBalance } = useFinance();
@@ -20,6 +21,8 @@ const InvestmentCalculator = () => {
   const [description, setDescription] = useState('');
   const [result, setResult] = useState<number | null>(null);
   const [availableBalance, setAvailableBalance] = useState(0);
+  const [monthlyReturn, setMonthlyReturn] = useState<number | null>(null);
+  const [annualReturn, setAnnualReturn] = useState<number | null>(null);
   const [insufficientBalance, setInsufficientBalance] = useState(false);
 
   useEffect(() => {
@@ -48,18 +51,20 @@ const InvestmentCalculator = () => {
     }
 
     const principal = parseFloat(amount);
-    const interestRate = parseFloat(rate) / 100;
-    let finalAmount = 0;
-
-    if (period === 'monthly') {
-      // Calculate for 12 months
-      finalAmount = principal * Math.pow(1 + interestRate, 12);
-    } else {
-      // Annual rate already
-      finalAmount = principal * (1 + interestRate);
-    }
-
-    setResult(finalAmount);
+    const interestRate = parseFloat(rate);
+    
+    // Calculate returns correctly based on period type
+    // For monthly interest rate
+    const effectiveMonthlyRate = period === 'monthly' ? interestRate / 100 : (interestRate / 12) / 100;
+    const monthlyReturnValue = principal * effectiveMonthlyRate;
+    setMonthlyReturn(monthlyReturnValue);
+    
+    // Calculate 1-year return with proper compounding
+    const oneYearReturn = calculateCompoundInterest(principal, interestRate, 1, period === 'monthly' ? 'monthly' : 'annually');
+    setAnnualReturn(oneYearReturn - principal);
+    
+    // Calculate final amount after 1 year for the result display
+    setResult(oneYearReturn);
   };
 
   const saveInvestment = () => {
@@ -97,6 +102,8 @@ const InvestmentCalculator = () => {
     setRate('');
     setPeriod('monthly');
     setResult(null);
+    setMonthlyReturn(null);
+    setAnnualReturn(null);
     
     // Update available balance after investment
     setAvailableBalance(calculateBalance() - parseFloat(amount));
@@ -142,7 +149,9 @@ const InvestmentCalculator = () => {
         </div>
 
         <div>
-          <Label htmlFor="investmentRate" className="text-white">Taxa de Rendimento (%)</Label>
+          <Label htmlFor="investmentRate" className="text-white">
+            Taxa de Rendimento ({period === 'monthly' ? 'Mensal' : 'Anual'})
+          </Label>
           <div className="relative mt-1">
             <Input
               id="investmentRate"
@@ -157,7 +166,7 @@ const InvestmentCalculator = () => {
         </div>
 
         <div>
-          <Label className="text-white">Período</Label>
+          <Label className="text-white">Período da Taxa</Label>
           <RadioGroup 
             value={period} 
             onValueChange={(value) => setPeriod(value as 'monthly' | 'annual')}
@@ -191,14 +200,26 @@ const InvestmentCalculator = () => {
 
         {result !== null && (
           <div className="mt-4 p-4 bg-finance-dark-lighter rounded-lg">
-            <h3 className="text-white font-medium mb-2">Resultado</h3>
+            <h3 className="text-white font-medium mb-2">Resultado Projetado</h3>
             <div className="flex justify-between">
-              <span className="text-gray-400">Valor Final:</span>
-              <span className="text-finance-blue font-bold">{formatCurrency(result)}</span>
+              <span className="text-gray-400">Valor Investido:</span>
+              <span className="text-white font-bold">{formatCurrency(parseFloat(amount))}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Rendimento:</span>
-              <span className="text-green-500 font-bold">{formatCurrency(result - parseFloat(amount))}</span>
+              <span className="text-gray-400">Retorno Mensal:</span>
+              <span className="text-green-500 font-bold">
+                {formatCurrency(monthlyReturn || 0)} ({formatPercentage((monthlyReturn || 0) / parseFloat(amount) * 100)})
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Retorno em 12 meses:</span>
+              <span className="text-green-500 font-bold">
+                {formatCurrency(annualReturn || 0)} ({formatPercentage((annualReturn || 0) / parseFloat(amount) * 100)})
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Valor Final após 12 meses:</span>
+              <span className="text-finance-blue font-bold">{formatCurrency(result)}</span>
             </div>
             <Button 
               onClick={saveInvestment}

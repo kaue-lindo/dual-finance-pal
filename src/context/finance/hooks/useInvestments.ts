@@ -1,8 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
 import { calculateBalanceFromData } from '../utils/calculations';
-import { calculateProjectedValue } from '../utils/projections';
+import { calculateCompoundInterest } from '../utils/projections';
 
 export const useInvestments = (
   currentUser: any,
@@ -43,6 +44,7 @@ export const useInvestments = (
         balance: 0
       };
       
+      // Correctly subtract the investment amount from available balance
       const newBalance = calculateBalanceFromData(userFinances.incomes, userFinances.expenses) - investment.amount;
       
       return {
@@ -62,7 +64,7 @@ export const useInvestments = (
     if (!currentUser) return;
     
     const userFinances = finances[currentUser.id];
-    const investment = userFinances.investments.find(inv => inv.id === id);
+    const investment = userFinances?.investments.find(inv => inv.id === id);
     
     if (!investment) {
       toast.error('Investimento não encontrado');
@@ -81,8 +83,11 @@ export const useInvestments = (
     
     setFinances(prev => {
       const currentFinances = prev[currentUser.id];
+      if (!currentFinances) return prev;
+      
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
+      // Add the investment amount back to the available balance when deleted
       const newBalance = calculateBalanceFromData(currentFinances.incomes, currentFinances.expenses);
       
       return {
@@ -111,13 +116,19 @@ export const useInvestments = (
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
-      const rate = investment.rate / 100;
-      const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
+      // Fix: Calculate monthly returns properly based on period
+      const rate = investment.rate;
+      const effectiveRate = investment.period === 'monthly' ? rate / 100 : (rate / 12) / 100;
       
-      const growthFactor = Math.pow(1 + effectiveRate, months);
-      const futureValue = investment.amount * growthFactor;
+      // Use compound interest formula for accurate projection
+      const futureValue = calculateCompoundInterest(
+        investment.amount,
+        investment.period === 'monthly' ? rate : rate / 12,
+        months / 12,
+        'monthly'
+      );
+      
       const growthAmount = futureValue - investment.amount;
-      
       totalReturn += growthAmount;
     });
     
