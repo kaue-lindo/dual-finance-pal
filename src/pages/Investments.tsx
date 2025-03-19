@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus, TrendingUp } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
+import InvestmentCalculator from '@/components/InvestmentCalculator';
 
 const Investments = () => {
-  const { currentUser, finances } = useFinance();
+  const { currentUser, finances, deleteInvestment } = useFinance();
   const navigate = useNavigate();
 
   if (!currentUser) {
@@ -47,14 +48,7 @@ const Investments = () => {
             <ArrowLeft size={24} className="text-white" />
           </Button>
           <h1 className="text-xl font-bold text-white">Investimentos</h1>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="navbar-icon" 
-            onClick={() => navigate('/add-income')}
-          >
-            <Plus size={24} className="text-white" />
-          </Button>
+          <div className="w-10"></div>
         </div>
       </div>
 
@@ -85,6 +79,9 @@ const Investments = () => {
           </div>
         </Card>
 
+        {/* Investment Calculator */}
+        <InvestmentCalculator />
+
         {investments.length > 0 ? (
           <div className="mt-6">
             <h2 className="text-lg font-bold text-white px-1 mb-3">Seus Investimentos</h2>
@@ -104,18 +101,20 @@ const Investments = () => {
                     </p>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                  onClick={() => deleteInvestment(investment.id)}
+                >
+                  Remover
+                </Button>
               </Card>
             ))}
           </div>
         ) : (
           <div className="mt-10 text-center">
             <p className="text-gray-400">Você ainda não tem investimentos</p>
-            <Button 
-              className="mt-4 finance-btn"
-              onClick={() => navigate('/add-income')}
-            >
-              Adicionar Investimento
-            </Button>
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, DollarSign, ShoppingCart, Search, Receipt } from 'lucide-react';
+import { ArrowLeft, DollarSign, ShoppingCart, Search, Receipt, Home, BarChart3 } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -301,7 +301,7 @@ const AllTransactions = () => {
           </button>
         </div>
         <button className="navbar-icon" onClick={() => navigate('/investments')}>
-          <BarChart className="w-6 h-6 text-white" />
+          <BarChart3 className="w-6 h-6 text-white" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/all-transactions')}>
           <Receipt className="w-6 h-6 text-finance-blue" />
