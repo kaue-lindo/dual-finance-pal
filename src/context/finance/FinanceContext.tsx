@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -60,7 +59,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const expenses: Expense[] = [];
       const investments: Investment[] = [];
 
-      // Initialize the finance record for the current user if it doesn't exist
       if (!finances[currentUser.id]) {
         setFinances(prev => ({
           ...prev,
@@ -113,11 +111,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       });
 
-      // Add existing investments from the local state if they exist
       const existingInvestments = finances[currentUser.id]?.investments || [];
       const combinedInvestments = [...investments, ...existingInvestments];
       
-      // Calculate balance correctly excluding investments
       const calculatedBalance = calculateBalanceFromData(incomes, expenses);
       
       setFinances(prev => ({
@@ -201,7 +197,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
 
       setFinances(prev => {
-        // Ensure we have an entry for this user
         const userFinances = prev[currentUser.id] || {
           incomes: [],
           expenses: [],
@@ -263,7 +258,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
 
       setFinances(prev => {
-        // Ensure we have an entry for this user
         const userFinances = prev[currentUser.id] || {
           incomes: [],
           expenses: [],
@@ -299,7 +293,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: Date.now().toString(),
     };
     
-    // Insert the investment into supabase
     supabase
       .from('finances')
       .insert({
@@ -307,9 +300,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         type: 'investment',
         description: investment.description,
         amount: investment.amount,
-        category: investment.rate.toString(), // Store rate in category field
+        category: investment.rate.toString(),
         date: investment.startDate.toISOString(),
-        recurring_type: investment.period, // Store period in recurring_type
+        recurring_type: investment.period,
       })
       .then(({ error }) => {
         if (error) {
@@ -319,7 +312,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
     
     setFinances(prev => {
-      // Ensure we have an entry for this user
       const userFinances = prev[currentUser.id] || {
         incomes: [],
         expenses: [],
@@ -327,7 +319,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         balance: 0
       };
       
-      // When adding an investment, we reduce the balance by the investment amount
       const newBalance = calculateBalanceFromData(userFinances.incomes, userFinances.expenses) - investment.amount;
       
       return {
@@ -354,7 +345,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
     
-    // Delete from Supabase if it exists there
     supabase
       .from('finances')
       .delete()
@@ -362,7 +352,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .then(({ error }) => {
         if (error) {
           console.error('Error deleting investment from Supabase:', error);
-          // Continue with local deletion even if Supabase delete fails
         }
       });
     
@@ -370,7 +359,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const currentFinances = prev[currentUser.id];
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
-      // When removing an investment, we add the amount back to the balance
       const newBalance = calculateBalanceFromData(currentFinances.incomes, currentFinances.expenses);
       
       return {
@@ -434,7 +422,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const today = new Date();
     const futureTransactions: FutureTransaction[] = [];
     
-    // Look ahead for 24 months instead of just 3
     const monthsToLookAhead = 24;
     
     userFinances.expenses.forEach(expense => {
@@ -554,7 +541,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     userFinances.investments.forEach(investment => {
-      const months = 24; // Look ahead for 24 months for investments
+      const months = 24;
       const rate = investment.rate / 100;
       const effectiveRate = investment.period === 'monthly' ? rate : rate / 12;
       
@@ -566,7 +553,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const futureValue = investment.amount * growthFactor;
         const growthAmount = futureValue - investment.amount;
         
-        // Show returns every 3 months, 6 months, 12 months and 24 months
         if (i === 3 || i === 6 || i === 12 || i === 24) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
@@ -699,7 +685,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return userFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
   };
 
-  // New function to update user profile
   const updateUserProfile = (userData: { name?: string, avatarUrl?: string }) => {
     if (!currentUser) return;
     
@@ -711,7 +696,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setCurrentUser(updatedUser);
     
-    // Save to localStorage if "remember me" was checked
     if (localStorage.getItem('financeCurrentUser')) {
       localStorage.setItem('financeCurrentUser', JSON.stringify(updatedUser));
     }
