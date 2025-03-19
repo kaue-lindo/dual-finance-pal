@@ -20,9 +20,9 @@ export function formatPercentage(value: number): string {
  * Format a date in Brazilian style (DD/MM/YYYY)
  */
 export function formatDate(date: Date): string {
-  return new Intl.NumberFormat('pt-BR', {
+  return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(date));
+  }).format(date);
 }
