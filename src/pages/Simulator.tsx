@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,19 +14,22 @@ import {
   TrendingUp,
   Calendar as CalendarIcon,
   Repeat,
-  AlertCircle
+  AlertCircle,
+  Home,
+  ShoppingCart,
+  DollarSign,
+  BarChart
 } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { format, addMonths } from 'date-fns';
-import { getCategoryColor } from '@/utils/chartUtils';
+import { format } from 'date-fns';
+import { generateSimulationData, SimulationDataPoint } from '@/utils/simulationUtils';
 
 const Simulator = () => {
   const { 
     currentUser, 
     calculateBalance, 
-    simulateExpense, 
     getFutureTransactions,
     getTotalInvestments,
     getProjectedInvestmentReturn 
@@ -48,11 +50,16 @@ const Simulator = () => {
   const [simulationResults, setSimulationResults] = useState<{
     currentBalance: number;
     afterExpense: number;
-    monthlyData: { month: string; balance: number, withExpense: number, investments: number }[];
+    monthlyData: SimulationDataPoint[];
   } | null>(null);
 
+  useEffect(() => {
+    if (!currentUser) {
+      navigate('/login');
+    }
+  }, [currentUser, navigate]);
+
   if (!currentUser) {
-    navigate('/login');
     return null;
   }
 
@@ -69,71 +76,22 @@ const Simulator = () => {
     const expenseAmount = parseFloat(amount);
     const currentBalance = calculateBalance();
     const months = getActualInstallments();
-    const monthlyPayment = expenseAmount / months;
     const totalInvestments = getTotalInvestments();
     
     // Get future transactions to incorporate into simulation
     const futureTransactions = getFutureTransactions();
     
-    // Generate forecast for the next 6 months
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const currentMonth = new Date().getMonth();
-    
-    const monthlyData = Array.from({ length: 6 }, (_, i) => {
-      const monthIndex = (currentMonth + i) % 12;
-      const monthYear = new Date().getFullYear() + Math.floor((currentMonth + i) / 12);
-      const monthDate = new Date(monthYear, monthIndex, 1);
-      const nextMonthDate = new Date(monthYear, monthIndex + 1, 0); // Last day of month
-      
-      // Calculate impact of existing future transactions for this month
-      let futureTransactionsImpact = 0;
-      futureTransactions.forEach(transaction => {
-        const transactionDate = new Date(transaction.date);
-        if (
-          transactionDate >= monthDate && 
-          transactionDate <= nextMonthDate
-        ) {
-          futureTransactionsImpact += transaction.type === 'income' ? 
-            transaction.amount : -transaction.amount;
-        }
-      });
-      
-      // Calculate impact of the simulated expense for this month
-      let simulatedExpenseImpact = 0;
-      
-      // For installments
-      if (!isRecurring && i < months) {
-        simulatedExpenseImpact = -monthlyPayment;
-      }
-      // For recurring expenses
-      else if (isRecurring) {
-        if (recurringType === 'monthly') {
-          simulatedExpenseImpact = -expenseAmount;
-        } else if (recurringType === 'weekly') {
-          // Roughly 4 weeks per month
-          simulatedExpenseImpact = -expenseAmount * 4;
-        }
-      }
-      
-      // Calculate investment returns for this period
-      const investmentReturn = i === 0 ? 0 : getProjectedInvestmentReturn(i);
-      
-      // Calculate balances
-      const baseBalance = i === 0 ? 
-        currentBalance : 
-        monthlyData[i-1].balance + futureTransactionsImpact + investmentReturn;
-      
-      const withExpenseBalance = i === 0 ? 
-        currentBalance + simulatedExpenseImpact : 
-        monthlyData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturn;
-      
-      return {
-        month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,
-        balance: baseBalance,
-        withExpense: withExpenseBalance,
-        investments: totalInvestments + investmentReturn
-      };
-    });
+    // Generate simulation data
+    const monthlyData = generateSimulationData(
+      currentBalance,
+      expenseAmount,
+      isRecurring,
+      recurringType,
+      months,
+      futureTransactions,
+      totalInvestments,
+      getProjectedInvestmentReturn
+    );
 
     setSimulationResults({
       currentBalance,
@@ -449,6 +407,30 @@ const Simulator = () => {
             </div>
           </Card>
         )}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
+        <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
+          <Home size={24} className="text-white" />
+        </button>
+        <button className="navbar-icon" onClick={() => navigate('/expenses')}>
+          <ShoppingCart size={24} className="text-white" />
+        </button>
+        <div className="-mt-8">
+          <button 
+            className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
+            onClick={() => navigate('/add-income')}
+          >
+            <DollarSign size={24} className="text-white" />
+          </button>
+        </div>
+        <button className="navbar-icon" onClick={() => navigate('/investments')}>
+          <BarChart size={24} className="text-white" />
+        </button>
+        <button className="navbar-icon" onClick={() => navigate('/simulator')}>
+          <TrendingUp size={24} className="text-white" />
+        </button>
       </div>
     </div>
   );

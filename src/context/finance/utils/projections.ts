@@ -58,3 +58,22 @@ export const getMonthlyReturn = (
   const monthlyRate = isPeriodMonthly ? rate / 100 : (rate / 12) / 100;
   return principal * monthlyRate;
 };
+
+// Calculate investment growth for a specific month (for simulations)
+export const calculateInvestmentGrowthForMonth = (
+  principal: number,
+  rate: number, 
+  isPeriodMonthly: boolean,
+  month: number,
+  isCompound: boolean = true
+): number => {
+  const monthlyRate = isPeriodMonthly ? rate / 100 : (rate / 12) / 100;
+  
+  if (isCompound) {
+    // Compound interest
+    return principal * Math.pow(1 + monthlyRate, month) - principal;
+  } else {
+    // Simple interest
+    return principal * monthlyRate * month;
+  }
+};
