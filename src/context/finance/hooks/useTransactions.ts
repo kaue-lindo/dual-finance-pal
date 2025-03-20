@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
@@ -304,6 +305,7 @@ export const useTransactions = (
       const investmentYear = investmentDate.getFullYear();
       const currentYear = today.getFullYear();
       
+      // Show the initial investment as an expense
       if ((investmentMonth === currentMonth && investmentYear === currentYear) || investmentDate > today) {
         futureTransactions.push({
           id: `${investment.id}-initial`,
@@ -315,9 +317,13 @@ export const useTransactions = (
         });
       }
       
+      // Calculate and show monthly returns
       for (let i = 1; i <= months; i++) {
-        const futureDate = new Date();
+        const futureDate = new Date(investmentDate);
         futureDate.setMonth(futureDate.getMonth() + i);
+        
+        // Skip past months
+        if (futureDate < today) continue;
         
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompoundType = investment.isCompound !== false;

@@ -74,12 +74,8 @@ export const generateSimulationData = (
       nextMonthDate
     );
     
-    // Calculate impact of investment expenses separately
-    const investmentExpensesImpact = calculateMonthlyBalanceImpact(
-      investmentExpenseTransactions,
-      monthDate,
-      nextMonthDate
-    );
+    // Calculate impact of investment expenses separately - already accounted for in the balance
+    const investmentExpensesImpact = 0;
     
     // Calculate investment returns for this specific month
     const investmentReturnsImpact = calculateMonthlyBalanceImpact(
@@ -110,21 +106,22 @@ export const generateSimulationData = (
     // Calculate balances
     const baseBalance = i === 0 ? 
       currentBalance : 
-      simulationData[i-1].balance + futureTransactionsImpact + investmentReturnsImpact + investmentExpensesImpact;
+      simulationData[i-1].balance + futureTransactionsImpact + investmentReturnsImpact;
     
     const withExpenseBalance = i === 0 ? 
       currentBalance + simulatedExpenseImpact : 
-      simulationData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturnsImpact + investmentExpensesImpact;
+      simulationData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturnsImpact;
     
     // Accumulate investment returns for the investments metric
-    const investmentGrowth = i === 0 ? 0 : investmentReturnsImpact;
+    const investmentGrowth = investmentReturnsImpact;
     const previousInvestments = i === 0 ? totalInvestments : simulationData[i-1].investments;
+    const currentInvestments = previousInvestments + investmentGrowth;
     
     const dataPoint = {
       month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,
       balance: baseBalance,
       withExpense: withExpenseBalance,
-      investments: previousInvestments + investmentGrowth
+      investments: currentInvestments
     };
     
     simulationData.push(dataPoint);
