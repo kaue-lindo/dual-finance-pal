@@ -37,6 +37,7 @@ export type Investment = {
   rate: number; // Percentage
   period: 'monthly' | 'annual';
   startDate: Date;
+  isCompound?: boolean; // Added to distinguish between simple and compound interest
 };
 
 export type UserFinances = {

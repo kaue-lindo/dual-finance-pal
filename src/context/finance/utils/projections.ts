@@ -33,6 +33,21 @@ export const calculateCompoundInterest = (
   return principal * Math.pow(1 + ratePerPeriod, totalPeriods);
 };
 
+// Calculate simple interest (no compounding)
+export const calculateSimpleInterest = (
+  principal: number,
+  rate: number,
+  years: number,
+  period: 'monthly' | 'annual' = 'annual'
+): number => {
+  // Convert rate to decimal
+  const decimalRate = rate / 100;
+  // Adjust rate based on period
+  const effectiveRate = period === 'monthly' ? decimalRate / 12 * 12 * years : decimalRate * years;
+  // Calculate total with simple interest
+  return principal * (1 + effectiveRate);
+};
+
 // Get projected monthly returns for an investment
 export const getMonthlyReturn = (
   principal: number,

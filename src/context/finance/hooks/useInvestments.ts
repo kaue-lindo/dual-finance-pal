@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
 import { calculateBalanceFromData } from '../utils/calculations';
-import { calculateCompoundInterest } from '../utils/projections';
+import { calculateCompoundInterest, calculateSimpleInterest } from '../utils/projections';
 
 export const useInvestments = (
   currentUser: any,
@@ -28,6 +28,7 @@ export const useInvestments = (
         category: investment.rate.toString(),
         date: investment.startDate.toISOString(),
         recurring_type: investment.period,
+        is_compound: investment.isCompound
       })
       .then(({ error }) => {
         if (error) {
@@ -44,8 +45,10 @@ export const useInvestments = (
         balance: 0
       };
       
-      // Correctly subtract the investment amount from available balance
-      const newBalance = calculateBalanceFromData(userFinances.incomes, userFinances.expenses) - investment.amount;
+      // Corretamente subtrai o valor do investimento do saldo disponível
+      const newBalance = calculateBalanceFromData(userFinances.incomes, userFinances.expenses) - 
+                          userFinances.investments.reduce((sum, inv) => sum + inv.amount, 0) - 
+                          investment.amount;
       
       return {
         ...prev,
@@ -87,8 +90,11 @@ export const useInvestments = (
       
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
-      // Add the investment amount back to the available balance when deleted
-      const newBalance = calculateBalanceFromData(currentFinances.incomes, currentFinances.expenses);
+      // Recalcula o saldo, levando em conta a remoção do investimento
+      const totalIncomes = currentFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
+      const totalExpenses = currentFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const totalInvestments = newInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      const newBalance = totalIncomes - totalExpenses - totalInvestments;
       
       return {
         ...prev,
@@ -116,17 +122,27 @@ export const useInvestments = (
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
-      // Fix: Calculate monthly returns properly based on period
-      const rate = investment.rate;
-      const effectiveRate = investment.period === 'monthly' ? rate / 100 : (rate / 12) / 100;
+      // Calcula o retorno com base no tipo de juros (simples ou composto)
+      const years = months / 12;
+      let futureValue: number;
       
-      // Use compound interest formula for accurate projection
-      const futureValue = calculateCompoundInterest(
-        investment.amount,
-        investment.period === 'monthly' ? rate : rate / 12,
-        months / 12,
-        'monthly'
-      );
+      if (investment.isCompound) {
+        // Usa juros compostos
+        futureValue = calculateCompoundInterest(
+          investment.amount,
+          investment.period === 'monthly' ? investment.rate * 12 : investment.rate,
+          years,
+          'monthly'
+        );
+      } else {
+        // Usa juros simples
+        futureValue = calculateSimpleInterest(
+          investment.amount,
+          investment.period === 'monthly' ? investment.rate * 12 : investment.rate,
+          years,
+          investment.period
+        );
+      }
       
       const growthAmount = futureValue - investment.amount;
       totalReturn += growthAmount;

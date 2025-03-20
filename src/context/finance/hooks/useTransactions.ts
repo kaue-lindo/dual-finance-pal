@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
@@ -77,7 +76,8 @@ export const useTransactions = (
             amount: parseFloat(item.amount.toString()),
             rate: parseFloat(item.category),
             period: item.recurring_type as 'monthly' | 'annual',
-            startDate: new Date(item.date)
+            startDate: new Date(item.date),
+            isCompound: item.is_compound !== undefined ? item.is_compound : true
           });
         }
       });
@@ -311,7 +311,7 @@ export const useTransactions = (
       }
     });
 
-    // Process investments with updated monthly returns calculation
+    // Process investments with updated calculation based on simple or compound interest
     userFinances.investments.forEach(investment => {
       const months = 24;
       
@@ -333,25 +333,33 @@ export const useTransactions = (
         });
       }
       
-      // Calculate and add projected returns
+      // Calculate and add projected returns based on interest type
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date();
         futureDate.setMonth(futureDate.getMonth() + i);
         
-        // Calculate returns using the correct formula based on rate period
-        const isPeriodMonthly = investment.period === 'monthly';
-        const monthlyReturn = getMonthlyReturn(investment.amount, investment.rate, isPeriodMonthly);
+        // Calculate returns for each month based on interest type (simple or compound)
+        let growthAmount: number;
         
-        // For compound interest growth, calculate total growth after i months
-        const compoundGrowth = investment.amount * Math.pow(1 + (isPeriodMonthly ? investment.rate / 100 : (investment.rate / 12) / 100), i) - investment.amount;
+        if (investment.isCompound !== false) { // Default to compound if not specified
+          // Compound interest calculation
+          const isPeriodMonthly = investment.period === 'monthly';
+          const monthlyRate = isPeriodMonthly ? investment.rate / 100 : (investment.rate / 12) / 100;
+          growthAmount = investment.amount * Math.pow(1 + monthlyRate, i) - investment.amount;
+        } else {
+          // Simple interest calculation
+          const isPeriodMonthly = investment.period === 'monthly';
+          const monthlyRate = isPeriodMonthly ? investment.rate / 100 : (investment.rate / 12) / 100;
+          growthAmount = investment.amount * monthlyRate * i;
+        }
         
-        // Include monthly returns at key intervals (3, 6, 12, 24 months)
+        // Include returns at key intervals (3, 6, 12, 24 months)
         if (i === 3 || i === 6 || i === 12 || i === 24) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
             date: futureDate,
-            description: `${investment.description} (Rendimento ${i} meses)`,
-            amount: compoundGrowth,
+            description: `${investment.description} (${investment.isCompound !== false ? 'Juros Compostos' : 'Juros Simples'} ${i} meses)`,
+            amount: growthAmount,
             type: 'income',
             category: 'investment-return'
           });

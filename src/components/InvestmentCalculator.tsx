@@ -9,7 +9,8 @@ import { formatCurrency, formatPercentage } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
-import { calculateCompoundInterest } from '@/context/finance/utils/projections';
+import { Switch } from '@/components/ui/switch';
+import { calculateCompoundInterest, calculateSimpleInterest } from '@/context/finance/utils/projections';
 
 const InvestmentCalculator = () => {
   const { currentUser, addInvestment, calculateBalance } = useFinance();
@@ -24,6 +25,7 @@ const InvestmentCalculator = () => {
   const [monthlyReturn, setMonthlyReturn] = useState<number | null>(null);
   const [annualReturn, setAnnualReturn] = useState<number | null>(null);
   const [insufficientBalance, setInsufficientBalance] = useState(false);
+  const [isCompound, setIsCompound] = useState(true);
 
   useEffect(() => {
     if (currentUser) {
@@ -53,17 +55,33 @@ const InvestmentCalculator = () => {
     const principal = parseFloat(amount);
     const interestRate = parseFloat(rate);
     
-    // Calculate returns correctly based on period type
-    // For monthly interest rate
+    // Calculate monthly return (this is the same for both simple and compound)
     const effectiveMonthlyRate = period === 'monthly' ? interestRate / 100 : (interestRate / 12) / 100;
     const monthlyReturnValue = principal * effectiveMonthlyRate;
     setMonthlyReturn(monthlyReturnValue);
     
-    // Calculate 1-year return with proper compounding
-    const oneYearReturn = calculateCompoundInterest(principal, interestRate, 1, period === 'monthly' ? 'monthly' : 'annually');
-    setAnnualReturn(oneYearReturn - principal);
+    // Calculate 1-year return based on interest type
+    let oneYearReturn: number;
     
-    // Calculate final amount after 1 year for the result display
+    if (isCompound) {
+      // Calculate with compound interest
+      oneYearReturn = calculateCompoundInterest(
+        principal, 
+        period === 'monthly' ? interestRate * 12 : interestRate, 
+        1, 
+        period === 'monthly' ? 'monthly' : 'annually'
+      );
+    } else {
+      // Calculate with simple interest
+      oneYearReturn = calculateSimpleInterest(
+        principal,
+        period === 'monthly' ? interestRate * 12 : interestRate,
+        1,
+        period
+      );
+    }
+    
+    setAnnualReturn(oneYearReturn - principal);
     setResult(oneYearReturn);
   };
 
@@ -92,6 +110,7 @@ const InvestmentCalculator = () => {
       rate: parseFloat(rate),
       period,
       startDate: new Date(),
+      isCompound
     });
 
     toast.success('Investimento adicionado com sucesso');
@@ -191,6 +210,18 @@ const InvestmentCalculator = () => {
           </RadioGroup>
         </div>
 
+        <div className="flex items-center space-x-2">
+          <Switch 
+            id="compound-interest"
+            checked={isCompound}
+            onCheckedChange={setIsCompound}
+            className="bg-finance-blue"
+          />
+          <Label htmlFor="compound-interest" className="text-white">
+            {isCompound ? 'Juros Compostos' : 'Juros Simples'}
+          </Label>
+        </div>
+
         <Button 
           onClick={calculateInvestment}
           className="w-full finance-btn"
@@ -200,7 +231,7 @@ const InvestmentCalculator = () => {
 
         {result !== null && (
           <div className="mt-4 p-4 bg-finance-dark-lighter rounded-lg">
-            <h3 className="text-white font-medium mb-2">Resultado Projetado</h3>
+            <h3 className="text-white font-medium mb-2">Resultado Projetado ({isCompound ? 'Juros Compostos' : 'Juros Simples'})</h3>
             <div className="flex justify-between">
               <span className="text-gray-400">Valor Investido:</span>
               <span className="text-white font-bold">{formatCurrency(parseFloat(amount))}</span>

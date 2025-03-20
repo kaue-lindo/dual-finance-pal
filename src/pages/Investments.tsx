@@ -23,15 +23,24 @@ const Investments = () => {
   // Calculate total investment
   const totalInvested = investments.reduce((sum, investment) => sum + investment.amount, 0);
 
-  // Calculate projected returns (simplified)
+  // Calculate projected returns with appropriate method
   const calculateProjectedReturn = (investment: {
     amount: number;
     rate: number;
     period: 'monthly' | 'annual';
+    isCompound?: boolean;
   }) => {
-    const { amount, rate, period } = investment;
-    const annualRate = period === 'monthly' ? (1 + rate / 100) ** 12 - 1 : rate / 100;
-    return amount * (1 + annualRate);
+    const { amount, rate, period, isCompound } = investment;
+    
+    if (isCompound !== false) {
+      // Compound interest calculation
+      const annualRate = period === 'monthly' ? (1 + rate / 100) ** 12 - 1 : rate / 100;
+      return amount * (1 + annualRate);
+    } else {
+      // Simple interest calculation
+      const annualRate = period === 'monthly' ? rate * 12 / 100 : rate / 100;
+      return amount * (1 + annualRate);
+    }
   };
 
   const totalProjected = investments.reduce(
@@ -91,7 +100,8 @@ const Investments = () => {
                   <div>
                     <h3 className="text-white font-medium">{investment.description}</h3>
                     <p className="text-gray-400 text-sm">
-                      {investment.period === 'monthly' ? 'Mensal' : 'Anual'} • {investment.rate}%
+                      {investment.period === 'monthly' ? 'Mensal' : 'Anual'} • {investment.rate}% • 
+                      {investment.isCompound !== false ? ' Juros Compostos' : ' Juros Simples'}
                     </p>
                   </div>
                   <div className="text-right">
