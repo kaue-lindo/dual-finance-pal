@@ -27,7 +27,7 @@ export const useInvestments = (
         amount: investment.amount,
         category: investment.rate.toString(),
         date: investment.startDate.toISOString(),
-        recurring_type: investment.isCompound ? 'compound' : investment.period,
+        recurring_type: investment.period,
         is_compound: investment.isCompound
       })
       .then(({ error }) => {
@@ -47,10 +47,13 @@ export const useInvestments = (
         balance: 0
       };
       
-      // Correctly subtract the investment amount from the available balance
-      const newBalance = calculateBalanceFromData(userFinances.incomes, userFinances.expenses) - 
-                          userFinances.investments.reduce((sum, inv) => sum + inv.amount, 0) - 
-                          investment.amount;
+      // Calculate the balance before adding the new investment
+      const incomeTotal = userFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
+      const expenseTotal = userFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const existingInvestmentsTotal = userFinances.investments.reduce((sum, inv) => sum + inv.amount, 0);
+      
+      // Calculate the true balance by considering incomes, expenses, and existing investments
+      const newBalance = incomeTotal - expenseTotal - existingInvestmentsTotal - investment.amount;
       
       return {
         ...prev,
@@ -93,9 +96,12 @@ export const useInvestments = (
       
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
-      // Recalculate the balance, adding back the investment amount
-      const recalculatedBalance = calculateBalanceFromData(currentFinances.incomes, currentFinances.expenses) - 
-                                 newInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      // Recalculate the correct balance by considering all financial components
+      const incomeTotal = currentFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
+      const expenseTotal = currentFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const remainingInvestmentsTotal = newInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      
+      const recalculatedBalance = incomeTotal - expenseTotal - remainingInvestmentsTotal;
       
       return {
         ...prev,

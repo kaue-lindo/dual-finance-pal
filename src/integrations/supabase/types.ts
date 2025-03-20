@@ -19,6 +19,7 @@ export type Database = {
           id: string
           installment_current: number | null
           installment_total: number | null
+          is_compound: boolean | null
           recurring: boolean | null
           recurring_days: number[] | null
           recurring_type: string | null
@@ -36,6 +37,7 @@ export type Database = {
           id?: string
           installment_current?: number | null
           installment_total?: number | null
+          is_compound?: boolean | null
           recurring?: boolean | null
           recurring_days?: number[] | null
           recurring_type?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           id?: string
           installment_current?: number | null
           installment_total?: number | null
+          is_compound?: boolean | null
           recurring?: boolean | null
           recurring_days?: number[] | null
           recurring_type?: string | null

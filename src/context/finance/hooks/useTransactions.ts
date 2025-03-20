@@ -322,24 +322,31 @@ export const useTransactions = (
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompoundType = investment.isCompound !== false;
         
-        const growthAmount = calculateInvestmentGrowthForMonth(
-          investment.amount,
-          investment.rate,
-          isPeriodMonthly,
-          i,
-          isCompoundType
-        );
+        let monthlyGrowth: number;
         
-        if (i === 3 || i === 6 || i === 12 || i === 24) {
-          futureTransactions.push({
-            id: `${investment.id}-growth-${i}`,
-            date: futureDate,
-            description: `${investment.description} (${isCompoundType ? 'Juros Compostos' : 'Juros Simples'} ${i} meses)`,
-            amount: growthAmount,
-            type: 'income',
-            category: 'investment-return'
-          });
+        if (isCompoundType) {
+          const previousMonthValue = calculateInvestmentGrowthForMonth(
+            investment.amount, investment.rate, isPeriodMonthly, i-1, true
+          );
+          const currentMonthValue = calculateInvestmentGrowthForMonth(
+            investment.amount, investment.rate, isPeriodMonthly, i, true
+          );
+          monthlyGrowth = currentMonthValue - previousMonthValue;
+        } else {
+          const monthlyRate = isPeriodMonthly ? 
+            investment.rate / 100 : 
+            investment.rate / 12 / 100;
+          monthlyGrowth = investment.amount * monthlyRate;
         }
+        
+        futureTransactions.push({
+          id: `${investment.id}-growth-${i}`,
+          date: futureDate,
+          description: `${investment.description} (Rendimento Mensal)`,
+          amount: monthlyGrowth,
+          type: 'income',
+          category: 'investment-return'
+        });
       }
     });
     
