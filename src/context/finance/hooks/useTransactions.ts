@@ -1,9 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
 import { calculateBalanceFromData } from '../utils/calculations';
-import { getMonthlyReturn } from '../utils/projections';
+import { getMonthlyReturn, calculateInvestmentGrowthForMonth } from '../utils/projections';
 
 export const useTransactions = (
   currentUser: any,
@@ -71,7 +70,6 @@ export const useTransactions = (
             } : undefined
           });
         } else if (item.type === 'investment') {
-          // Make sure to check all properties and provide defaults when needed
           investments.push({
             id: item.id,
             description: item.description,
@@ -84,13 +82,11 @@ export const useTransactions = (
         }
       });
 
-      // Combine with any existing investments that might not be in the database yet
       const existingInvestments = finances[currentUser.id]?.investments || [];
       const existingIds = new Set(investments.map(inv => inv.id));
       const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
       const combinedInvestments = [...investments, ...uniqueExistingInvestments];
       
-      // Calculate the balance properly - SUBTRACT investment amounts from available balance
       const calculatedBalance = calculateBalanceFromData(incomes, expenses);
       const totalInvestmentsAmount = combinedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
       const availableBalance = calculatedBalance - totalInvestmentsAmount;
@@ -173,17 +169,14 @@ export const useTransactions = (
     
     const monthsToLookAhead = 24;
     
-    // Process expenses
     userFinances.expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
-      // Include current month's expenses in the projections
       const currentMonth = today.getMonth();
       const expenseMonth = expenseDate.getMonth();
       const expenseYear = expenseDate.getFullYear();
       const currentYear = today.getFullYear();
       
-      // Add all current and future expenses
       if ((expenseMonth === currentMonth && expenseYear === currentYear) || expenseDate > today) {
         futureTransactions.push({
           id: expense.id,
@@ -196,7 +189,6 @@ export const useTransactions = (
         });
       }
       
-      // Process installment payments
       if (expense.installment && expense.installment.remaining > 0) {
         const installmentAmount = expense.amount;
         
@@ -216,11 +208,9 @@ export const useTransactions = (
         }
       }
       
-      // Process recurring expenses
       if (expense.recurring) {
         const nextMonths = [];
         for (let i = 0; i <= monthsToLookAhead; i++) {
-          // Start with current month for recurring expenses
           nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
         }
         
@@ -229,7 +219,6 @@ export const useTransactions = (
             expense.recurring.days.forEach(day => {
               const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
               
-              // Only add future occurrences to avoid duplicates
               if (futureDate > today) {
                 futureTransactions.push({
                   id: `${expense.id}-recurring-${month.getMonth()}-${day}`,
@@ -246,7 +235,6 @@ export const useTransactions = (
             for (let week = 0; week < 4; week++) {
               const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
               
-              // Only add future occurrences to avoid duplicates
               if (futureDate > today) {
                 futureTransactions.push({
                   id: `${expense.id}-recurring-weekly-${month.getMonth()}-${week}`,
@@ -264,11 +252,9 @@ export const useTransactions = (
       }
     });
     
-    // Process incomes
     userFinances.incomes.forEach(income => {
       const incomeDate = new Date(income.date);
       
-      // Include current month's incomes
       const currentMonth = today.getMonth();
       const incomeMonth = incomeDate.getMonth();
       const incomeYear = incomeDate.getFullYear();
@@ -285,11 +271,9 @@ export const useTransactions = (
         });
       }
       
-      // Process recurring incomes
       if (income.recurring) {
         const nextMonths = [];
         for (let i = 0; i <= monthsToLookAhead; i++) {
-          // Start with current month for recurring incomes
           nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
         }
         
@@ -297,7 +281,6 @@ export const useTransactions = (
           const futureDate = new Date(month);
           futureDate.setDate(new Date(income.date).getDate());
           
-          // Only add future occurrences to avoid duplicates
           if (futureDate > today) {
             futureTransactions.push({
               id: `${income.id}-recurring-${month.getMonth()}`,
@@ -312,11 +295,9 @@ export const useTransactions = (
       }
     });
 
-    // Process investments with updated calculation based on simple or compound interest
     userFinances.investments.forEach(investment => {
       const months = 24;
       
-      // Add the initial investment as an expense in the cash flow
       const investmentDate = new Date(investment.startDate);
       const currentMonth = today.getMonth();
       const investmentMonth = investmentDate.getMonth();
@@ -334,16 +315,13 @@ export const useTransactions = (
         });
       }
       
-      // Calculate and add projected returns based on interest type
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date();
         futureDate.setMonth(futureDate.getMonth() + i);
         
-        // Calculate returns for each month based on interest type (simple or compound)
         const isPeriodMonthly = investment.period === 'monthly';
-        const isCompoundType = investment.isCompound !== false; // Default to compound if not specified
+        const isCompoundType = investment.isCompound !== false;
         
-        // Use the utility function to calculate growth
         const growthAmount = calculateInvestmentGrowthForMonth(
           investment.amount,
           investment.rate,
@@ -352,7 +330,6 @@ export const useTransactions = (
           isCompoundType
         );
         
-        // Only include returns at key intervals (3, 6, 12, 24 months) to avoid crowding the chart
         if (i === 3 || i === 6 || i === 12 || i === 24) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
