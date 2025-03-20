@@ -27,13 +27,15 @@ export const useInvestments = (
         amount: investment.amount,
         category: investment.rate.toString(),
         date: investment.startDate.toISOString(),
-        recurring_type: investment.period,
+        recurring_type: investment.isCompound ? 'compound' : investment.period,
         is_compound: investment.isCompound
       })
       .then(({ error }) => {
         if (error) {
           console.error('Error saving investment to Supabase:', error);
           toast.error('Erro ao salvar investimento no banco de dados');
+        } else {
+          toast.success('Investimento adicionado com sucesso');
         }
       });
     
@@ -45,7 +47,7 @@ export const useInvestments = (
         balance: 0
       };
       
-      // Corretamente subtrai o valor do investimento do saldo disponível
+      // Correctly subtract the investment amount from the available balance
       const newBalance = calculateBalanceFromData(userFinances.incomes, userFinances.expenses) - 
                           userFinances.investments.reduce((sum, inv) => sum + inv.amount, 0) - 
                           investment.amount;
@@ -59,8 +61,6 @@ export const useInvestments = (
         },
       };
     });
-    
-    toast.success('Investimento adicionado com sucesso');
   };
 
   const deleteInvestment = (id: string) => {
@@ -81,6 +81,9 @@ export const useInvestments = (
       .then(({ error }) => {
         if (error) {
           console.error('Error deleting investment from Supabase:', error);
+          toast.error('Erro ao remover investimento');
+        } else {
+          toast.success('Investimento removido com sucesso');
         }
       });
     
@@ -90,23 +93,19 @@ export const useInvestments = (
       
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
-      // Recalcula o saldo, levando em conta a remoção do investimento
-      const totalIncomes = currentFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
-      const totalExpenses = currentFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-      const totalInvestments = newInvestments.reduce((sum, inv) => sum + inv.amount, 0);
-      const newBalance = totalIncomes - totalExpenses - totalInvestments;
+      // Recalculate the balance, adding back the investment amount
+      const recalculatedBalance = calculateBalanceFromData(currentFinances.incomes, currentFinances.expenses) - 
+                                 newInvestments.reduce((sum, inv) => sum + inv.amount, 0);
       
       return {
         ...prev,
         [currentUser.id]: {
           ...currentFinances,
           investments: newInvestments,
-          balance: newBalance,
+          balance: recalculatedBalance,
         },
       };
     });
-    
-    toast.success('Investimento removido com sucesso');
   };
 
   const getTotalInvestments = () => {
@@ -122,12 +121,12 @@ export const useInvestments = (
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
-      // Calcula o retorno com base no tipo de juros (simples ou composto)
+      // Calculate return based on interest type (simple or compound)
       const years = months / 12;
       let futureValue: number;
       
-      if (investment.isCompound) {
-        // Usa juros compostos
+      if (investment.isCompound !== false) { // Default to compound if not specified
+        // Use compound interest
         futureValue = calculateCompoundInterest(
           investment.amount,
           investment.period === 'monthly' ? investment.rate * 12 : investment.rate,
@@ -135,7 +134,7 @@ export const useInvestments = (
           'monthly'
         );
       } else {
-        // Usa juros simples
+        // Use simple interest
         futureValue = calculateSimpleInterest(
           investment.amount,
           investment.period === 'monthly' ? investment.rate * 12 : investment.rate,

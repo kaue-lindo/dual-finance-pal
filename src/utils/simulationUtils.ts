@@ -47,16 +47,36 @@ export const generateSimulationData = (
   // Create an array to hold our data points
   const simulationData: SimulationDataPoint[] = [];
   
+  // Pre-filter transactions to avoid re-processing in each iteration
+  const investmentReturnTransactions = futureTransactions.filter(t => 
+    t.type === 'income' && t.category === 'investment-return'
+  );
+
+  const normalTransactions = futureTransactions.filter(t => 
+    t.category !== 'investment-return' && t.category !== 'investment'
+  );
+  
+  const investmentExpenseTransactions = futureTransactions.filter(t => 
+    t.type === 'expense' && t.category === 'investment'
+  );
+
   return Array.from({ length: 6 }, (_, i) => {
     const monthIndex = (currentMonth + i) % 12;
     const monthYear = currentYear + Math.floor((currentMonth + i) / 12);
     const monthDate = new Date(monthYear, monthIndex, 1);
     const nextMonthDate = new Date(monthYear, monthIndex + 1, 0); // Last day of month
     
-    // Calculate impact of existing future transactions for this month
+    // Calculate impact of existing future transactions for this month (excluding investment returns)
     const futureTransactionsImpact = calculateMonthlyBalanceImpact(
-      futureTransactions, 
+      normalTransactions, 
       monthDate, 
+      nextMonthDate
+    );
+    
+    // Calculate impact of investment expenses separately
+    const investmentExpensesImpact = calculateMonthlyBalanceImpact(
+      investmentExpenseTransactions,
+      monthDate,
       nextMonthDate
     );
     
@@ -79,23 +99,24 @@ export const generateSimulationData = (
       }
     }
     
-    // Calculate investment returns for this period
-    const investmentReturn = i === 0 ? 0 : getProjectedInvestmentReturn(i);
+    // Calculate investment returns for this period - we'll use the projected return
+    // from the finance context instead of existing transactions for more accuracy
+    const investmentReturn = i === 0 ? 0 : getProjectedInvestmentReturn(i) / 6; // Divide by 6 to get monthly returns from yearly projection
     
     // Calculate balances
     const baseBalance = i === 0 ? 
       currentBalance : 
-      simulationData[i-1].balance + futureTransactionsImpact + investmentReturn;
+      simulationData[i-1].balance + futureTransactionsImpact + investmentReturn + investmentExpensesImpact;
     
     const withExpenseBalance = i === 0 ? 
       currentBalance + simulatedExpenseImpact : 
-      simulationData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturn;
+      simulationData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturn + investmentExpensesImpact;
     
     const dataPoint = {
       month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,
       balance: baseBalance,
       withExpense: withExpenseBalance,
-      investments: totalInvestments + investmentReturn
+      investments: totalInvestments + (i === 0 ? 0 : investmentReturn * i) // Cumulative investment returns
     };
     
     simulationData.push(dataPoint);
