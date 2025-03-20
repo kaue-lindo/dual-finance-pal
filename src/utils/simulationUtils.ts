@@ -44,6 +44,9 @@ export const generateSimulationData = (
   const currentYear = new Date().getFullYear();
   const monthlyPayment = expenseAmount / months;
   
+  // Create an array to hold our data points
+  const simulationData: SimulationDataPoint[] = [];
+  
   return Array.from({ length: 6 }, (_, i) => {
     const monthIndex = (currentMonth + i) % 12;
     const monthYear = currentYear + Math.floor((currentMonth + i) / 12);
@@ -82,11 +85,11 @@ export const generateSimulationData = (
     // Calculate balances
     const baseBalance = i === 0 ? 
       currentBalance : 
-      dataPoints[i-1].balance + futureTransactionsImpact + investmentReturn;
+      simulationData[i-1].balance + futureTransactionsImpact + investmentReturn;
     
     const withExpenseBalance = i === 0 ? 
       currentBalance + simulatedExpenseImpact : 
-      dataPoints[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturn;
+      simulationData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturn;
     
     const dataPoint = {
       month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,
@@ -95,6 +98,7 @@ export const generateSimulationData = (
       investments: totalInvestments + investmentReturn
     };
     
+    simulationData.push(dataPoint);
     return dataPoint;
   });
 };
