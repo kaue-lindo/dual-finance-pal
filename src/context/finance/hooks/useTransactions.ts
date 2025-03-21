@@ -52,35 +52,33 @@ export const useTransactions = (
             recurring: item.recurring
           });
         } else if (item.type === 'expense') {
-          if (item.category !== 'investment') {
-            expenses.push({
-              id: item.id,
-              description: item.description,
-              amount: parseFloat(item.amount.toString()),
-              category: item.category || 'other',
-              date: new Date(item.date),
-              sourceCategory: item.source_category as IncomeCategory | undefined,
-              recurring: item.recurring_type ? {
-                type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
-                days: item.recurring_days
-              } : undefined,
-              installment: item.installment_total ? {
-                total: item.installment_total,
-                current: item.installment_current,
-                remaining: item.installment_total - item.installment_current
-              } : undefined
-            });
-          } else {
-            investments.push({
-              id: item.id,
-              description: item.description,
-              amount: parseFloat(item.amount.toString()),
-              rate: parseFloat(item.recurring_type === 'compound' ? '5' : item.recurring_type || "0"),
-              period: item.recurring_type === 'compound' ? 'monthly' : (item.recurring_type as 'monthly' | 'annual' || 'monthly'),
-              startDate: new Date(item.date),
-              isCompound: item.is_compound
-            });
-          }
+          expenses.push({
+            id: item.id,
+            description: item.description,
+            amount: parseFloat(item.amount.toString()),
+            category: item.category || 'other',
+            date: new Date(item.date),
+            sourceCategory: item.source_category as IncomeCategory | undefined,
+            recurring: item.recurring_type ? {
+              type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
+              days: item.recurring_days
+            } : undefined,
+            installment: item.installment_total ? {
+              total: item.installment_total,
+              current: item.installment_current,
+              remaining: item.installment_total - item.installment_current
+            } : undefined
+          });
+        } else if (item.type === 'investment') {
+          investments.push({
+            id: item.id,
+            description: item.description,
+            amount: parseFloat(item.amount.toString()),
+            rate: parseFloat(item.recurring_type === 'compound' ? '5' : item.recurring_type || "0"),
+            period: item.recurring_type === 'compound' ? 'monthly' : (item.recurring_type as 'monthly' | 'annual' || 'monthly'),
+            startDate: new Date(item.date),
+            isCompound: item.is_compound
+          });
         }
       });
 
@@ -89,7 +87,10 @@ export const useTransactions = (
       const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
       const combinedInvestments = [...investments, ...uniqueExistingInvestments];
       
-      const calculatedBalance = calculateBalanceFromData(incomes, expenses);
+      const incomeTotal = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+      const expenseTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const investmentTotal = investments.reduce((sum, inv) => sum + inv.amount, 0);
+      const calculatedBalance = incomeTotal - expenseTotal - investmentTotal;
       
       setFinances(prev => ({
         ...prev,
@@ -361,4 +362,3 @@ export const useTransactions = (
     getFutureTransactions,
   };
 };
-

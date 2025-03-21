@@ -52,7 +52,7 @@ export type FutureTransaction = {
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'investment';
   category: string;
   sourceCategory?: string;
 };

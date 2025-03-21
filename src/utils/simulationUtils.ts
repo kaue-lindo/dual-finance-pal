@@ -13,10 +13,12 @@ export const calculateMonthlyBalanceImpact = (
   futureTransactions.forEach(transaction => {
     const transactionDate = new Date(transaction.date);
     if (transactionDate >= startDate && transactionDate <= endDate) {
-      // Skip investment transactions for balance impact (they're tracked separately)
-      if (transaction.type === 'investment') return;
-      
-      impact += transaction.type === 'income' ? transaction.amount : -transaction.amount;
+      if (transaction.type === 'income') {
+        impact += transaction.amount;
+      } else if (transaction.type === 'expense') {
+        impact -= transaction.amount;
+      }
+      // Investment transactions are handled separately
     }
   });
 
@@ -50,19 +52,13 @@ export const generateSimulationData = (
   // Create an array to hold our data points
   const simulationData: SimulationDataPoint[] = [];
   
-  // Pre-filter transactions
-  const investmentReturnTransactions = futureTransactions.filter(t => 
-    t.type === 'income' && t.category === 'investment-return'
-  );
-
-  const normalTransactions = futureTransactions.filter(t => 
-    t.category !== 'investment-return' && t.type !== 'investment'
-  );
+  // Pre-filter transactions by type
+  const incomeTransactions = futureTransactions.filter(t => t.type === 'income');
+  const expenseTransactions = futureTransactions.filter(t => t.type === 'expense');
+  const investmentTransactions = futureTransactions.filter(t => t.type === 'investment');
+  const investmentReturnTransactions = incomeTransactions.filter(t => t.category === 'investment-return');
+  const normalIncomeTransactions = incomeTransactions.filter(t => t.category !== 'investment-return');
   
-  const investmentTransactions = futureTransactions.filter(t => 
-    t.type === 'investment'
-  );
-
   // Create the simulation data points for each month
   for (let i = 0; i < 6; i++) {
     const monthIndex = (currentMonth + i) % 12;
@@ -70,17 +66,28 @@ export const generateSimulationData = (
     const monthDate = new Date(monthYear, monthIndex, 1);
     const nextMonthDate = new Date(monthYear, monthIndex + 1, 0); // Last day of month
     
-    // Calculate impact of existing future transactions for this month (excluding investment returns)
-    const futureTransactionsImpact = calculateMonthlyBalanceImpact(
-      normalTransactions, 
+    // Calculate income impact (excluding investment returns)
+    const incomeImpact = calculateMonthlyBalanceImpact(
+      normalIncomeTransactions, 
       monthDate, 
       nextMonthDate
     );
     
-    // Calculate investment impacts separately
-    const investmentExpensesImpact = 0; // No longer needed as investments don't impact balance directly
+    // Calculate expense impact
+    const expenseImpact = calculateMonthlyBalanceImpact(
+      expenseTransactions, 
+      monthDate, 
+      nextMonthDate
+    );
     
-    // Calculate investment returns for this specific month
+    // Calculate new investments for this month
+    const newInvestmentsImpact = calculateMonthlyBalanceImpact(
+      investmentTransactions,
+      monthDate,
+      nextMonthDate
+    ) * -1; // Convert to positive for tracking purposes
+    
+    // Calculate investment returns for this month
     const investmentReturnsImpact = calculateMonthlyBalanceImpact(
       investmentReturnTransactions,
       monthDate,
@@ -107,24 +114,19 @@ export const generateSimulationData = (
     }
     
     // Calculate balances
+    const netImpact = incomeImpact + expenseImpact + investmentReturnsImpact - newInvestmentsImpact;
+    
     const baseBalance = i === 0 ? 
       currentBalance : 
-      simulationData[i-1].balance + futureTransactionsImpact + investmentReturnsImpact;
+      simulationData[i-1].balance + netImpact;
     
     const withExpenseBalance = i === 0 ? 
       currentBalance + simulatedExpenseImpact : 
-      simulationData[i-1].withExpense + futureTransactionsImpact + simulatedExpenseImpact + investmentReturnsImpact;
+      simulationData[i-1].withExpense + netImpact + simulatedExpenseImpact;
     
     // Accumulate investment returns for the investments metric
-    const investmentGrowth = investmentReturnsImpact;
-    const newInvestments = calculateMonthlyBalanceImpact(
-      investmentTransactions,
-      monthDate,
-      nextMonthDate
-    );
-    
     const previousInvestments = i === 0 ? totalInvestments : simulationData[i-1].investments;
-    const currentInvestments = previousInvestments + Math.abs(newInvestments) + investmentGrowth;
+    const currentInvestments = previousInvestments + newInvestmentsImpact + investmentReturnsImpact;
     
     const dataPoint = {
       month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,

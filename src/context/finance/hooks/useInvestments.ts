@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
@@ -21,7 +22,7 @@ export const useInvestments = (
       .from('finances')
       .insert({
         user_id: currentUser.id,
-        type: 'expense',
+        type: 'investment', // Changed from 'expense' to 'investment'
         description: investment.description,
         amount: investment.amount,
         category: 'investment',
@@ -46,9 +47,10 @@ export const useInvestments = (
         balance: 0
       };
       
+      // Calculate the new balance with the investment amount deducted
       const incomeTotal = userFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
       const expenseTotal = userFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-      const newBalance = incomeTotal - expenseTotal;
+      const newBalance = incomeTotal - expenseTotal - investment.amount;
       
       return {
         ...prev,
@@ -91,15 +93,17 @@ export const useInvestments = (
       
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
+      // Add the investment amount back to the balance
       const incomeTotal = currentFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
       const expenseTotal = currentFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const investmentAmount = investment.amount;
       
       return {
         ...prev,
         [currentUser.id]: {
           ...currentFinances,
           investments: newInvestments,
-          balance: incomeTotal - expenseTotal,
+          balance: incomeTotal - expenseTotal + investmentAmount,
         },
       };
     });

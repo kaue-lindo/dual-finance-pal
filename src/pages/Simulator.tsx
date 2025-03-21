@@ -45,6 +45,7 @@ const Simulator = () => {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringType, setRecurringType] = useState<'monthly' | 'weekly'>('monthly');
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [useInvestments, setUseInvestments] = useState(false);
   
   // Results
   const [simulationResults, setSimulationResults] = useState<{
@@ -90,12 +91,21 @@ const Simulator = () => {
       months,
       futureTransactions,
       totalInvestments,
-      getProjectedInvestmentReturn
+      getProjectedInvestmentReturn,
+      true // simulatedExpense flag
     );
+
+    let afterExpenseBalance = currentBalance - expenseAmount;
+    
+    // If user wants to use investments to cover expense and balance is negative
+    if (useInvestments && afterExpenseBalance < 0) {
+      const amountNeededFromInvestments = Math.min(Math.abs(afterExpenseBalance), totalInvestments);
+      afterExpenseBalance = afterExpenseBalance + amountNeededFromInvestments;
+    }
 
     setSimulationResults({
       currentBalance,
-      afterExpense: currentBalance - expenseAmount,
+      afterExpense: afterExpenseBalance,
       monthlyData,
     });
   };
@@ -296,6 +306,31 @@ const Simulator = () => {
               </Popover>
             </div>
 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={18} className="text-white" />
+                <Label htmlFor="useInvestments" className="text-white">Usar investimentos se necessário</Label>
+              </div>
+              <div className="flex items-center">
+                <Button 
+                  variant={useInvestments ? "default" : "outline"}
+                  size="sm"
+                  className={`mr-2 ${useInvestments ? "bg-finance-blue" : "bg-finance-dark-lighter text-gray-400"}`}
+                  onClick={() => setUseInvestments(true)}
+                >
+                  Sim
+                </Button>
+                <Button 
+                  variant={!useInvestments ? "default" : "outline"}
+                  size="sm"
+                  className={`${!useInvestments ? "bg-finance-blue" : "bg-finance-dark-lighter text-gray-400"}`}
+                  onClick={() => setUseInvestments(false)}
+                >
+                  Não
+                </Button>
+              </div>
+            </div>
+
             <Button 
               onClick={handleSimulate}
               className="w-full finance-btn"
@@ -326,6 +361,15 @@ const Simulator = () => {
                   {formatCurrency(simulationResults.afterExpense)}
                 </span>
               </div>
+
+              {useInvestments && simulationResults.currentBalance < parseFloat(amount) && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Usando investimentos:</span>
+                  <span className="text-amber-400 font-bold">
+                    {formatCurrency(Math.min(getTotalInvestments(), parseFloat(amount) - simulationResults.currentBalance))}
+                  </span>
+                </div>
+              )}
 
               <div className="h-64 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
@@ -373,17 +417,18 @@ const Simulator = () => {
                 <p className="text-gray-400 text-sm">
                   Esta simulação mostra como sua situação financeira estará nos próximos 
                   6 meses se você realizar esta {isRecurring ? 'despesa recorrente' : `compra${getActualInstallments() !== 1 ? ` parcelada em ${getActualInstallments()}x` : ''}`}.
-                  Os rendimentos de investimentos também são considerados na projeção.
+                  {useInvestments && " Se necessário, seus investimentos serão usados para cobrir a despesa."}
                 </p>
               </div>
               
-              {simulationResults.monthlyData.some(data => data.withExpense < 0) && (
+              {simulationResults.monthlyData.some(data => data.withExpense < 0) && !useInvestments && (
                 <div className="p-3 bg-red-950/40 rounded-lg border border-red-800/50">
                   <div className="flex items-start gap-2">
                     <AlertCircle size={18} className="text-red-400 mt-0.5" />
                     <p className="text-red-400 text-sm">
                       Seu saldo ficará negativo em algum momento nos próximos meses
-                      se realizar esta despesa. Considere reduzir o valor ou aumentar suas fontes de receita.
+                      se realizar esta despesa. Considere reduzir o valor, aumentar suas fontes de receita
+                      ou usar seus investimentos.
                     </p>
                   </div>
                 </div>
