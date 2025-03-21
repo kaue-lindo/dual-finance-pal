@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { formatCurrency } from '@/lib/utils';
 import { ArrowLeft, PieChart, BarChart3, LineChart as LineChartIcon, Home, ShoppingCart, DollarSign, Calendar, TrendingUp, Receipt } from 'lucide-react';
 import { BarChart, Bar, PieChart as RechartsPie, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ResponsiveContainer } from 'recharts';
 import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
+import { calculateInvestmentReturnForMonth } from '@/context/finance/utils/projections';
 
 const FutureTransactionsGraph = () => {
   const { 
@@ -46,6 +48,7 @@ const FutureTransactionsGraph = () => {
     const totalInvestments = getTotalInvestments();
     const categoryExpenses = getCategoryExpenses();
     const totalIncome = getRealIncome();
+    const userFinances = finances[currentUser.id] || { investments: [] };
     
     const today = new Date();
     const monthlyData: Record<string, any> = {};
@@ -62,7 +65,7 @@ const FutureTransactionsGraph = () => {
         income: 0,
         expense: 0,
         investment: 0,
-        investmentReturn: 0
+        investmentReturn: i === 0 ? 0 : calculateInvestmentReturnForMonth(userFinances.investments, i)
       };
     }
     
@@ -74,17 +77,15 @@ const FutureTransactionsGraph = () => {
       
       if (transaction.type === 'income') {
         if (transaction.category === 'investment-return') {
-          monthlyData[monthKey].investmentReturn += transaction.amount;
+          // This is already calculated more accurately above, so skip it
+          // monthlyData[monthKey].investmentReturn += transaction.amount;
         } else {
           monthlyData[monthKey].income += transaction.amount;
         }
+      } else if (transaction.type === 'investment') {
+        monthlyData[monthKey].investment += transaction.amount;
       } else {
-        // Track investments separately from regular expenses
-        if (transaction.category === 'investment') {
-          monthlyData[monthKey].investment += transaction.amount;
-        } else {
-          monthlyData[monthKey].expense += transaction.amount;
-        }
+        monthlyData[monthKey].expense += transaction.amount;
       }
     });
     
@@ -96,7 +97,7 @@ const FutureTransactionsGraph = () => {
       if (monthKey === format(today, 'MMM/yy')) {
         runningBalance = monthlyData[monthKey].balance;
       } else {
-        // Update running balance with net flow
+        // Update running balance with net flow (including investment returns)
         runningBalance = runningBalance + 
                         monthlyData[monthKey].income + 
                         monthlyData[monthKey].investmentReturn - 

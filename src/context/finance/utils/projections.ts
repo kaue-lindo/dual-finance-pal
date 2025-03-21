@@ -67,13 +67,55 @@ export const calculateInvestmentGrowthForMonth = (
   month: number,
   isCompound: boolean = true
 ): number => {
+  if (month === 0) return 0;
+  
   const monthlyRate = isPeriodMonthly ? rate / 100 : (rate / 12) / 100;
   
   if (isCompound) {
-    // Compound interest
-    return principal * Math.pow(1 + monthlyRate, month) - principal;
+    // Compound interest - calculate the total value after the given months
+    const futureValue = principal * Math.pow(1 + monthlyRate, month);
+    return futureValue - principal;
   } else {
     // Simple interest
     return principal * monthlyRate * month;
   }
+};
+
+// Calculate the future value of investments for chart display
+export const calculateInvestmentReturnForMonth = (
+  investments: any[],
+  monthIndex: number
+): number => {
+  if (!investments || investments.length === 0) return 0;
+  
+  return investments.reduce((total, investment) => {
+    const isPeriodMonthly = investment.period === 'monthly';
+    const isCompound = investment.isCompound !== false;
+    
+    // For the first month, no return yet
+    if (monthIndex === 0) return total;
+    
+    // Calculate previous month's total value (principal + growth)
+    const prevMonthGrowth = calculateInvestmentGrowthForMonth(
+      investment.amount, 
+      investment.rate, 
+      isPeriodMonthly, 
+      monthIndex - 1, 
+      isCompound
+    );
+    
+    // Calculate current month's total value
+    const currentMonthGrowth = calculateInvestmentGrowthForMonth(
+      investment.amount, 
+      investment.rate, 
+      isPeriodMonthly, 
+      monthIndex, 
+      isCompound
+    );
+    
+    // The monthly return is the difference between current and previous month's growth
+    const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
+    
+    return total + monthlyReturn;
+  }, 0);
 };

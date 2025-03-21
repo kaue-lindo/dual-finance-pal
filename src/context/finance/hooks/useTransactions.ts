@@ -1,8 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
 import { calculateBalanceFromData } from '../utils/calculations';
-import { getMonthlyReturn, calculateInvestmentGrowthForMonth } from '../utils/projections';
+import { getMonthlyReturn, calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../utils/projections';
 
 export const useTransactions = (
   currentUser: any,
@@ -323,33 +324,39 @@ export const useTransactions = (
         if (futureDate < today) continue;
         
         const isPeriodMonthly = investment.period === 'monthly';
-        const isCompoundType = investment.isCompound !== false;
+        const isCompound = investment.isCompound !== false;
         
-        let monthlyGrowth: number;
+        // Instead of calculating returns here, we'll use the improved function
+        // from projections.ts that calculates actual monthly returns more accurately
+        const prevMonthGrowth = calculateInvestmentGrowthForMonth(
+          investment.amount, 
+          investment.rate, 
+          isPeriodMonthly, 
+          i-1, 
+          isCompound
+        );
         
-        if (isCompoundType) {
-          const previousMonthValue = calculateInvestmentGrowthForMonth(
-            investment.amount, investment.rate, isPeriodMonthly, i-1, true
-          );
-          const currentMonthValue = calculateInvestmentGrowthForMonth(
-            investment.amount, investment.rate, isPeriodMonthly, i, true
-          );
-          monthlyGrowth = currentMonthValue - previousMonthValue;
-        } else {
-          const monthlyRate = isPeriodMonthly ? 
-            investment.rate / 100 : 
-            investment.rate / 12 / 100;
-          monthlyGrowth = investment.amount * monthlyRate;
+        const currentMonthGrowth = calculateInvestmentGrowthForMonth(
+          investment.amount, 
+          investment.rate, 
+          isPeriodMonthly, 
+          i, 
+          isCompound
+        );
+        
+        const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
+        
+        // Only add transactions for months with actual returns
+        if (monthlyReturn > 0) {
+          futureTransactions.push({
+            id: `${investment.id}-growth-${i}`,
+            date: futureDate,
+            description: `${investment.description} (Rendimento Mensal)`,
+            amount: monthlyReturn,
+            type: 'income',
+            category: 'investment-return'
+          });
         }
-        
-        futureTransactions.push({
-          id: `${investment.id}-growth-${i}`,
-          date: futureDate,
-          description: `${investment.description} (Rendimento Mensal)`,
-          amount: monthlyGrowth,
-          type: 'income',
-          category: 'investment-return'
-        });
       }
     });
     
