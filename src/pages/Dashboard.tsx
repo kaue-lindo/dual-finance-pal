@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
@@ -136,7 +137,7 @@ const Dashboard = () => {
                     />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -155,7 +156,7 @@ const Dashboard = () => {
           </h2>
           <div className="flex flex-col items-center">
             <CircularProgressIndicator
-              percentage={projectedReturn}
+              value={projectedReturn}
               size={150}
             />
             <p className="text-white mt-4">
