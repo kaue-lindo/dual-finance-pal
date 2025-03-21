@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Income, IncomeCategory } from '../types';
@@ -10,9 +11,14 @@ export const useIncomes = (
   setFinances: React.Dispatch<React.SetStateAction<Record<string, any>>>
 ) => {
   const addIncome = async (income: Omit<Income, 'id'>) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      toast.error('Usuário não encontrado. Faça login novamente.');
+      return;
+    }
     
     try {
+      console.log("Adding income for user:", currentUser.id, income);
+      
       const { data, error } = await supabase
         .from('finances')
         .insert({
@@ -41,6 +47,8 @@ export const useIncomes = (
         category: data.category as IncomeCategory,
         recurring: data.recurring
       };
+
+      console.log("Successfully added income:", newIncome);
 
       setFinances(prev => {
         const userFinances = prev[currentUser.id] || {

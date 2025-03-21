@@ -14,7 +14,7 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-import { Home, ShoppingCart, DollarSign, BarChart3, Receipt } from 'lucide-react';
+import { Home, ShoppingCart, DollarSign, BarChart3, Receipt, Calculator, Calendar } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -47,6 +47,11 @@ const Dashboard = () => {
     value: item.amount,
   }));
 
+  // Navigate to different screens
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
+
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       <div className="finance-card rounded-b-xl">
@@ -75,7 +80,7 @@ const Dashboard = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
           <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-gray-400 text-sm">Saldo Atual</p>
                 <h2 className="text-2xl font-bold">{formatCurrency(currentBalance)}</h2>
@@ -84,7 +89,7 @@ const Dashboard = () => {
             </div>
           </Card>
           <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-gray-400 text-sm">Despesas Mensais</p>
                 <h2 className="text-2xl font-bold">{formatCurrency(totalExpenses)}</h2>
@@ -93,7 +98,7 @@ const Dashboard = () => {
             </div>
           </Card>
           <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-gray-400 text-sm">Renda Real</p>
                 <h2 className="text-2xl font-bold">{formatCurrency(realIncome)}</h2>
@@ -102,7 +107,7 @@ const Dashboard = () => {
             </div>
           </Card>
           <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-gray-400 text-sm">Total Investido</p>
                 <h2 className="text-2xl font-bold">{formatCurrency(investmentAmount)}</h2>
@@ -114,7 +119,7 @@ const Dashboard = () => {
       </div>
 
       <div className="mt-6 px-4">
-        <Card className="finance-card">
+        <Card className="finance-card p-4">
           <h2 className="text-white text-xl font-bold mb-4">
             Despesas por Categoria
           </h2>
@@ -150,7 +155,7 @@ const Dashboard = () => {
       </div>
 
       <div className="mt-6 px-4">
-        <Card className="finance-card">
+        <Card className="finance-card p-4">
           <h2 className="text-white text-xl font-bold mb-4">
             Projeção de Investimentos (12 meses)
           </h2>
@@ -181,8 +186,8 @@ const Dashboard = () => {
             const investmentDiff = currentUserInvestments - otherUserInvestments;
             
             return (
-              <Card key={user.id} className="finance-card mb-4">
-                <div className="p-4">
+              <Card key={user.id} className="finance-card mb-4 p-4">
+                <div>
                   <div className="flex items-center mb-3">
                     <div className="w-10 h-10 rounded-full bg-finance-dark-lighter flex items-center justify-center mr-3">
                       {user.avatarUrl ? (
@@ -230,28 +235,70 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Fixed navigation bar */}
+      {/* Extended Navigation Bar with Additional Shortcuts */}
       <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
-        <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
+        <button className="navbar-icon" onClick={() => handleNavigation('/dashboard')}>
           <Home className="w-6 h-6 text-white" />
         </button>
-        <button className="navbar-icon" onClick={() => navigate('/expenses')}>
+        <button className="navbar-icon" onClick={() => handleNavigation('/expenses')}>
           <ShoppingCart className="w-6 h-6 text-white" />
         </button>
         <div className="-mt-8">
           <button 
             className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
-            onClick={() => navigate('/add-income')}
+            onClick={() => handleNavigation('/add-income')}
           >
             <DollarSign className="w-6 h-6 text-white" />
           </button>
         </div>
-        <button className="navbar-icon" onClick={() => navigate('/investments')}>
+        <button className="navbar-icon" onClick={() => handleNavigation('/investments')}>
           <BarChart3 className="w-6 h-6 text-white" />
         </button>
-        <button className="navbar-icon" onClick={() => navigate('/all-transactions')}>
+        <button className="navbar-icon" onClick={() => handleNavigation('/all-transactions')}>
           <Receipt className="w-6 h-6 text-white" />
         </button>
+      </div>
+
+      {/* Additional Navigation Options */}
+      <div className="px-4 mt-6 mb-20">
+        <Card className="finance-card p-4">
+          <h2 className="text-white text-xl font-bold mb-4">
+            Outras Opções
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/simulator')}
+            >
+              <Calculator className="w-8 h-8 text-white mb-2" />
+              <span className="text-white">Simulador</span>
+            </button>
+            
+            <button 
+              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/future-transactions')}
+            >
+              <Calendar className="w-8 h-8 text-white mb-2" />
+              <span className="text-white">Transações Futuras</span>
+            </button>
+            
+            <button 
+              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/future-graphs')}
+            >
+              <BarChart3 className="w-8 h-8 text-white mb-2" />
+              <span className="text-white">Gráficos Futuros</span>
+            </button>
+            
+            <button 
+              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/settings')}
+            >
+              <DollarSign className="w-8 h-8 text-white mb-2" />
+              <span className="text-white">Configurações</span>
+            </button>
+          </div>
+        </Card>
       </div>
     </div>
   );

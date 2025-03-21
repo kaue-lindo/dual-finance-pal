@@ -22,16 +22,38 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     if (currentUser && !loading) {
+      console.log("Fetching transactions for current user:", currentUser.id);
       transactions.fetchTransactions();
       
       // Fetch transactions for all users to enable comparison
       users.forEach(user => {
         if (user.id !== currentUser.id) {
+          console.log("Fetching transactions for comparison user:", user.id);
           transactions.fetchTransactionsByUserId(user.id);
         }
       });
     }
   }, [currentUser, loading]);
+
+  // Make sure each user has a finance record
+  useEffect(() => {
+    if (users.length > 0) {
+      const updatedFinances = {...finances};
+      
+      users.forEach(user => {
+        if (!updatedFinances[user.id]) {
+          updatedFinances[user.id] = {
+            incomes: [],
+            expenses: [],
+            investments: [],
+            balance: 0
+          };
+        }
+      });
+      
+      setFinances(updatedFinances);
+    }
+  }, [users]);
 
   return (
     <FinanceContext.Provider

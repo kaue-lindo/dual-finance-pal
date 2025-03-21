@@ -32,17 +32,20 @@ export const useTransactions = (
       const expenses: Expense[] = [];
       const investments: Investment[] = [];
 
-      if (!finances[userId]) {
-        setFinances(prev => ({
-          ...prev,
-          [userId]: {
-            incomes: [],
-            expenses: [],
-            investments: [],
-            balance: 0
-          }
-        }));
-      }
+      setFinances(prev => {
+        if (!prev[userId]) {
+          return {
+            ...prev,
+            [userId]: {
+              incomes: [],
+              expenses: [],
+              investments: [],
+              balance: 0
+            }
+          };
+        }
+        return prev;
+      });
 
       data.forEach(item => {
         if (item.type === 'income') {
@@ -85,26 +88,42 @@ export const useTransactions = (
         }
       });
 
-      const existingInvestments = finances[userId]?.investments || [];
-      const existingIds = new Set(investments.map(inv => inv.id));
-      const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
-      const combinedInvestments = [...investments, ...uniqueExistingInvestments];
-      
-      const incomeTotal = incomes.reduce((sum, inc) => sum + inc.amount, 0);
-      const expenseTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-      const investmentTotal = investments.reduce((sum, inv) => sum + inv.amount, 0);
-      const calculatedBalance = incomeTotal - expenseTotal - investmentTotal;
-      
-      setFinances(prev => ({
-        ...prev,
-        [userId]: {
-          ...prev[userId],
-          incomes,
-          expenses,
-          investments: combinedInvestments,
+      setFinances(prev => {
+        const existingFinances = prev[userId] || {
+          incomes: [],
+          expenses: [],
+          investments: [],
+          balance: 0
+        };
+        
+        const existingInvestments = existingFinances.investments || [];
+        const existingIds = new Set(investments.map(inv => inv.id));
+        const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
+        const combinedInvestments = [...investments, ...uniqueExistingInvestments];
+        
+        const incomeTotal = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+        const expenseTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const investmentTotal = investments.reduce((sum, inv) => sum + inv.amount, 0);
+        const calculatedBalance = incomeTotal - expenseTotal - investmentTotal;
+        
+        console.log(`Updated finances for user ${userId}:`, {
+          incomes: incomes.length,
+          expenses: expenses.length,
+          investments: combinedInvestments.length,
           balance: calculatedBalance
-        }
-      }));
+        });
+        
+        return {
+          ...prev,
+          [userId]: {
+            ...existingFinances,
+            incomes,
+            expenses,
+            investments: combinedInvestments,
+            balance: calculatedBalance
+          }
+        };
+      });
     } catch (error) {
       console.error('Error in fetchTransactionsByUserId:', error);
     }
