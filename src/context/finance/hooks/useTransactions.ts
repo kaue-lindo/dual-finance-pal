@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
@@ -12,28 +11,31 @@ export const useTransactions = (
 ) => {
   const fetchTransactions = async () => {
     if (!currentUser) return;
+    await fetchTransactionsByUserId(currentUser.id);
+  };
 
+  const fetchTransactionsByUserId = async (userId: string) => {
     try {
-      console.log("Fetching transactions for user:", currentUser.id);
+      console.log("Fetching transactions for user:", userId);
       const { data, error } = await supabase
         .from('finances')
         .select('*')
-        .eq('user_id', currentUser.id);
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Error fetching finances:', error);
         return;
       }
 
-      console.log("Fetched transaction data:", data);
+      console.log("Fetched transaction data for user", userId, ":", data);
       const incomes: Income[] = [];
       const expenses: Expense[] = [];
       const investments: Investment[] = [];
 
-      if (!finances[currentUser.id]) {
+      if (!finances[userId]) {
         setFinances(prev => ({
           ...prev,
-          [currentUser.id]: {
+          [userId]: {
             incomes: [],
             expenses: [],
             investments: [],
@@ -83,7 +85,7 @@ export const useTransactions = (
         }
       });
 
-      const existingInvestments = finances[currentUser.id]?.investments || [];
+      const existingInvestments = finances[userId]?.investments || [];
       const existingIds = new Set(investments.map(inv => inv.id));
       const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
       const combinedInvestments = [...investments, ...uniqueExistingInvestments];
@@ -95,8 +97,8 @@ export const useTransactions = (
       
       setFinances(prev => ({
         ...prev,
-        [currentUser.id]: {
-          ...prev[currentUser.id],
+        [userId]: {
+          ...prev[userId],
           incomes,
           expenses,
           investments: combinedInvestments,
@@ -104,7 +106,7 @@ export const useTransactions = (
         }
       }));
     } catch (error) {
-      console.error('Error in fetchTransactions:', error);
+      console.error('Error in fetchTransactionsByUserId:', error);
     }
   };
 
@@ -326,8 +328,6 @@ export const useTransactions = (
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompound = investment.isCompound !== false;
         
-        // Instead of calculating returns here, we'll use the improved function
-        // from projections.ts that calculates actual monthly returns more accurately
         const prevMonthGrowth = calculateInvestmentGrowthForMonth(
           investment.amount, 
           investment.rate, 
@@ -346,7 +346,6 @@ export const useTransactions = (
         
         const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
         
-        // Only add transactions for months with actual returns
         if (monthlyReturn > 0) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
@@ -365,6 +364,7 @@ export const useTransactions = (
 
   return {
     fetchTransactions,
+    fetchTransactionsByUserId,
     deleteTransaction,
     getFutureTransactions,
   };

@@ -129,11 +129,20 @@ export const useExpenses = (
     return currentBalance - expense.amount;
   };
 
-  const calculateBalance = () => {
-    if (!currentUser) return 0;
+  const calculateBalance = (): number => {
+    return getUserBalance(currentUser?.id);
+  };
+
+  const getUserBalance = (userId: string): number => {
+    if (!userId || !finances[userId]) return 0;
     
-    const userFinances = finances[currentUser.id] || { incomes: [], expenses: [] };
-    return calculateBalanceFromData(userFinances.incomes, userFinances.expenses);
+    const userFinances = finances[userId];
+    
+    const incomeTotal = userFinances.incomes.reduce((sum: number, income: any) => sum + income.amount, 0);
+    const expenseTotal = userFinances.expenses.reduce((sum: number, expense: any) => sum + expense.amount, 0);
+    const investmentTotal = userFinances.investments.reduce((sum: number, inv: any) => sum + inv.amount, 0);
+    
+    return incomeTotal - expenseTotal - investmentTotal;
   };
 
   const getCategoryExpenses = () => {
@@ -155,9 +164,10 @@ export const useExpenses = (
 
   return {
     addExpense,
-    getMonthlyExpenseTotal,
-    simulateExpense,
     calculateBalance,
+    getUserBalance,
+    getMonthlyExpenseTotal,
     getCategoryExpenses,
+    simulateExpense
   };
 };

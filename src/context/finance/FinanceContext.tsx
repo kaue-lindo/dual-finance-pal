@@ -23,6 +23,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (currentUser && !loading) {
       transactions.fetchTransactions();
+      
+      // Fetch transactions for all users to enable comparison
+      users.forEach(user => {
+        if (user.id !== currentUser.id) {
+          transactions.fetchTransactionsByUserId(user.id);
+        }
+      });
     }
   }, [currentUser, loading]);
 
@@ -43,13 +50,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getFutureTransactions: transactions.getFutureTransactions,
         simulateExpense: expenses.simulateExpense,
         fetchTransactions: transactions.fetchTransactions,
+        fetchTransactionsByUserId: transactions.fetchTransactionsByUserId,
         deleteTransaction: transactions.deleteTransaction,
         getIncomeCategories: incomes.getIncomeCategories,
         getTotalInvestments: investments.getTotalInvestments,
         getProjectedInvestmentReturn: investments.getProjectedInvestmentReturn,
         getCategoryExpenses: expenses.getCategoryExpenses,
         getRealIncome: incomes.getRealIncome,
-        updateUserProfile: userProfile.updateUserProfile
+        updateUserProfile: userProfile.updateUserProfile,
+        getUserBalance: expenses.getUserBalance,
+        getUserFinances: (userId) => finances[userId] || defaultFinances[userId]
       }}
     >
       {children}

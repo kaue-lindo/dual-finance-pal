@@ -72,6 +72,7 @@ export type FinanceContextType = {
   getFutureTransactions: () => FutureTransaction[];
   simulateExpense: (expense: Omit<Expense, 'id'>) => number;
   fetchTransactions: () => Promise<void>;
+  fetchTransactionsByUserId: (userId: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   getIncomeCategories: () => { value: IncomeCategory; label: string }[];
   getTotalInvestments: () => number;
@@ -79,4 +80,6 @@ export type FinanceContextType = {
   getCategoryExpenses: () => { category: string; amount: number }[];
   getRealIncome: () => number;
   updateUserProfile: (userData: { name?: string, avatarUrl?: string }) => void;
+  getUserBalance: (userId: string) => number;
+  getUserFinances: (userId: string) => UserFinances;
 };

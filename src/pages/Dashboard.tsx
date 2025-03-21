@@ -1,421 +1,238 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { useFinance } from '@/context/FinanceContext';
-import { CircularProgressIndicator } from '@/components/CircularProgressIndicator';
-import { BarChart, Search, Home, Settings, ArrowLeft, DollarSign, ShoppingCart, Car, Utensils, Calendar, TrendingUp, ChevronRight, PieChart, Receipt } from 'lucide-react';
-import { format } from 'date-fns';
-import { formatCurrency } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getCategoryColor } from '@/utils/chartUtils';
+import { ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { CircularProgressIndicator } from "@/components/CircularProgressIndicator";
+import { useFinance } from "@/context/FinanceContext";
+import { formatCurrency } from "@/context/finance/utils/formatting";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  Tooltip,
+} from "recharts";
+import { Home, ShoppingCart, DollarSign, BarChart3, Receipt } from 'lucide-react';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const Dashboard = () => {
-  const { 
-    currentUser, 
-    finances, 
-    calculateBalance, 
-    logout, 
-    getMonthlyExpenseTotal, 
-    getFutureTransactions,
+  const {
+    currentUser,
+    users,
+    calculateBalance,
+    getMonthlyExpenseTotal,
+    getCategoryExpenses,
     getRealIncome,
     getTotalInvestments,
-    deleteTransaction
+    getProjectedInvestmentReturn,
+    getUserBalance,
+    getUserFinances
   } = useFinance();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('expenses');
-  const [futureTransactions, setFutureTransactions] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (currentUser) {
-      setFutureTransactions(getFutureTransactions());
-    } else {
-      navigate('/login');
-    }
-  }, [currentUser, finances, getFutureTransactions, navigate]);
-
-  if (!currentUser) {
-    return null;
-  }
-
-  const userFinances = finances[currentUser.id] || { 
-    incomes: [], 
-    expenses: [], 
-    investments: [], 
-    balance: 0 
-  };
-  
-  const balance = calculateBalance();
-  const expenseTotal = getMonthlyExpenseTotal();
+  const expensesByCategory = getCategoryExpenses();
+  const totalExpenses = getMonthlyExpenseTotal();
+  const currentBalance = calculateBalance();
   const realIncome = getRealIncome();
-  const totalInvestments = getTotalInvestments();
+  const investmentAmount = getTotalInvestments();
+  const projectedReturn = getProjectedInvestmentReturn(12);
 
-  // Calculate percentage based on available balance vs total income
-  const percentage = realIncome > 0 ? Math.min(Math.max((balance / realIncome) * 100, 0), 100) : 0;
+  const otherUsers = users.filter(user => user.id !== currentUser?.id);
 
-  const statistics = {
-    income: realIncome,
-    expenses: expenseTotal,
-    balance: balance,
-    investments: totalInvestments
-  };
-
-  const recentExpenses = userFinances.expenses.slice(0, 3).map(expense => ({
-    id: expense.id,
-    icon: getCategoryIcon(expense.category),
-    category: getCategoryName(expense.category),
-    amount: expense.amount,
-    color: getCategoryColor(expense.category),
-    description: expense.description,
-    date: expense.date
+  const chartData = expensesByCategory.map((item) => ({
+    name: item.category,
+    value: item.amount,
   }));
-
-  const recentIncomes = userFinances.incomes.slice(0, 3).map(income => ({
-    id: income.id,
-    description: income.description,
-    amount: income.amount,
-    category: income.category,
-    date: income.date
-  }));
-
-  function getCategoryIcon(category: string) {
-    switch (category) {
-      case 'food':
-        return <Utensils className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
-      case 'transport':
-        return <Car className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
-      case 'shopping':
-        return <ShoppingCart className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
-      default:
-        return <DollarSign className="w-4 h-4" style={{ color: getCategoryColor(category) }} />;
-    }
-  }
-
-  function getCategoryName(category: string) {
-    switch (category) {
-      case 'food':
-        return 'Alimentação';
-      case 'transport':
-        return 'Transporte';
-      case 'entertainment':
-        return 'Entretenimento';
-      case 'bills':
-        return 'Contas';
-      case 'shopping':
-        return 'Compras';
-      case 'electronics':
-        return 'Eletrônicos';
-      case 'appliances':
-        return 'Eletrodomésticos';
-      case 'furniture':
-        return 'Móveis';
-      case 'clothing':
-        return 'Vestuário';
-      default:
-        return 'Outros';
-    }
-  }
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const handleDeleteExpense = async (id: string) => {
-    try {
-      await deleteTransaction(id);
-    } catch (error) {
-      console.error('Error deleting expense:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       <div className="finance-card rounded-b-xl">
-        <div className="flex justify-between items-center mb-8">
-          <Button variant="ghost" size="icon" className="navbar-icon" onClick={handleLogout}>
-            <ArrowLeft className="w-6 h-6 text-white" />
-          </Button>
-          <h1 className="text-xl font-bold text-white">Dashboard</h1>
-          <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/settings')}>
-            <Settings className="w-6 h-6 text-white" />
-          </Button>
-        </div>
-
-        <div className="flex flex-col items-center">
-          {/* Display user avatar if available */}
-          {currentUser.avatarUrl && (
-            <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border-2 border-finance-blue">
-              <img 
-                src={currentUser.avatarUrl} 
-                alt="User avatar" 
+        <div className="p-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold text-white">
+              Olá, {currentUser?.name || 'Usuário'}!
+            </h1>
+            <p className="text-gray-400">
+              Bem-vindo de volta ao DualFinance 👋
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-full overflow-hidden">
+            {currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt="Avatar do usuário"
                 className="w-full h-full object-cover"
               />
-            </div>
-          )}
-          
-          {/* User name */}
-          <p className="text-white mb-3">Olá, {currentUser.name}</p>
-          
-          <CircularProgressIndicator 
-            value={percentage} 
-            size={150} 
-            strokeWidth={10}
-            centerContent={
-              <div className="text-center">
-                <span className="text-2xl font-bold text-white">{formatCurrency(balance)}</span>
-                <span className="block text-sm text-gray-400">Saldo</span>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-700 text-white text-lg font-bold">
+                {currentUser?.name.substring(0, 1).toUpperCase()}
               </div>
-            }
-          />
+            )}
+          </div>
         </div>
-
-        <div className="flex justify-around mt-6 mb-4">
-          <div className="text-center">
-            <p className="text-gray-400 text-xs">Entradas</p>
-            <p className="text-green-400 font-semibold">{formatCurrency(statistics.income)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-400 text-xs">Gastos</p>
-            <p className="text-red-400 font-semibold">{formatCurrency(statistics.expenses)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-400 text-xs">Investido</p>
-            <p className="text-amber-400 font-semibold">{formatCurrency(statistics.investments)}</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+          <Card className="bg-finance-dark-card text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Saldo Atual</p>
+                <h2 className="text-2xl font-bold">{formatCurrency(currentBalance)}</h2>
+              </div>
+              <TrendingUp className="text-green-500 w-6 h-6" />
+            </div>
+          </Card>
+          <Card className="bg-finance-dark-card text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Despesas Mensais</p>
+                <h2 className="text-2xl font-bold">{formatCurrency(totalExpenses)}</h2>
+              </div>
+              <ArrowDown className="text-red-500 w-6 h-6" />
+            </div>
+          </Card>
+          <Card className="bg-finance-dark-card text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Renda Real</p>
+                <h2 className="text-2xl font-bold">{formatCurrency(realIncome)}</h2>
+              </div>
+              <ArrowUp className="text-green-500 w-6 h-6" />
+            </div>
+          </Card>
+          <Card className="bg-finance-dark-card text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Total Investido</p>
+                <h2 className="text-2xl font-bold">{formatCurrency(investmentAmount)}</h2>
+              </div>
+              <TrendingUp className="text-green-500 w-6 h-6" />
+            </div>
+          </Card>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 mt-6">
-        <TabsList className="grid grid-cols-3 bg-finance-dark-lighter">
-          <TabsTrigger value="expenses" className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" />
-            <span>Despesas</span>
-          </TabsTrigger>
-          <TabsTrigger value="incomes" className="flex items-center gap-2">
-            <Receipt className="w-4 h-4" />
-            <span>Entradas</span>
-          </TabsTrigger>
-          <TabsTrigger value="future" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            <span>Agenda</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="expenses">
-          <Card className="finance-card mt-4">
-            <h2 className="text-lg font-semibold text-white mb-4">Despesas Recentes</h2>
-            {recentExpenses.length > 0 ? (
-              <div className="space-y-4">
-                {recentExpenses.map((expense, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-finance-dark-lighter flex items-center justify-center">
-                        {expense.icon}
-                      </div>
-                      <div>
-                        <p className="text-white">{expense.description}</p>
-                        <p className="text-xs" style={{ color: expense.color }}>{expense.category}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="text-right mr-3">
-                        <p className="text-red-400">
-                          -{formatCurrency(expense.amount)}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {format(new Date(expense.date), 'dd/MM/yyyy')}
-                        </p>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-gray-400 hover:text-red-400"
-                        onClick={() => handleDeleteExpense(expense.id)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-gray-400 py-6">
-                <p>Nenhuma despesa registrada</p>
-                <Button 
-                  className="mt-4 finance-btn"
-                  onClick={() => navigate('/expenses')}
+      <div className="mt-6 px-4">
+        <Card className="finance-card">
+          <h2 className="text-white text-xl font-bold mb-4">
+            Despesas por Categoria
+          </h2>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  dataKey="value"
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  label
                 >
-                  Adicionar Despesa
-                </Button>
-              </div>
-            )}
-            
-            {recentExpenses.length > 0 && (
-              <Button 
-                variant="ghost" 
-                className="w-full mt-4 text-finance-blue"
-                onClick={() => navigate('/all-transactions')}
-              >
-                Ver Todas Despesas
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            )}
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="incomes">
-          <Card className="finance-card mt-4">
-            <h2 className="text-lg font-semibold text-white mb-4">Entradas Recentes</h2>
-            {recentIncomes.length > 0 ? (
-              <div className="space-y-4">
-                {recentIncomes.map((income, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <DollarSign className="w-4 h-4 text-green-400" />
-                      </div>
-                      <div>
-                        <p className="text-white">{income.description}</p>
-                        <p className="text-xs text-green-400">{income.category}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="text-right mr-3">
-                        <p className="text-green-400">
-                          +{formatCurrency(income.amount)}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {format(new Date(income.date), 'dd/MM/yyyy')}
-                        </p>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-gray-400 hover:text-red-400"
-                        onClick={() => handleDeleteExpense(income.id)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-gray-400 py-6">
-                <p>Nenhuma entrada registrada</p>
-                <Button 
-                  className="mt-4 finance-btn"
-                  onClick={() => navigate('/add-income')}
-                >
-                  Adicionar Entrada
-                </Button>
-              </div>
-            )}
-            
-            {recentIncomes.length > 0 && (
-              <Button 
-                variant="ghost" 
-                className="w-full mt-4 text-finance-blue"
-                onClick={() => navigate('/all-transactions')}
-              >
-                Ver Todas Entradas
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            )}
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="future">
-          <Card className="finance-card mt-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="w-5 h-5 text-finance-blue" />
-              <h2 className="text-lg font-semibold text-white">Transações Futuras</h2>
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center text-gray-400">
+              Nenhuma despesa registrada neste mês.
             </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-6 px-4">
+        <Card className="finance-card">
+          <h2 className="text-white text-xl font-bold mb-4">
+            Projeção de Investimentos (12 meses)
+          </h2>
+          <div className="flex flex-col items-center">
+            <CircularProgressIndicator
+              percentage={projectedReturn}
+              size={150}
+            />
+            <p className="text-white mt-4">
+              Retorno Projetado: {formatCurrency(projectedReturn)}
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* User Comparison Section */}
+      {otherUsers.length > 0 && (
+        <div className="px-4 mt-6">
+          <h2 className="text-white text-xl font-bold mb-3">Comparação entre Usuários</h2>
+          {otherUsers.map(user => {
+            const otherUserBalance = getUserBalance(user.id);
+            const otherUserFinances = getUserFinances(user.id);
+            const otherUserInvestments = otherUserFinances.investments.reduce(
+              (sum, inv) => sum + inv.amount, 0
+            );
+            const currentUserInvestments = getTotalInvestments();
+            const balanceDiff = currentBalance - otherUserBalance;
+            const investmentDiff = currentUserInvestments - otherUserInvestments;
             
-            {futureTransactions.length > 0 ? (
-              <div className="space-y-4">
-                {futureTransactions.slice(0, 5).map((transaction, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full ${transaction.type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center`}>
-                        {transaction.type === 'income' ? 
-                          <DollarSign className="w-4 h-4 text-green-400" /> : 
-                          <ShoppingCart className="w-4 h-4" style={{ color: getCategoryColor(transaction.category) }} />
-                        }
-                      </div>
-                      <div>
-                        <p className="text-white">{transaction.description}</p>
-                        <p className="text-xs text-gray-400">
-                          {format(new Date(transaction.date), 'dd/MM/yyyy')}
-                        </p>
+            return (
+              <Card key={user.id} className="finance-card mb-4">
+                <div className="p-4">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 rounded-full bg-finance-dark-lighter flex items-center justify-center mr-3">
+                      {user.avatarUrl ? (
+                        <img 
+                          src={user.avatarUrl} 
+                          alt={user.name} 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold">
+                          {user.name.substring(0, 1)}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-white font-bold">{user.name}</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-finance-dark-card rounded-lg p-3">
+                      <p className="text-gray-400 text-sm mb-1">Saldo</p>
+                      <p className="text-white font-bold">
+                        {formatCurrency(otherUserBalance)}
+                      </p>
+                      <div className={`flex items-center mt-1 text-xs ${balanceDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {balanceDiff > 0 ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                        <span>{formatCurrency(Math.abs(balanceDiff))} {balanceDiff > 0 ? 'a mais' : 'a menos'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center">
-                      <div className="text-right mr-3">
-                        <p className={transaction.type === 'income' ? 'text-green-400' : 'text-red-400'}>
-                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                        </p>
+                    
+                    <div className="bg-finance-dark-card rounded-lg p-3">
+                      <p className="text-gray-400 text-sm mb-1">Investimentos</p>
+                      <p className="text-white font-bold">
+                        {formatCurrency(otherUserInvestments)}
+                      </p>
+                      <div className={`flex items-center mt-1 text-xs ${investmentDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {investmentDiff > 0 ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                        <span>{formatCurrency(Math.abs(investmentDiff))} {investmentDiff > 0 ? 'a mais' : 'a menos'}</span>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-gray-400 hover:text-red-400"
-                        onClick={() => handleDeleteExpense(transaction.id)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                      </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-gray-400 py-6">
-                <p>Nenhuma transação futura programada</p>
-              </div>
-            )}
-            
-            {futureTransactions.length > 0 && (
-              <div className="flex flex-col space-y-2 mt-4">
-                <Button 
-                  variant="ghost" 
-                  className="w-full text-finance-blue"
-                  onClick={() => navigate('/future-transactions')}
-                >
-                  Ver Lista de Transações
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full text-finance-blue"
-                  onClick={() => navigate('/future-graphs')}
-                >
-                  <PieChart className="w-4 h-4 mr-1" />
-                  Ver Gráficos de Previsão
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
+      {/* Fixed navigation bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
         <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
-          <Home className="w-6 h-6 text-finance-blue" />
+          <Home className="w-6 h-6 text-white" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/expenses')}>
           <ShoppingCart className="w-6 h-6 text-white" />
@@ -429,7 +246,7 @@ const Dashboard = () => {
           </button>
         </div>
         <button className="navbar-icon" onClick={() => navigate('/investments')}>
-          <BarChart className="w-6 h-6 text-white" />
+          <BarChart3 className="w-6 h-6 text-white" />
         </button>
         <button className="navbar-icon" onClick={() => navigate('/all-transactions')}>
           <Receipt className="w-6 h-6 text-white" />

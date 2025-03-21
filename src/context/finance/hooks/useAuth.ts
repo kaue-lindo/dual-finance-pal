@@ -17,7 +17,18 @@ export const useAuth = () => {
   }, []);
 
   const login = (userId: string, remember: boolean) => {
-    const user = predefinedUsers.find(u => u.id === userId);
+    const savedUsers = localStorage.getItem('financeUsers');
+    const storedUsers = savedUsers ? JSON.parse(savedUsers) : {};
+    
+    // Get the base user from predefined users
+    const baseUser = predefinedUsers.find(u => u.id === userId);
+    
+    // Check if we have a stored version with profile updates
+    const storedUser = storedUsers[userId];
+    
+    // Use the stored user if available, otherwise use the base user
+    const user = storedUser || baseUser;
+    
     if (user) {
       setCurrentUser(user);
       if (remember) {

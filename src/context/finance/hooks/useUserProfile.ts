@@ -15,11 +15,20 @@ export const useUserProfile = (
       avatarUrl: userData.avatarUrl || currentUser.avatarUrl
     };
     
+    // Update current user state
     setCurrentUser(updatedUser);
     
+    // Store in localStorage for persistence
     if (localStorage.getItem('financeCurrentUser')) {
       localStorage.setItem('financeCurrentUser', JSON.stringify(updatedUser));
     }
+    
+    // Store in users collection for future logins
+    const savedUsers = localStorage.getItem('financeUsers');
+    const storedUsers = savedUsers ? JSON.parse(savedUsers) : {};
+    
+    storedUsers[currentUser.id] = updatedUser;
+    localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
     
     toast.success('Perfil atualizado com sucesso');
   };
