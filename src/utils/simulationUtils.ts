@@ -13,6 +13,9 @@ export const calculateMonthlyBalanceImpact = (
   futureTransactions.forEach(transaction => {
     const transactionDate = new Date(transaction.date);
     if (transactionDate >= startDate && transactionDate <= endDate) {
+      // Skip investment transactions for balance impact (they're tracked separately)
+      if (transaction.type === 'investment') return;
+      
       impact += transaction.type === 'income' ? transaction.amount : -transaction.amount;
     }
   });
@@ -53,11 +56,11 @@ export const generateSimulationData = (
   );
 
   const normalTransactions = futureTransactions.filter(t => 
-    t.category !== 'investment-return' && t.category !== 'investment'
+    t.category !== 'investment-return' && t.type !== 'investment'
   );
   
-  const investmentExpenseTransactions = futureTransactions.filter(t => 
-    t.type === 'expense' && t.category === 'investment'
+  const investmentTransactions = futureTransactions.filter(t => 
+    t.type === 'investment'
   );
 
   // Create the simulation data points for each month
@@ -74,8 +77,8 @@ export const generateSimulationData = (
       nextMonthDate
     );
     
-    // Calculate impact of investment expenses separately - already accounted for in the balance
-    const investmentExpensesImpact = 0;
+    // Calculate investment impacts separately
+    const investmentExpensesImpact = 0; // No longer needed as investments don't impact balance directly
     
     // Calculate investment returns for this specific month
     const investmentReturnsImpact = calculateMonthlyBalanceImpact(
@@ -114,8 +117,14 @@ export const generateSimulationData = (
     
     // Accumulate investment returns for the investments metric
     const investmentGrowth = investmentReturnsImpact;
+    const newInvestments = calculateMonthlyBalanceImpact(
+      investmentTransactions,
+      monthDate,
+      nextMonthDate
+    );
+    
     const previousInvestments = i === 0 ? totalInvestments : simulationData[i-1].investments;
-    const currentInvestments = previousInvestments + investmentGrowth;
+    const currentInvestments = previousInvestments + Math.abs(newInvestments) + investmentGrowth;
     
     const dataPoint = {
       month: `${monthNames[monthIndex]}/${monthYear.toString().slice(2)}`,

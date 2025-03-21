@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
@@ -22,10 +21,10 @@ export const useInvestments = (
       .from('finances')
       .insert({
         user_id: currentUser.id,
-        type: 'expense', // Changed from 'investment' to 'expense' to properly track as an expense
+        type: 'expense',
         description: investment.description,
         amount: investment.amount,
-        category: 'investment', // Now uses a category to identify it as an investment type expense
+        category: 'investment',
         date: investment.startDate.toISOString(),
         recurring_type: investment.period,
         is_compound: investment.isCompound
@@ -47,27 +46,15 @@ export const useInvestments = (
         balance: 0
       };
       
-      // Add the investment as an expense too, to properly deduct from balance
-      const newExpense = {
-        id: `investment-${newInvestment.id}`,
-        description: `${investment.description} (Investimento)`,
-        amount: investment.amount,
-        category: 'investment',
-        date: investment.startDate,
-        sourceCategory: undefined
-      };
-      
-      // Calculate the balance with the new investment as an expense
       const incomeTotal = userFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
       const expenseTotal = userFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-      const newBalance = incomeTotal - expenseTotal - investment.amount;
+      const newBalance = incomeTotal - expenseTotal;
       
       return {
         ...prev,
         [currentUser.id]: {
           ...userFinances,
           investments: [...userFinances.investments, newInvestment],
-          expenses: [...userFinances.expenses, newExpense],
           balance: newBalance,
         },
       };
@@ -104,19 +91,14 @@ export const useInvestments = (
       
       const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
       
-      // Also remove the corresponding expense
-      const newExpenses = currentFinances.expenses.filter(exp => exp.id !== `investment-${id}`);
-      
-      // Recalculate the balance
       const incomeTotal = currentFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
-      const expenseTotal = newExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const expenseTotal = currentFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
       
       return {
         ...prev,
         [currentUser.id]: {
           ...currentFinances,
           investments: newInvestments,
-          expenses: newExpenses,
           balance: incomeTotal - expenseTotal,
         },
       };
@@ -136,12 +118,10 @@ export const useInvestments = (
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
-      // Calculate return based on interest type (simple or compound)
       const years = months / 12;
       let futureValue: number;
       
-      if (investment.isCompound !== false) { // Default to compound if not specified
-        // Use compound interest
+      if (investment.isCompound !== false) {
         futureValue = calculateCompoundInterest(
           investment.amount,
           investment.period === 'monthly' ? investment.rate * 12 : investment.rate,
@@ -149,7 +129,6 @@ export const useInvestments = (
           'monthly'
         );
       } else {
-        // Use simple interest
         futureValue = calculateSimpleInterest(
           investment.amount,
           investment.period === 'monthly' ? investment.rate * 12 : investment.rate,

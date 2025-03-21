@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
@@ -53,33 +52,35 @@ export const useTransactions = (
             recurring: item.recurring
           });
         } else if (item.type === 'expense') {
-          expenses.push({
-            id: item.id,
-            description: item.description,
-            amount: parseFloat(item.amount.toString()),
-            category: item.category || 'other',
-            date: new Date(item.date),
-            sourceCategory: item.source_category as IncomeCategory | undefined,
-            recurring: item.recurring_type ? {
-              type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
-              days: item.recurring_days
-            } : undefined,
-            installment: item.installment_total ? {
-              total: item.installment_total,
-              current: item.installment_current,
-              remaining: item.installment_total - item.installment_current
-            } : undefined
-          });
-        } else if (item.type === 'investment') {
-          investments.push({
-            id: item.id,
-            description: item.description,
-            amount: parseFloat(item.amount.toString()),
-            rate: parseFloat(item.category || "0"),
-            period: item.recurring_type === 'compound' ? 'monthly' : (item.recurring_type as 'monthly' | 'annual' || 'monthly'),
-            startDate: new Date(item.date),
-            isCompound: item.recurring_type === 'compound'
-          });
+          if (item.category !== 'investment') {
+            expenses.push({
+              id: item.id,
+              description: item.description,
+              amount: parseFloat(item.amount.toString()),
+              category: item.category || 'other',
+              date: new Date(item.date),
+              sourceCategory: item.source_category as IncomeCategory | undefined,
+              recurring: item.recurring_type ? {
+                type: item.recurring_type as 'daily' | 'weekly' | 'monthly',
+                days: item.recurring_days
+              } : undefined,
+              installment: item.installment_total ? {
+                total: item.installment_total,
+                current: item.installment_current,
+                remaining: item.installment_total - item.installment_current
+              } : undefined
+            });
+          } else {
+            investments.push({
+              id: item.id,
+              description: item.description,
+              amount: parseFloat(item.amount.toString()),
+              rate: parseFloat(item.recurring_type === 'compound' ? '5' : item.recurring_type || "0"),
+              period: item.recurring_type === 'compound' ? 'monthly' : (item.recurring_type as 'monthly' | 'annual' || 'monthly'),
+              startDate: new Date(item.date),
+              isCompound: item.is_compound
+            });
+          }
         }
       });
 
@@ -89,8 +90,6 @@ export const useTransactions = (
       const combinedInvestments = [...investments, ...uniqueExistingInvestments];
       
       const calculatedBalance = calculateBalanceFromData(incomes, expenses);
-      const totalInvestmentsAmount = combinedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
-      const availableBalance = calculatedBalance - totalInvestmentsAmount;
       
       setFinances(prev => ({
         ...prev,
@@ -99,7 +98,7 @@ export const useTransactions = (
           incomes,
           expenses,
           investments: combinedInvestments,
-          balance: availableBalance
+          balance: calculatedBalance
         }
       }));
     } catch (error) {
@@ -305,24 +304,21 @@ export const useTransactions = (
       const investmentYear = investmentDate.getFullYear();
       const currentYear = today.getFullYear();
       
-      // Show the initial investment as an expense
       if ((investmentMonth === currentMonth && investmentYear === currentYear) || investmentDate > today) {
         futureTransactions.push({
           id: `${investment.id}-initial`,
           date: investmentDate,
           description: `${investment.description} (Investimento Inicial)`,
           amount: investment.amount,
-          type: 'expense',
+          type: 'investment',
           category: 'investment'
         });
       }
       
-      // Calculate and show monthly returns
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date(investmentDate);
         futureDate.setMonth(futureDate.getMonth() + i);
         
-        // Skip past months
         if (futureDate < today) continue;
         
         const isPeriodMonthly = investment.period === 'monthly';
@@ -365,3 +361,4 @@ export const useTransactions = (
     getFutureTransactions,
   };
 };
+

@@ -20,7 +20,7 @@ type TransactionType = {
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'investment';
   category: string;
   sourceCategory?: string;
 };
@@ -85,6 +85,7 @@ const FutureTransactions = () => {
         // Filter by type
         if (activeTab === 'income' && t.type !== 'income') return false;
         if (activeTab === 'expense' && t.type !== 'expense') return false;
+        if (activeTab === 'investment' && t.type !== 'investment') return false;
 
         // Filter by category
         if (categoryFilter && t.category !== categoryFilter) return false;
@@ -135,18 +136,22 @@ const FutureTransactions = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
-          <TabsList className="grid grid-cols-3 bg-finance-dark-lighter">
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <Calendar size={16} />
+          <TabsList className="grid grid-cols-4 bg-finance-dark-lighter">
+            <TabsTrigger value="all" className="flex items-center gap-1">
+              <Calendar size={14} />
               <span>Todos</span>
             </TabsTrigger>
-            <TabsTrigger value="income" className="flex items-center gap-2">
-              <DollarSign size={16} />
+            <TabsTrigger value="income" className="flex items-center gap-1">
+              <DollarSign size={14} />
               <span>Entradas</span>
             </TabsTrigger>
-            <TabsTrigger value="expense" className="flex items-center gap-2">
-              <ShoppingCart size={16} />
+            <TabsTrigger value="expense" className="flex items-center gap-1">
+              <ShoppingCart size={14} />
               <span>Saídas</span>
+            </TabsTrigger>
+            <TabsTrigger value="investment" className="flex items-center gap-1">
+              <BarChart size={14} />
+              <span>Invest.</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -191,9 +196,17 @@ const FutureTransactions = () => {
               {getFilteredTransactions().map((transaction) => (
                 <div key={transaction.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full ${transaction.type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center`}>
+                    <div className={`w-8 h-8 rounded-full ${
+                      transaction.type === 'income' 
+                        ? 'bg-green-500/20' 
+                        : transaction.type === 'investment' 
+                          ? 'bg-blue-500/20' 
+                          : 'bg-red-500/20'
+                    } flex items-center justify-center`}>
                       {transaction.type === 'income' ? 
                         <DollarSign size={18} className="text-green-400" /> : 
+                        transaction.type === 'investment' ?
+                        <BarChart size={18} className="text-blue-400" /> :
                         <ShoppingCart size={18} style={{ color: getCategoryColor(transaction.category) }} />
                       }
                     </div>
@@ -216,8 +229,15 @@ const FutureTransactions = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <p className={transaction.type === 'income' ? 'text-green-400' : 'text-red-400'}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      <p className={
+                        transaction.type === 'income' 
+                          ? 'text-green-400' 
+                          : transaction.type === 'investment' 
+                            ? 'text-blue-400' 
+                            : 'text-red-400'
+                      }>
+                        {transaction.type === 'income' ? '+' : transaction.type === 'investment' ? '•' : '-'}
+                        {formatCurrency(transaction.amount)}
                       </p>
                     </div>
                     <AlertDialog>
