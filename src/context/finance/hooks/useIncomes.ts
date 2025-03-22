@@ -44,7 +44,7 @@ export const useIncomes = (
 
       if (error) {
         console.error('Error adding income:', error);
-        toast.error('Erro ao adicionar receita');
+        toast.error(`Erro ao adicionar receita: ${error.message}`);
         return;
       }
 

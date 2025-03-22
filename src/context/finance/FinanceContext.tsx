@@ -34,20 +34,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const transactions = useTransactions(currentUser, finances, setFinances);
   const userProfile = useUserProfile(currentUser, setCurrentUser);
 
+  // Fetch transactions when user changes or auth state changes
   useEffect(() => {
-    if (currentUser && !loading) {
+    if (currentUser && !loading && isAuthenticated) {
       console.log("Fetching transactions for current user:", currentUser.id);
       transactions.fetchTransactions();
-      
-      // Fetch transactions for all users to enable comparison
-      users.forEach(user => {
-        if (user.id !== currentUser.id) {
-          console.log("Fetching transactions for comparison user:", user.id);
-          transactions.fetchTransactionsByUserId(user.id);
-        }
-      });
     }
-  }, [currentUser, loading]);
+  }, [currentUser, loading, isAuthenticated]);
 
   // Make sure each user has a finance record
   useEffect(() => {
@@ -102,7 +95,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         selectedProfile,
         selectProfile,
         isAuthenticated,
-        loading // Added the loading property
+        loading
       }}
     >
       {children}

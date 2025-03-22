@@ -9,6 +9,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { DollarSign, User, Mail, Lock, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 
 const Login = () => {
   const { 
@@ -18,7 +19,8 @@ const Login = () => {
     users, 
     selectProfile, 
     selectedProfile, 
-    isAuthenticated 
+    isAuthenticated,
+    loading
   } = useFinance();
   
   const [email, setEmail] = useState<string>('');
@@ -69,14 +71,22 @@ const Login = () => {
     navigate('/dashboard');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-finance-dark">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-finance-blue"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-finance-dark p-4">
-      <Card className="w-full max-w-md finance-card">
+      <Card className="w-full max-w-md finance-card p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-finance-blue flex items-center justify-center mb-4">
+          <div className="w-16 h-16 rounded-full bg-finance-blue flex items-center justify-center mb-4 shadow-lg">
             <DollarSign size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">DualFinance</h1>
+          <h1 className="text-2xl font-bold text-white mb-1">DualFinance</h1>
           <p className="text-gray-400">Controle financeiro para dois</p>
         </div>
 
@@ -121,8 +131,13 @@ const Login = () => {
               <Button
                 onClick={handleEmailLogin}
                 className="w-full finance-btn flex items-center justify-center gap-2"
+                disabled={loading}
               >
-                <LogIn size={18} />
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                ) : (
+                  <LogIn size={18} />
+                )}
                 Entrar
               </Button>
               
@@ -136,6 +151,7 @@ const Login = () => {
                 onClick={handleGoogleLogin}
                 variant="outline"
                 className="w-full border-gray-600 text-white flex items-center justify-center gap-2"
+                disabled={loading}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -194,40 +210,52 @@ const Login = () => {
               <Button
                 onClick={handleSignup}
                 className="w-full finance-btn"
+                disabled={loading}
               >
-                Criar conta
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                ) : (
+                  'Criar conta'
+                )}
               </Button>
             </TabsContent>
           </Tabs>
         ) : (
           <div className="space-y-6">
-            <div>
-              <Label className="text-white mb-2 block">
-                Selecione seu perfil
-              </Label>
-              <div className="grid grid-cols-2 gap-4">
-                {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className={`p-4 rounded-lg flex flex-col items-center cursor-pointer transition-colors ${
-                      selectedUser === user.id ? 'bg-finance-blue' : 'bg-finance-dark-lighter'
-                    }`}
-                    onClick={() => setSelectedUser(user.id)}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-finance-dark-card flex items-center justify-center mb-2">
-                      <User size={24} className="text-white" />
-                    </div>
-                    <span className="text-white font-medium">{user.name}</span>
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-medium text-white">Selecione seu perfil</h2>
+              <p className="text-gray-400 text-sm mt-1">Escolha qual perfil deseja utilizar</p>
+            </div>
+            
+            <Separator className="bg-gray-700" />
+            
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className={`p-4 rounded-lg flex flex-col items-center cursor-pointer transition-colors ${
+                    selectedUser === user.id ? 'bg-finance-blue shadow-lg' : 'bg-finance-dark-lighter hover:bg-opacity-70'
+                  }`}
+                  onClick={() => setSelectedUser(user.id)}
+                >
+                  <div className="w-14 h-14 rounded-full bg-finance-dark-card flex items-center justify-center mb-3">
+                    <User size={24} className="text-white" />
                   </div>
-                ))}
-              </div>
+                  <span className="text-white font-medium">{user.name}</span>
+                </div>
+              ))}
             </div>
 
             <Button
               onClick={handleProfileSelection}
-              className="w-full finance-btn"
+              className="w-full finance-btn mt-6"
+              disabled={loading}
             >
-              Continuar
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+              ) : (
+                'Continuar'
+              )}
             </Button>
           </div>
         )}
