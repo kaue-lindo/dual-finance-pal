@@ -56,11 +56,16 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async () => {
+    setIsSubmitting(true);
     try {
-      await signInWithGoogle();
-      // Note: This will redirect the user, so we don't need to set isSubmitting to false
+      const result = await signInWithGoogle();
+      if (!result.success) {
+        console.error("Google login failed with error:", result.error);
+      }
     } catch (error) {
-      console.error("Google login error:", error);
+      console.error("Google login exception:", error);
+      toast.error("Erro ao fazer login com Google");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -114,8 +119,8 @@ const Login = () => {
         {!isAuthenticated ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-finance-dark-lighter">
-              <TabsTrigger value="login" className="data-[state=active]:bg-finance-blue">Login</TabsTrigger>
-              <TabsTrigger value="signup" className="data-[state=active]:bg-finance-blue">Cadastro</TabsTrigger>
+              <TabsTrigger value="login" className="data-[state=active]:bg-finance-blue text-white">Login</TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-finance-blue text-white">Cadastro</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login" className="space-y-4">
@@ -128,7 +133,7 @@ const Login = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-finance-dark-lighter text-white"
+                    className="pl-10 bg-finance-dark-lighter text-white border-gray-600"
                     placeholder="seu@email.com"
                   />
                 </div>
@@ -143,7 +148,7 @@ const Login = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-finance-dark-lighter text-white"
+                    className="pl-10 bg-finance-dark-lighter text-white border-gray-600"
                     placeholder="********"
                   />
                 </div>
@@ -171,7 +176,7 @@ const Login = () => {
               <Button
                 onClick={handleGoogleLogin}
                 variant="outline"
-                className="w-full border-gray-600 text-white flex items-center justify-center gap-2"
+                className="w-full border-gray-600 text-white hover:bg-gray-700 flex items-center justify-center gap-2"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -211,7 +216,7 @@ const Login = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-finance-dark-lighter text-white"
+                    className="pl-10 bg-finance-dark-lighter text-white border-gray-600"
                     placeholder="seu@email.com"
                   />
                 </div>
@@ -226,7 +231,7 @@ const Login = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-finance-dark-lighter text-white"
+                    className="pl-10 bg-finance-dark-lighter text-white border-gray-600"
                     placeholder="********"
                   />
                 </div>

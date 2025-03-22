@@ -11,23 +11,32 @@ export const useAuth = () => {
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
 
   useEffect(() => {
-    // Establish the auth state listener FIRST
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
+        console.log("Auth state changed:", event, session?.user);
         setSupabaseUser(session?.user || null);
         
         if (event === 'SIGNED_OUT') {
           setCurrentUser(null);
           setSelectedProfile(null);
           localStorage.removeItem('selectedFinanceProfile');
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // When user signs in, we'll check if they have a saved profile
+          const savedProfile = localStorage.getItem('selectedFinanceProfile');
+          if (savedProfile) {
+            const profile = predefinedUsers.find(u => u.id === savedProfile);
+            if (profile) {
+              setCurrentUser(profile);
+              setSelectedProfile(savedProfile);
+            }
+          }
         }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Initial session check:", session?.user?.id);
       setSupabaseUser(session?.user || null);
       
       // If we have a supabase user but no profile selected, check localStorage
@@ -71,16 +80,27 @@ export const useAuth = () => {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/login`
+          redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Google login error:", error);
+        toast.error(error.message || 'Erro ao fazer login com Google');
+        return { success: false, error };
+      }
+      
+      console.log("Google sign in initiated:", data);
       return { success: true };
     } catch (error: any) {
+      console.error("Google login exception:", error);
       toast.error(error.message || 'Erro ao fazer login com Google');
       return { success: false, error };
     } finally {
@@ -93,7 +113,10 @@ export const useAuth = () => {
       setLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`
+        }
       });
       
       if (error) throw error;
@@ -108,12 +131,12 @@ export const useAuth = () => {
   };
 
   const logout = async () => {
-    setLoading(true);
-    setCurrentUser(null);
-    setSelectedProfile(null);
-    localStorage.removeItem('selectedFinanceProfile');
-    
     try {
+      setLoading(true);
+      setCurrentUser(null);
+      setSelectedProfile(null);
+      localStorage.removeItem('selectedFinanceProfile');
+      
       await supabase.auth.signOut();
     } catch (error: any) {
       console.error('Error signing out:', error);
