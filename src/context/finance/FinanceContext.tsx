@@ -101,7 +101,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         supabaseUser,
         selectedProfile,
         selectProfile,
-        isAuthenticated
+        isAuthenticated,
+        loading // Added the loading property
       }}
     >
       {children}

@@ -16,10 +16,18 @@ export const useExpenses = (
     const sourceCategory = categoryAllocationMap[expense.category] || 'salary';
     
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('finances')
         .insert({
           user_id: currentUser.id,
+          auth_id: sessionData.session.user.id,
           type: 'expense',
           description: expense.description,
           amount: expense.amount,

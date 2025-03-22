@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
@@ -17,10 +18,20 @@ export const useTransactions = (
   const fetchTransactionsByUserId = async (userId: string) => {
     try {
       console.log("Fetching transactions for user:", userId);
-      const { data, error } = await supabase
+      // Get the current Supabase authentication session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      let query = supabase
         .from('finances')
         .select('*')
         .eq('user_id', userId);
+      
+      // If we have an authenticated session, also filter by auth_id
+      if (sessionData?.session?.user?.id) {
+        query = query.eq('auth_id', sessionData.session.user.id);
+      }
+        
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching finances:', error);
@@ -133,13 +144,22 @@ export const useTransactions = (
     if (!currentUser) return;
     
     try {
+      // Get the current Supabase authentication session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
       if (!id.includes('-installment-') && !id.includes('-recurring-') && !id.includes('-growth-')) {
         console.log('Deleting transaction with ID:', id);
         
         const { error } = await supabase
           .from('finances')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .eq('auth_id', sessionData.session.user.id);
 
         if (error) {
           console.error('Error deleting transaction:', error);
@@ -166,7 +186,8 @@ export const useTransactions = (
           const { error } = await supabase
             .from('finances')
             .delete()
-            .eq('id', baseId);
+            .eq('id', baseId)
+            .eq('auth_id', sessionData.session.user.id);
 
           if (error) {
             console.error('Error deleting base transaction:', error);

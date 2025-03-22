@@ -1,3 +1,4 @@
+
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'other';
@@ -87,4 +88,5 @@ export type FinanceContextType = {
   selectedProfile: string | null;
   selectProfile: (userId: string) => void;
   isAuthenticated: boolean;
+  loading: boolean; // Added the loading property
 };
