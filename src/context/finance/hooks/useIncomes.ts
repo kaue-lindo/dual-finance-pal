@@ -19,10 +19,19 @@ export const useIncomes = (
     try {
       console.log("Adding income for user:", currentUser.id, income);
       
+      // Get the current Supabase authentication session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('finances')
         .insert({
-          user_id: currentUser.id,
+          user_id: currentUser.id, // This is the finance profile ID
+          auth_id: sessionData.session.user.id, // This is the actual auth user ID
           type: 'income',
           description: income.description,
           amount: income.amount,

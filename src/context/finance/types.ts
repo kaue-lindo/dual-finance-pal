@@ -1,4 +1,3 @@
-
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'other';
@@ -61,9 +60,11 @@ export type FinanceContextType = {
   currentUser: User | null;
   users: User[];
   finances: Record<string, UserFinances>;
-  login: (userId: string, remember: boolean) => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
+  signup: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
+  signInWithGoogle: () => Promise<{ success: boolean; error?: any }>;
   logout: () => void;
-  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => void;
   addIncome: (income: Omit<Income, 'id'>) => Promise<void>;
   addInvestment: (investment: Omit<Investment, 'id'>) => void;
   deleteInvestment: (id: string) => void;
@@ -79,7 +80,11 @@ export type FinanceContextType = {
   getProjectedInvestmentReturn: (months?: number) => number;
   getCategoryExpenses: () => { category: string; amount: number }[];
   getRealIncome: () => number;
-  updateUserProfile: (userData: { name?: string, avatarUrl?: string }) => void;
+  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => void;
   getUserBalance: (userId: string) => number;
   getUserFinances: (userId: string) => UserFinances;
+  supabaseUser: any;
+  selectedProfile: string | null;
+  selectProfile: (userId: string) => void;
+  isAuthenticated: boolean;
 };

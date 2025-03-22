@@ -13,7 +13,21 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [finances, setFinances] = useState<Record<string, UserFinances>>(defaultFinances);
-  const { currentUser, setCurrentUser, loading, login, logout, users } = useAuth();
+  const { 
+    currentUser, 
+    setCurrentUser, 
+    loading, 
+    login, 
+    signup,
+    signInWithGoogle,
+    logout, 
+    users,
+    supabaseUser,
+    selectedProfile,
+    selectProfile,
+    isAuthenticated
+  } = useAuth();
+  
   const expenses = useExpenses(currentUser, finances, setFinances);
   const incomes = useIncomes(currentUser, finances, setFinances);
   const investments = useInvestments(currentUser, finances, setFinances);
@@ -62,6 +76,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         users,
         finances,
         login,
+        signup,
+        signInWithGoogle,
         logout,
         addExpense: expenses.addExpense,
         addIncome: incomes.addIncome,
@@ -81,7 +97,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getRealIncome: incomes.getRealIncome,
         updateUserProfile: userProfile.updateUserProfile,
         getUserBalance: expenses.getUserBalance,
-        getUserFinances: (userId) => finances[userId] || defaultFinances[userId]
+        getUserFinances: (userId) => finances[userId] || defaultFinances[userId],
+        supabaseUser,
+        selectedProfile,
+        selectProfile,
+        isAuthenticated
       }}
     >
       {children}
