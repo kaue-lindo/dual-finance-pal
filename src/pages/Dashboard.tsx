@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
+import { ArrowUp, ArrowDown, TrendingUp, Settings, LogOut, Users, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CircularProgressIndicator } from "@/components/CircularProgressIndicator";
 import { useFinance } from "@/context/FinanceContext";
@@ -15,6 +15,15 @@ import {
   Tooltip,
 } from "recharts";
 import { Home, ShoppingCart, DollarSign, BarChart3, Receipt, Calculator, Calendar } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -29,7 +38,9 @@ const Dashboard = () => {
     getTotalInvestments,
     getProjectedInvestmentReturn,
     getUserBalance,
-    getUserFinances
+    getUserFinances,
+    logout,
+    selectProfile
   } = useFinance();
   const navigate = useNavigate();
 
@@ -47,9 +58,27 @@ const Dashboard = () => {
     value: item.amount,
   }));
 
+  // Calculate if the balance is positive, negative or neutral
+  const getBalanceStatus = () => {
+    if (currentBalance > 0) return "positive";
+    if (currentBalance < 0) return "negative";
+    return "neutral";
+  };
+
+  const balanceStatus = getBalanceStatus();
+
   // Navigate to different screens
   const handleNavigation = (path) => {
     navigate(path);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleSwitchUser = (userId) => {
+    selectProfile(userId);
   };
 
   return (
@@ -64,19 +93,61 @@ const Dashboard = () => {
               Bem-vindo de volta ao DualFinance 👋
             </p>
           </div>
-          <div className="w-10 h-10 rounded-full overflow-hidden">
-            {currentUser?.avatarUrl ? (
-              <img
-                src={currentUser.avatarUrl}
-                alt="Avatar do usuário"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-700 text-white text-lg font-bold">
-                {currentUser?.name.substring(0, 1).toUpperCase()}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="w-10 h-10 rounded-full overflow-hidden cursor-pointer">
+                <Avatar>
+                  {currentUser?.avatarUrl ? (
+                    <AvatarImage 
+                      src={currentUser.avatarUrl} 
+                      alt={currentUser.name} 
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-gray-700 text-white">
+                      {currentUser?.name ? currentUser.name.substring(0, 1).toUpperCase() : 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
               </div>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-finance-dark-card border-finance-dark-lighter">
+              <DropdownMenuLabel className="text-white">Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-gray-700" />
+              <DropdownMenuItem 
+                className="text-white hover:bg-finance-dark-lighter cursor-pointer"
+                onClick={() => navigate('/settings')}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Configurações
+              </DropdownMenuItem>
+              
+              {otherUsers.length > 0 && (
+                <>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuLabel className="text-white">Trocar de Usuário</DropdownMenuLabel>
+                  {otherUsers.map(user => (
+                    <DropdownMenuItem 
+                      key={user.id}
+                      className="text-white hover:bg-finance-dark-lighter cursor-pointer"
+                      onClick={() => handleSwitchUser(user.id)}
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      {user.name}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              
+              <DropdownMenuSeparator className="bg-gray-700" />
+              <DropdownMenuItem 
+                className="text-red-500 hover:bg-finance-dark-lighter cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair da Conta
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
           <Card className="bg-finance-dark-card text-white">
@@ -85,7 +156,9 @@ const Dashboard = () => {
                 <p className="text-gray-400 text-sm">Saldo Atual</p>
                 <h2 className="text-2xl font-bold">{formatCurrency(currentBalance)}</h2>
               </div>
-              <TrendingUp className="text-green-500 w-6 h-6" />
+              {balanceStatus === "positive" && <ArrowUp className="text-green-500 w-6 h-6" />}
+              {balanceStatus === "negative" && <ArrowDown className="text-red-500 w-6 h-6" />}
+              {balanceStatus === "neutral" && <TrendingUp className="text-yellow-500 w-6 h-6" />}
             </div>
           </Card>
           <Card className="bg-finance-dark-card text-white">

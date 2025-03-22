@@ -6,11 +6,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFinance } from '@/context/FinanceContext';
-import { ArrowLeft, Home, ShoppingCart, DollarSign, BarChart3, Upload, Receipt } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Home, 
+  ShoppingCart, 
+  DollarSign, 
+  BarChart3, 
+  Receipt, 
+  Upload,
+  User,
+  Users,
+  LogOut
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Settings = () => {
-  const { currentUser, logout, updateUserProfile } = useFinance();
+  const { 
+    currentUser, 
+    logout, 
+    updateUserProfile, 
+    users,
+    selectProfile
+  } = useFinance();
   const navigate = useNavigate();
   
   const [userName, setUserName] = useState('');
@@ -57,22 +83,71 @@ const Settings = () => {
     
     toast.success('Perfil atualizado com sucesso');
   };
+
+  const otherUsers = users.filter(user => user.id !== currentUser?.id);
+  
+  const handleSwitchUser = (userId: string) => {
+    selectProfile(userId);
+    toast.success('Perfil alterado com sucesso');
+  };
   
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       <div className="finance-card rounded-b-xl">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center p-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft size={24} className="text-white" />
           </Button>
           <h1 className="text-xl font-bold text-white">Configurações</h1>
-          <div className="w-10"></div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="w-10 h-10 rounded-full overflow-hidden cursor-pointer">
+                <Avatar>
+                  {currentUser?.avatarUrl ? (
+                    <AvatarImage 
+                      src={currentUser.avatarUrl} 
+                      alt={currentUser.name} 
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-gray-700 text-white">
+                      {currentUser?.name ? currentUser.name.substring(0, 1).toUpperCase() : 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-finance-dark-card border-finance-dark-lighter">
+              {otherUsers.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-white">Trocar de Usuário</DropdownMenuLabel>
+                  {otherUsers.map(user => (
+                    <DropdownMenuItem 
+                      key={user.id}
+                      className="text-white hover:bg-finance-dark-lighter cursor-pointer"
+                      onClick={() => handleSwitchUser(user.id)}
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      {user.name}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                </>
+              )}
+              <DropdownMenuItem 
+                className="text-red-500 hover:bg-finance-dark-lighter cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair da Conta
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       <div className="mt-6 px-4">
         <Card className="finance-card">
-          <div className="flex flex-col items-center mb-6">
+          <div className="flex flex-col items-center mb-6 p-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-finance-dark-lighter mb-2">
                 {avatarUrl ? (
@@ -105,7 +180,7 @@ const Settings = () => {
             <p className="text-gray-400 text-sm">{currentUser?.email || 'Email não disponível'}</p>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-4 p-6">
             <div>
               <Label htmlFor="userName" className="text-white">Nome de Usuário</Label>
               <Input 

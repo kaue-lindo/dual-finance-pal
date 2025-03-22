@@ -20,7 +20,11 @@ export const useIncomes = (
       console.log("Adding income for user:", currentUser.id, income);
       
       // Get the current Supabase authentication session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw new Error(`Erro ao obter sessão: ${sessionError.message}`);
+      }
       
       if (!sessionData.session) {
         toast.error('Sessão expirada. Faça login novamente.');
@@ -83,7 +87,7 @@ export const useIncomes = (
       toast.success('Receita adicionada com sucesso');
     } catch (error) {
       console.error('Error in addIncome:', error);
-      toast.error('Erro ao adicionar receita');
+      toast.error(error instanceof Error ? error.message : 'Erro ao adicionar receita');
     }
   };
 

@@ -35,12 +35,16 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth state changed:", event, session?.user);
         setSupabaseUser(session?.user || null);
         
         if (event === 'SIGNED_OUT') {
           setCurrentUser(null);
           setSelectedProfile(null);
           localStorage.removeItem('selectedFinanceProfile');
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // When user signs in, we'll show the profile selection screen
+          // Don't automatically select a profile here
         }
       }
     );
@@ -50,6 +54,7 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -60,31 +65,45 @@ export const useAuth = () => {
     } catch (error: any) {
       toast.error(error.message || 'Erro ao fazer login');
       return { success: false, error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
       if (error) throw error;
       return { success: true };
     } catch (error: any) {
+      console.error("Google login error:", error);
       toast.error(error.message || 'Erro ao fazer login com Google');
       return { success: false, error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signup = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`
+        }
       });
       
       if (error) throw error;
@@ -93,18 +112,23 @@ export const useAuth = () => {
     } catch (error: any) {
       toast.error(error.message || 'Erro ao criar conta');
       return { success: false, error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
-    setCurrentUser(null);
-    setSelectedProfile(null);
-    localStorage.removeItem('selectedFinanceProfile');
-    
     try {
+      setLoading(true);
+      setCurrentUser(null);
+      setSelectedProfile(null);
+      localStorage.removeItem('selectedFinanceProfile');
+      
       await supabase.auth.signOut();
     } catch (error: any) {
       console.error('Error signing out:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
