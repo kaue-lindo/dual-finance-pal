@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, Plus, Filter, Search, Trash2, ArrowLeft, PieChart, BarChart3, LineChart as LineChartIcon, Calendar, TrendingUp, DollarSign, ShoppingCart } from 'lucide-react';
@@ -11,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { BottomNav } from '@/components/ui/bottom-nav';
+import BottomNav from '@/components/ui/bottom-nav';
 import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
 
 const Transactions = () => {

@@ -68,7 +68,7 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
         </div>
         
         {/* Gráfico de projeção mensal */}
-        {results && results.monthlyData.length > 0 && (
+        {results && results.monthlyData && results.monthlyData.length > 0 && (
           <div>
             <h3 className="text-white font-medium mb-3">Projeção Mensal</h3>
             <div className="h-64">
@@ -113,7 +113,7 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
         )}
         
         {/* Tabela detalhada */}
-        {results && (
+        {results && results.monthlyData && results.monthlyData.length > 0 && (
           <div>
             <h3 className="text-white font-medium mb-3">Projeção Mensal Detalhada</h3>
             <div className="overflow-x-auto">

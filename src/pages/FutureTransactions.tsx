@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getCategoryColor } from '@/utils/chartUtils';
-import { BottomNav } from '@/components/ui/bottom-nav';
+import BottomNav from '@/components/ui/bottom-nav';
 
 type TransactionType = {
   id: string;
@@ -53,7 +53,6 @@ const FutureTransactions = () => {
     await fetchTransactions();
     const futureTransactions = getFutureTransactions();
     
-    // Convert to our TransactionType format
     const formattedTransactions = futureTransactions.map((t, index) => ({
       id: t.id || `temp-${Date.now()}-${Math.random()}-${index}`,
       date: t.date,
@@ -82,15 +81,12 @@ const FutureTransactions = () => {
   const getFilteredTransactions = () => {
     return transactions
       .filter(t => {
-        // Filter by type
         if (activeTab === 'income' && t.type !== 'income') return false;
         if (activeTab === 'expense' && t.type !== 'expense') return false;
         if (activeTab === 'investment' && t.type !== 'investment') return false;
 
-        // Filter by category
         if (categoryFilter && t.category !== categoryFilter) return false;
 
-        // Filter by search term
         if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) {
           return false;
         }
@@ -104,7 +100,6 @@ const FutureTransactions = () => {
 
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
-      {/* Header */}
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
@@ -122,7 +117,6 @@ const FutureTransactions = () => {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="px-4 pt-4">
         <div className="mb-4">
           <Label htmlFor="search" className="text-white mb-1">Pesquisar:</Label>
@@ -183,7 +177,6 @@ const FutureTransactions = () => {
         )}
       </div>
 
-      {/* Transactions List */}
       <div className="px-4 mb-24">
         <Card className="finance-card">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -309,7 +302,6 @@ const FutureTransactions = () => {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
       <BottomNav currentPath="/future-transactions" />
     </div>
   );
