@@ -18,7 +18,7 @@ import CashFlow from './pages/CashFlow';
 import InvestmentReturns from './pages/InvestmentReturns';
 import UserComparison from './pages/UserComparison';
 import AddTransaction from './pages/AddTransaction';
-import { SimulationPage } from './pages/SimulationPage';
+import SimulationPage from './pages/SimulationPage';
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
