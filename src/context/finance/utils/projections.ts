@@ -1,4 +1,3 @@
-
 // Calculate projected value based on growth rate
 export const calculateProjectedValue = (principal: number, rate: number, months: number): number => {
   // Convert percentage rate to decimal and to monthly rate
@@ -8,44 +7,36 @@ export const calculateProjectedValue = (principal: number, rate: number, months:
 
 // Calculate compound interest growth over time with more accurate compounding
 export const calculateCompoundInterest = (
-  principal: number, 
-  rate: number, 
-  years: number, 
-  compoundingFrequency: 'monthly' | 'quarterly' | 'annually' = 'monthly'
+  principal: number,
+  annualRate: number,
+  years: number,
+  period: 'monthly' | 'yearly' | 'annual' = 'yearly'
 ): number => {
-  // Rate should be in percentage form (e.g., 5 for 5%)
-  let periodsPerYear: number;
-  switch (compoundingFrequency) {
-    case 'monthly':
-      periodsPerYear = 12;
-      break;
-    case 'quarterly':
-      periodsPerYear = 4;
-      break;
-    case 'annually':
-      periodsPerYear = 1;
-      break;
-  }
+  const isMonthly = period === 'monthly';
+  const rate = isMonthly ? annualRate / 12 / 100 : annualRate / 100;
+  const n = isMonthly ? 12 : 1;
   
-  const ratePerPeriod = rate / 100 / periodsPerYear;
-  const totalPeriods = years * periodsPerYear;
+  // Compound interest formula: A = P(1 + r/n)^(nt)
+  const futureValue = principal * Math.pow(1 + rate, n * years);
   
-  return principal * Math.pow(1 + ratePerPeriod, totalPeriods);
+  return futureValue;
 };
 
 // Calculate simple interest (no compounding)
 export const calculateSimpleInterest = (
   principal: number,
-  rate: number,
+  annualRate: number,
   years: number,
-  period: 'monthly' | 'annual' = 'annual'
+  period: 'monthly' | 'yearly' | 'annual' = 'yearly'
 ): number => {
-  // Convert rate to decimal
-  const decimalRate = rate / 100;
-  // Adjust rate based on period
-  const effectiveRate = period === 'monthly' ? decimalRate / 12 * 12 * years : decimalRate * years;
-  // Calculate total with simple interest
-  return principal * (1 + effectiveRate);
+  const isMonthly = period === 'monthly';
+  const rate = isMonthly ? annualRate / 12 / 100 : annualRate / 100;
+  const n = isMonthly ? 12 * years : years;
+  
+  // Simple interest formula: A = P(1 + rt)
+  const futureValue = principal * (1 + rate * n);
+  
+  return futureValue;
 };
 
 // Get projected monthly returns for an investment
@@ -62,22 +53,22 @@ export const getMonthlyReturn = (
 // Calculate investment growth for a specific month (for simulations)
 export const calculateInvestmentGrowthForMonth = (
   principal: number,
-  rate: number, 
-  isPeriodMonthly: boolean,
-  month: number,
-  isCompound: boolean = true
+  rate: number,
+  isMonthlyRate: boolean,
+  monthsElapsed: number,
+  isCompound: boolean
 ): number => {
-  if (month === 0) return 0;
+  if (monthsElapsed <= 0) return principal;
   
-  const monthlyRate = isPeriodMonthly ? rate / 100 : (rate / 12) / 100;
+  // Converter a taxa para mensal se for anual
+  const monthlyRate = isMonthlyRate ? rate / 100 : rate / 12 / 100;
   
   if (isCompound) {
-    // Compound interest - calculate the total value after the given months
-    const futureValue = principal * Math.pow(1 + monthlyRate, month);
-    return futureValue - principal;
+    // Juros compostos: A = P(1 + r)^t
+    return principal * Math.pow(1 + monthlyRate, monthsElapsed);
   } else {
-    // Simple interest
-    return principal * monthlyRate * month;
+    // Juros simples: A = P(1 + r*t)
+    return principal * (1 + monthlyRate * monthsElapsed);
   }
 };
 
@@ -88,34 +79,24 @@ export const calculateInvestmentReturnForMonth = (
 ): number => {
   if (!investments || investments.length === 0) return 0;
   
-  return investments.reduce((total, investment) => {
+  let totalMonthlyReturn = 0;
+  
+  investments.forEach(investment => {
     const isPeriodMonthly = investment.period === 'monthly';
     const isCompound = investment.isCompound !== false;
+    const rate = investment.rate || 0;
     
-    // For the first month, no return yet
-    if (monthIndex === 0) return total;
+    // Para taxas muito altas, limitar para evitar valores irreais
+    const safeRate = Math.min(rate, isPeriodMonthly ? 10 : 30);
     
-    // Calculate previous month's total value (principal + growth)
-    const prevMonthGrowth = calculateInvestmentGrowthForMonth(
-      investment.amount, 
-      investment.rate, 
-      isPeriodMonthly, 
-      monthIndex - 1, 
-      isCompound
-    );
+    // Calcular o rendimento mensal com base na taxa segura
+    const monthlyRate = isPeriodMonthly ? safeRate / 100 : safeRate / 12 / 100;
+    const monthlyReturn = investment.amount * monthlyRate;
     
-    // Calculate current month's total value
-    const currentMonthGrowth = calculateInvestmentGrowthForMonth(
-      investment.amount, 
-      investment.rate, 
-      isPeriodMonthly, 
-      monthIndex, 
-      isCompound
-    );
-    
-    // The monthly return is the difference between current and previous month's growth
-    const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
-    
-    return total + monthlyReturn;
-  }, 0);
+    // Adicionar ao total
+    totalMonthlyReturn += monthlyReturn;
+  });
+  
+  // Arredondar para 2 casas decimais para evitar problemas de precisão
+  return Math.round(totalMonthlyReturn * 100) / 100;
 };

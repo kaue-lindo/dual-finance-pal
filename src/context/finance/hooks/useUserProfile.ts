@@ -32,7 +32,7 @@ export const useUserProfile = (
           auth_id: sessionData.session.user.id,
           name: updatedUser.name,
           avatar_url: updatedUser.avatarUrl
-        }, { onConflict: 'user_id,auth_id' });
+        });
       
       if (error) {
         console.error('Error updating profile in Supabase:', error);

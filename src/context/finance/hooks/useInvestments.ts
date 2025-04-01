@@ -2,47 +2,43 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
 import { calculateBalanceFromData } from '../utils/calculations';
-import { calculateCompoundInterest, calculateSimpleInterest } from '../utils/projections';
+import { calculateCompoundInterest, calculateSimpleInterest, calculateInvestmentGrowthForMonth } from '../utils/projections';
 
 export const useInvestments = (
   currentUser: any,
   finances: Record<string, any>,
   setFinances: React.Dispatch<React.SetStateAction<Record<string, any>>>
 ) => {
-  const addInvestment = async (investment: Omit<Investment, 'id'>) => {
+  const addInvestment = async (investment: Omit<Investment, 'id'>): Promise<void> => {
     if (!currentUser) return;
     
     try {
-      // Get the current Supabase authentication session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionData = await supabase.auth.getSession();
+      if (!sessionData.data.session) throw new Error('Usuário não autenticado');
       
-      if (!sessionData.session) {
-        toast.error('Sessão expirada. Faça login novamente.');
-        return;
-      }
+      // Salvar a taxa de juros no campo recurring_days como um array de números
+      const rateAsNumber = parseFloat(investment.rate.toString());
+      const rateAsArray = [rateAsNumber];
       
       const { data, error } = await supabase
         .from('finances')
         .insert({
           user_id: currentUser.id,
-          auth_id: sessionData.session.user.id,
+          auth_id: sessionData.data.session.user.id,
           type: 'investment',
           description: investment.description,
           amount: investment.amount,
           category: 'investment',
           date: investment.startDate.toISOString(),
-          recurring_type: investment.period,
-          is_compound: investment.isCompound
+          recurring_type: investment.isCompound ? 'compound' : investment.period,
+          is_compound: investment.isCompound,
+          recurring_days: rateAsArray // Armazenar a taxa como o primeiro elemento do array
         })
         .select()
         .single();
-
-      if (error) {
-        console.error('Error saving investment to Supabase:', error);
-        toast.error('Erro ao salvar investimento no banco de dados');
-        return;
-      }
-
+      
+      if (error) throw error;
+      
       const newInvestment: Investment = {
         id: data.id,
         description: data.description,
@@ -76,10 +72,76 @@ export const useInvestments = (
         };
       });
       
-      toast.success('Investimento adicionado com sucesso');
+      // Salvar os rendimentos projetados como transações futuras
+      await saveProjectedReturns(newInvestment);
+      
+      toast.success('Investimento adicionado com sucesso!');
     } catch (error) {
       console.error('Error in addInvestment:', error);
-      toast.error('Erro ao adicionar investimento');
+      toast.error('Erro ao adicionar investimento. Tente novamente.');
+    }
+  };
+
+  const saveProjectedReturns = async (investment: Investment) => {
+    if (!currentUser) return;
+    
+    try {
+      // Get the current Supabase authentication session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        return;
+      }
+      
+      const months = 12; // Salvar rendimentos para 12 meses à frente
+      const today = new Date();
+      
+      for (let i = 1; i <= months; i++) {
+        const futureDate = new Date(investment.startDate);
+        futureDate.setMonth(futureDate.getMonth() + i);
+        
+        const isPeriodMonthly = investment.period === 'monthly';
+        const isCompound = investment.isCompound !== false;
+        
+        const prevMonthGrowth = calculateInvestmentGrowthForMonth(
+          investment.amount, 
+          investment.rate, 
+          isPeriodMonthly, 
+          i-1, 
+          isCompound
+        );
+        
+        const currentMonthGrowth = calculateInvestmentGrowthForMonth(
+          investment.amount, 
+          investment.rate, 
+          isPeriodMonthly, 
+          i, 
+          isCompound
+        );
+        
+        const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
+        
+        if (monthlyReturn > 0) {
+          // Em vez de criar uma transação de renda, criamos uma transação de atualização do investimento
+          await supabase
+            .from('finances')
+            .insert({
+              user_id: currentUser.id,
+              auth_id: sessionData.session.user.id,
+              type: 'investment_update',
+              description: `${investment.description} (Reinvestimento)`,
+              amount: monthlyReturn,
+              category: 'investment_returns',
+              date: futureDate.toISOString(),
+              recurring_type: 'investment-reinvest',
+              recurring: true,
+              source_category: 'investment',
+              parent_investment_id: investment.id
+            });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving projected returns:', error);
     }
   };
 
@@ -115,6 +177,15 @@ export const useInvestments = (
         return;
       }
       
+      // Também remover os rendimentos associados
+      await supabase
+        .from('finances')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('auth_id', sessionData.session.user.id)
+        .eq('recurring_type', 'investment-return')
+        .ilike('description', `${investment.description}%`);
+      
       toast.success('Investimento removido com sucesso');
       
       setFinances(prev => {
@@ -149,37 +220,39 @@ export const useInvestments = (
     return userFinances.investments.reduce((sum, investment) => sum + investment.amount, 0);
   };
 
-  const getProjectedInvestmentReturn = (months = 12) => {
+  const getProjectedInvestmentReturn = (months: number = 12): number => {
     if (!currentUser) return 0;
     
-    const userFinances = finances[currentUser.id] || { investments: [] };
+    const userFinances = finances[currentUser.id];
+    if (!userFinances) return 0;
+    
+    const investments = userFinances.investments || [];
+    if (investments.length === 0) return 0;
+    
     let totalReturn = 0;
     
-    userFinances.investments.forEach(investment => {
-      const years = months / 12;
-      let futureValue: number;
+    investments.forEach(investment => {
+      const isPeriodMonthly = investment.period === 'monthly';
+      const isCompound = investment.isCompound !== false;
       
-      if (investment.isCompound !== false) {
-        futureValue = calculateCompoundInterest(
-          investment.amount,
-          investment.period === 'monthly' ? investment.rate * 12 : investment.rate,
-          years,
-          'monthly'
-        );
+      // Calcular o valor futuro com base no tipo de juros
+      let futureValue;
+      if (isCompound) {
+        // Juros compostos: A = P(1 + r)^t
+        const monthlyRate = isPeriodMonthly ? investment.rate / 100 : investment.rate / 12 / 100;
+        futureValue = investment.amount * Math.pow(1 + monthlyRate, months);
       } else {
-        futureValue = calculateSimpleInterest(
-          investment.amount,
-          investment.period === 'monthly' ? investment.rate * 12 : investment.rate,
-          years,
-          investment.period
-        );
+        // Juros simples: A = P(1 + r*t)
+        const monthlyRate = isPeriodMonthly ? investment.rate / 100 : investment.rate / 12 / 100;
+        futureValue = investment.amount * (1 + monthlyRate * months);
       }
       
-      const growthAmount = futureValue - investment.amount;
-      totalReturn += growthAmount;
+      // O retorno é a diferença entre o valor futuro e o valor inicial
+      const investmentReturn = futureValue - investment.amount;
+      totalReturn += investmentReturn;
     });
     
-    return totalReturn;
+    return parseFloat(totalReturn.toFixed(2));
   };
 
   return {

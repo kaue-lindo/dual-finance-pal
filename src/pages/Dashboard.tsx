@@ -1,9 +1,29 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, ArrowDown, TrendingUp, Settings, LogOut, Users, User } from "lucide-react";
+import { 
+  ArrowDown, 
+  ArrowUp, 
+  Calculator, 
+  Calendar, 
+  CreditCard, 
+  Home, 
+  PiggyBank, 
+  Plus, 
+  Receipt, 
+  Wallet,
+  TrendingUp,
+  Users,
+  ChevronRight,
+  Settings,
+  BarChart,
+  LogOut as LogOutIcon,
+  User as UserIcon,
+  ArrowUpDown,
+  UserPlus
+} from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { CircularProgressIndicator } from "@/components/CircularProgressIndicator";
+import BottomNav from "@/components/ui/bottom-nav";
 import { useFinance } from "@/context/FinanceContext";
 import { formatCurrency } from "@/context/finance/utils/formatting";
 import {
@@ -14,7 +34,6 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-import { Home, ShoppingCart, DollarSign, BarChart3, Receipt, Calculator, Calendar } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +69,11 @@ const Dashboard = () => {
   const realIncome = getRealIncome();
   const investmentAmount = getTotalInvestments();
   const projectedReturn = getProjectedInvestmentReturn(12);
+  const totalInvestment = getTotalInvestments();
+  // Evitar divisão por zero e garantir um valor percentual válido
+  const projectedReturnPercentage = totalInvestment > 0 
+    ? Math.min(100, (projectedReturn / totalInvestment) * 100) 
+    : 0;
 
   const otherUsers = users.filter(user => user.id !== currentUser?.id);
 
@@ -131,7 +155,7 @@ const Dashboard = () => {
                       className="text-white hover:bg-finance-dark-lighter cursor-pointer"
                       onClick={() => handleSwitchUser(user.id)}
                     >
-                      <User className="mr-2 h-4 w-4" />
+                      <UserIcon className="mr-2 h-4 w-4" />
                       {user.name}
                     </DropdownMenuItem>
                   ))}
@@ -143,7 +167,7 @@ const Dashboard = () => {
                 className="text-red-500 hover:bg-finance-dark-lighter cursor-pointer"
                 onClick={handleLogout}
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOutIcon className="mr-2 h-4 w-4" />
                 Sair da Conta
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -234,8 +258,13 @@ const Dashboard = () => {
           </h2>
           <div className="flex flex-col items-center">
             <CircularProgressIndicator
-              value={projectedReturn}
+              value={projectedReturnPercentage}
               size={150}
+              centerContent={
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">{projectedReturnPercentage.toFixed(1)}%</p>
+                </div>
+              }
             />
             <p className="text-white mt-4">
               Retorno Projetado: {formatCurrency(projectedReturn)}
@@ -244,38 +273,40 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* User Comparison Section */}
+      {/* User Comparison Section - Improved */}
       {otherUsers.length > 0 && (
         <div className="px-4 mt-6">
-          <h2 className="text-white text-xl font-bold mb-3">Comparação entre Usuários</h2>
-          {otherUsers.map(user => {
-            const otherUserBalance = getUserBalance(user.id);
-            const otherUserFinances = getUserFinances(user.id);
-            const otherUserInvestments = otherUserFinances.investments.reduce(
-              (sum, inv) => sum + inv.amount, 0
-            );
-            const currentUserInvestments = getTotalInvestments();
-            const balanceDiff = currentBalance - otherUserBalance;
-            const investmentDiff = currentUserInvestments - otherUserInvestments;
-            
-            return (
-              <Card key={user.id} className="finance-card mb-4 p-4">
-                <div>
-                  <div className="flex items-center mb-3">
-                    <div className="w-10 h-10 rounded-full bg-finance-dark-lighter flex items-center justify-center mr-3">
-                      {user.avatarUrl ? (
-                        <img 
-                          src={user.avatarUrl} 
-                          alt={user.name} 
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-white font-bold">
-                          {user.name.substring(0, 1)}
-                        </span>
-                      )}
+          <h2 className="text-white text-xl font-bold mb-4">
+            Comparação de Finanças
+          </h2>
+          <div className="space-y-4">
+            {otherUsers.map(user => {
+              const otherUserBalance = getUserBalance(user.id);
+              const otherUserFinances = getUserFinances(user.id);
+              const otherUserInvestments = otherUserFinances.investments.reduce(
+                (sum, inv) => sum + inv.amount, 0
+              );
+              const balanceDiff = currentBalance - otherUserBalance;
+              const investmentDiff = investmentAmount - otherUserInvestments;
+              
+              return (
+                <Card 
+                  key={user.id} 
+                  className="finance-card p-4 cursor-pointer hover:bg-finance-dark-lighter transition-colors"
+                  onClick={() => handleNavigation('/user-comparison')}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 rounded-full bg-finance-dark-lighter flex items-center justify-center mr-3 overflow-hidden">
+                        {user.avatarUrl ? (
+                          <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Users className="w-6 h-6 text-white" />
+                        )}
+                      </div>
+                      <h3 className="text-white font-bold">{user.name}</h3>
                     </div>
-                    <h3 className="text-white font-bold">{user.name}</h3>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
@@ -296,83 +327,90 @@ const Dashboard = () => {
                         {formatCurrency(otherUserInvestments)}
                       </p>
                       <div className={`flex items-center mt-1 text-xs ${investmentDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {investmentDiff > 0 ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                        {investmentDiff > 0 ? <TrendingUp size={14} /> : <ArrowDown size={14} />}
                         <span>{formatCurrency(Math.abs(investmentDiff))} {investmentDiff > 0 ? 'a mais' : 'a menos'}</span>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            );
-          })}
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Extended Navigation Bar with Additional Shortcuts */}
-      <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
-        <button className="navbar-icon" onClick={() => handleNavigation('/dashboard')}>
-          <Home className="w-6 h-6 text-white" />
-        </button>
-        <button className="navbar-icon" onClick={() => handleNavigation('/expenses')}>
-          <ShoppingCart className="w-6 h-6 text-white" />
-        </button>
-        <div className="-mt-8">
-          <button 
-            className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
-            onClick={() => handleNavigation('/add-income')}
-          >
-            <DollarSign className="w-6 h-6 text-white" />
-          </button>
-        </div>
-        <button className="navbar-icon" onClick={() => handleNavigation('/investments')}>
-          <BarChart3 className="w-6 h-6 text-white" />
-        </button>
-        <button className="navbar-icon" onClick={() => handleNavigation('/all-transactions')}>
-          <Receipt className="w-6 h-6 text-white" />
-        </button>
-      </div>
-
-      {/* Additional Navigation Options */}
+      {/* Improved Quick Actions Section */}
       <div className="px-4 mt-6 mb-20">
         <Card className="finance-card p-4">
           <h2 className="text-white text-xl font-bold mb-4">
-            Outras Opções
+            Ações Rápidas
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <button 
-              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/simulator')}
+              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/cashflow')}
             >
-              <Calculator className="w-8 h-8 text-white mb-2" />
-              <span className="text-white">Simulador</span>
+              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center mb-3">
+                <ArrowUpDown className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Fluxo de Caixa</span>
             </button>
             
             <button 
-              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/future-transactions')}
+              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/add-transaction')}
             >
-              <Calendar className="w-8 h-8 text-white mb-2" />
-              <span className="text-white">Transações Futuras</span>
+              <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center mb-3">
+                <Plus className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Nova Transação</span>
             </button>
             
             <button 
-              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/future-graphs')}
+              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/investment-returns')}
             >
-              <BarChart3 className="w-8 h-8 text-white mb-2" />
-              <span className="text-white">Gráficos Futuros</span>
+              <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center mb-3">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Rendimentos</span>
             </button>
             
             <button 
-              className="bg-finance-dark-card p-3 rounded-lg flex flex-col items-center justify-center"
+              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/investments')}
+            >
+              <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center mb-3">
+                <PiggyBank className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Investimentos</span>
+            </button>
+            
+            <button 
+              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
+              onClick={() => handleNavigation('/user-comparison')}
+            >
+              <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center mb-3">
+                <UserPlus className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Comparação de Finanças</span>
+            </button>
+            
+            <button 
+              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
               onClick={() => handleNavigation('/settings')}
             >
-              <DollarSign className="w-8 h-8 text-white mb-2" />
-              <span className="text-white">Configurações</span>
+              <div className="w-12 h-12 rounded-full bg-amber-600 flex items-center justify-center mb-3">
+                <Settings className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Configurações</span>
             </button>
           </div>
         </Card>
       </div>
+
+      {/* Barra de navegação inferior */}
+      <BottomNav currentPath="/dashboard" />
     </div>
   );
 };

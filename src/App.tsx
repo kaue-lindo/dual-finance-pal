@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,11 +10,15 @@ import AddIncome from "./pages/AddIncome";
 import Expenses from "./pages/Expenses";
 import Investments from "./pages/Investments";
 import Simulator from "./pages/Simulator";
-import FutureTransactions from "./pages/FutureTransactions";
-import FutureTransactionsGraph from "./pages/FutureTransactionsGraph";
 import NotFound from "./pages/NotFound";
 import AllTransactions from './pages/AllTransactions';
 import Settings from './pages/Settings';
+import Transactions from './pages/Transactions';
+import CashFlow from './pages/CashFlow';
+import InvestmentReturns from './pages/InvestmentReturns';
+import UserComparison from './pages/UserComparison';
+import AddTransaction from './pages/AddTransaction';
+import SimulationPage from './pages/SimulationPage';
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -63,9 +66,21 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      <Route path="/transactions" element={
+        <ProtectedRoute>
+          <Transactions />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/add-income" element={
         <ProtectedRoute>
           <AddIncome />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/add-transaction" element={
+        <ProtectedRoute>
+          <AddTransaction />
         </ProtectedRoute>
       } />
       
@@ -87,15 +102,9 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      <Route path="/future-transactions" element={
+      <Route path="/simulation" element={
         <ProtectedRoute>
-          <FutureTransactions />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/future-graphs" element={
-        <ProtectedRoute>
-          <FutureTransactionsGraph />
+          <SimulationPage />
         </ProtectedRoute>
       } />
       
@@ -108,6 +117,24 @@ const AppRoutes = () => {
       <Route path="/settings" element={
         <ProtectedRoute>
           <Settings />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/cashflow" element={
+        <ProtectedRoute>
+          <CashFlow />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/investment-returns" element={
+        <ProtectedRoute>
+          <InvestmentReturns />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/user-comparison" element={
+        <ProtectedRoute>
+          <UserComparison />
         </ProtectedRoute>
       } />
       

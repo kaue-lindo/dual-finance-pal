@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,19 +43,28 @@ const InvestmentCalculator = () => {
 
   const calculateInvestment = () => {
     if (!amount || !rate) {
-      uiToast({
-        title: 'Erro',
-        description: 'Por favor, preencha o valor e a taxa',
-        variant: 'destructive',
-      });
+      toast.error('Por favor, preencha o valor e a taxa');
       return;
     }
 
     const principal = parseFloat(amount);
     const interestRate = parseFloat(rate);
     
+    if (isNaN(principal) || isNaN(interestRate)) {
+      toast.error('Por favor, insira valores numéricos válidos');
+      return;
+    }
+    
+    if (interestRate <= 0) {
+      toast.error('A taxa de rendimento deve ser maior que zero');
+      return;
+    }
+    
+    // Limitar a taxa para evitar valores irreais
+    const safeRate = Math.min(interestRate, period === 'monthly' ? 10 : 30);
+    
     // Calculate monthly return (this is the same for both simple and compound)
-    const effectiveMonthlyRate = period === 'monthly' ? interestRate / 100 : (interestRate / 12) / 100;
+    const effectiveMonthlyRate = period === 'monthly' ? safeRate / 100 : (safeRate / 12) / 100;
     const monthlyReturnValue = principal * effectiveMonthlyRate;
     setMonthlyReturn(monthlyReturnValue);
     
@@ -67,15 +75,15 @@ const InvestmentCalculator = () => {
       // Calculate with compound interest
       oneYearReturn = calculateCompoundInterest(
         principal, 
-        period === 'monthly' ? interestRate * 12 : interestRate, 
+        period === 'monthly' ? safeRate * 12 : safeRate, 
         1, 
-        period === 'monthly' ? 'monthly' : 'annually'
+        period
       );
     } else {
       // Calculate with simple interest
       oneYearReturn = calculateSimpleInterest(
         principal,
-        period === 'monthly' ? interestRate * 12 : interestRate,
+        period === 'monthly' ? safeRate * 12 : safeRate,
         1,
         period
       );
@@ -87,33 +95,39 @@ const InvestmentCalculator = () => {
 
   const saveInvestment = () => {
     if (!currentUser || !amount || !rate || !description) {
-      uiToast({
-        title: 'Erro',
-        description: 'Por favor, preencha todos os campos',
-        variant: 'destructive',
-      });
+      toast.error('Por favor, preencha todos os campos');
       return;
     }
 
     if (insufficientBalance) {
-      uiToast({
-        title: 'Erro',
-        description: 'Saldo insuficiente para realizar este investimento',
-        variant: 'destructive',
-      });
+      toast.error('Saldo insuficiente para realizar este investimento');
       return;
     }
+    
+    const amountValue = parseFloat(amount);
+    const rateValue = parseFloat(rate);
+    
+    if (isNaN(amountValue) || isNaN(rateValue)) {
+      toast.error('Por favor, insira valores numéricos válidos');
+      return;
+    }
+    
+    if (rateValue <= 0) {
+      toast.error('A taxa de rendimento deve ser maior que zero');
+      return;
+    }
+    
+    // Limitar a taxa para evitar valores irreais
+    const safeRate = Math.min(rateValue, period === 'monthly' ? 10 : 30);
 
     addInvestment({
       description,
-      amount: parseFloat(amount),
-      rate: parseFloat(rate),
+      amount: amountValue,
+      rate: safeRate,
       period,
       startDate: new Date(),
       isCompound
     });
-
-    toast.success('Investimento adicionado com sucesso');
 
     // Reset form
     setDescription('');
@@ -125,7 +139,7 @@ const InvestmentCalculator = () => {
     setAnnualReturn(null);
     
     // Update available balance after investment
-    setAvailableBalance(calculateBalance() - parseFloat(amount));
+    setAvailableBalance(calculateBalance() - amountValue);
   };
 
   return (
@@ -210,15 +224,17 @@ const InvestmentCalculator = () => {
           </RadioGroup>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 mt-4">
           <Switch 
-            id="compound-interest"
+            id="isCompound"
             checked={isCompound}
             onCheckedChange={setIsCompound}
-            className="bg-finance-blue"
           />
-          <Label htmlFor="compound-interest" className="text-white">
-            {isCompound ? 'Juros Compostos' : 'Juros Simples'}
+          <Label htmlFor="isCompound" className="text-white">
+            Juros Compostos
+            <span className="block text-xs text-gray-400">
+              {isCompound ? 'Os rendimentos são reinvestidos mensalmente' : 'Apenas o valor principal gera rendimentos'}
+            </span>
           </Label>
         </div>
 

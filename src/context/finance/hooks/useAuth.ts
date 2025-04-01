@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, predefinedUsers } from '../constants';
@@ -132,14 +131,59 @@ export const useAuth = () => {
     }
   };
 
-  const selectProfile = (userId: string) => {
+  const selectProfile = async (userId: string) => {
     // Get the base user from predefined users
     const profile = predefinedUsers.find(u => u.id === userId);
     
     if (profile) {
-      setCurrentUser(profile);
+      // Verificar se já existe um perfil no Supabase
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching user profile:', error);
+        }
+        
+        // Se encontrou um perfil no Supabase, use-o
+        if (data) {
+          const updatedProfile = {
+            ...profile,
+            name: data.name || profile.name,
+            avatarUrl: data.avatar_url || profile.avatarUrl
+          };
+          setCurrentUser(updatedProfile);
+        } else {
+          // Caso contrário, use o perfil predefinido
+          setCurrentUser(profile);
+          
+          // E tente criar um perfil no Supabase
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert({
+              user_id: userId,
+              auth_id: supabaseUser?.id || userId,
+              name: profile.name,
+              avatar_url: profile.avatarUrl
+            });
+            
+          if (insertError) {
+            console.error('Error creating user profile:', insertError);
+          }
+        }
+      } catch (error) {
+        console.error('Error in selectProfile:', error);
+        setCurrentUser(profile);
+      }
+      
       setSelectedProfile(userId);
       localStorage.setItem('selectedFinanceProfile', userId);
+      
+      // Notificar o usuário
+      toast.success(`Perfil de ${profile.name} selecionado`);
     }
   };
 

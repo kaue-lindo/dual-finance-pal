@@ -1,7 +1,6 @@
-
 import { User } from './constants';
 
-export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'other';
+export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
 
 export type Expense = {
   id: string;
@@ -27,7 +26,10 @@ export type Income = {
   amount: number;
   date: Date;
   category: IncomeCategory;
-  recurring?: boolean;
+  recurring?: boolean | {
+    type: 'daily' | 'weekly' | 'monthly';
+    days?: number[]; // Days of month for monthly recurring
+  };
 };
 
 export type Investment = {
@@ -66,7 +68,9 @@ export type FinanceContextType = {
   signInWithGoogle: () => Promise<{ success: boolean; error?: any }>;
   logout: () => void;
   addExpense: (expense: Omit<Expense, 'id'>) => void;
+  deleteExpense: (id: string) => Promise<void>;
   addIncome: (income: Omit<Income, 'id'>) => Promise<void>;
+  deleteIncome: (id: string) => Promise<void>;
   addInvestment: (investment: Omit<Investment, 'id'>) => void;
   deleteInvestment: (id: string) => void;
   calculateBalance: () => number;
@@ -77,9 +81,10 @@ export type FinanceContextType = {
   fetchTransactionsByUserId: (userId: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   getIncomeCategories: () => { value: IncomeCategory; label: string }[];
+  getExpenseCategories: () => { value: string; label: string }[];
   getTotalInvestments: () => number;
   getProjectedInvestmentReturn: (months?: number) => number;
-  getCategoryExpenses: () => { category: string; amount: number }[];
+  getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
   getRealIncome: () => number;
   updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => void;
   getUserBalance: (userId: string) => number;
@@ -88,5 +93,5 @@ export type FinanceContextType = {
   selectedProfile: string | null;
   selectProfile: (userId: string) => void;
   isAuthenticated: boolean;
-  loading: boolean; // Added the loading property
+  loading: boolean;
 };

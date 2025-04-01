@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -8,15 +7,10 @@ import { Label } from '@/components/ui/label';
 import { useFinance } from '@/context/FinanceContext';
 import { 
   ArrowLeft, 
-  Home, 
-  ShoppingCart, 
-  DollarSign, 
-  BarChart3, 
-  Receipt, 
-  Upload,
   User,
   Users,
-  LogOut
+  LogOut,
+  Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import BottomNav from "@/components/ui/bottom-nav";
 
 const Settings = () => {
   const { 
@@ -212,29 +207,7 @@ const Settings = () => {
         </Card>
       </div>
 
-      {/* Fixed navigation bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
-        <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
-          <Home className="w-6 h-6 text-white" />
-        </button>
-        <button className="navbar-icon" onClick={() => navigate('/expenses')}>
-          <ShoppingCart className="w-6 h-6 text-white" />
-        </button>
-        <div className="-mt-8">
-          <button 
-            className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
-            onClick={() => navigate('/add-income')}
-          >
-            <DollarSign className="w-6 h-6 text-white" />
-          </button>
-        </div>
-        <button className="navbar-icon" onClick={() => navigate('/investments')}>
-          <BarChart3 className="w-6 h-6 text-white" />
-        </button>
-        <button className="navbar-icon" onClick={() => navigate('/all-transactions')}>
-          <Receipt className="w-6 h-6 text-white" />
-        </button>
-      </div>
+      <BottomNav currentPath="/settings" />
     </div>
   );
 };

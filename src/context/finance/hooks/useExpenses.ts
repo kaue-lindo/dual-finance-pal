@@ -153,10 +153,11 @@ export const useExpenses = (
     return incomeTotal - expenseTotal - investmentTotal;
   };
 
-  const getCategoryExpenses = () => {
-    if (!currentUser) return [];
+  const getCategoryExpenses = (userId?: string) => {
+    const targetUserId = userId || currentUser?.id;
+    if (!targetUserId) return [];
     
-    const userFinances = finances[currentUser.id] || { expenses: [] };
+    const userFinances = finances[targetUserId] || { expenses: [] };
     const categoryMap: Record<string, number> = {};
     
     userFinances.expenses.forEach(expense => {
@@ -170,12 +171,82 @@ export const useExpenses = (
     }));
   };
 
+  const getExpenseCategories = () => {
+    return [
+      { value: 'food', label: 'Alimentação' },
+      { value: 'housing', label: 'Moradia' },
+      { value: 'transportation', label: 'Transporte' },
+      { value: 'health', label: 'Saúde' },
+      { value: 'education', label: 'Educação' },
+      { value: 'entertainment', label: 'Entretenimento' },
+      { value: 'clothing', label: 'Vestuário' },
+      { value: 'utilities', label: 'Contas' },
+      { value: 'other', label: 'Outros' }
+    ];
+  };
+
+  const deleteExpense = async (expenseId: string) => {
+    if (!currentUser) return;
+    
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
+      // Excluir do Supabase
+      const { error } = await supabase
+        .from('finances')
+        .delete()
+        .eq('id', expenseId)
+        .eq('user_id', currentUser.id)
+        .eq('type', 'expense');
+      
+      if (error) {
+        console.error('Error deleting expense:', error);
+        toast.error('Erro ao excluir despesa');
+        return;
+      }
+      
+      // Atualizar o estado local
+      setFinances(prev => {
+        const userFinances = prev[currentUser.id] || {
+          incomes: [],
+          expenses: [],
+          investments: [],
+          balance: 0
+        };
+        
+        const updatedExpenses = userFinances.expenses.filter(expense => expense.id !== expenseId);
+        const updatedIncomes = [...userFinances.incomes];
+        
+        return {
+          ...prev,
+          [currentUser.id]: {
+            ...userFinances,
+            expenses: updatedExpenses,
+            balance: calculateBalanceFromData(updatedIncomes, updatedExpenses)
+          }
+        };
+      });
+      
+      toast.success('Despesa excluída com sucesso');
+    } catch (error) {
+      console.error('Error in deleteExpense:', error);
+      toast.error('Erro ao excluir despesa');
+    }
+  };
+
   return {
     addExpense,
+    deleteExpense,
     calculateBalance,
     getUserBalance,
     getMonthlyExpenseTotal,
     getCategoryExpenses,
+    getExpenseCategories,
     simulateExpense
   };
 };

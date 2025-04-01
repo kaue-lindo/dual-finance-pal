@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
-import { calculateBalanceFromData } from '../utils/calculations';
+import { calculateBalanceFromData, calculateBalanceExcludingInvestmentReturns } from '../utils/calculations';
 import { getMonthlyReturn, calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../utils/projections';
 
 export const useTransactions = (
@@ -91,11 +90,28 @@ export const useTransactions = (
             id: item.id,
             description: item.description,
             amount: parseFloat(item.amount.toString()),
-            rate: parseFloat(item.recurring_type === 'compound' ? '5' : item.recurring_type || "0"),
+            rate: item.recurring_days && item.recurring_days.length > 0 ? 
+              parseFloat(item.recurring_days[0].toString()) : 5,
             period: item.recurring_type === 'compound' ? 'monthly' : (item.recurring_type as 'monthly' | 'annual' || 'monthly'),
             startDate: new Date(item.date),
             isCompound: item.is_compound
           });
+        } else if (item.type === 'investment_update' && item.parent_investment_id) {
+          // Encontrar o investimento pai para aplicar o reinvestimento
+          const parentInvestmentIndex = investments.findIndex(inv => inv.id === item.parent_investment_id);
+          
+          if (parentInvestmentIndex >= 0) {
+            // Adicionar o valor do reinvestimento ao investimento pai
+            const updatedAmount = parseFloat(investments[parentInvestmentIndex].amount.toString()) + 
+                                parseFloat(item.amount.toString());
+            
+            investments[parentInvestmentIndex] = {
+              ...investments[parentInvestmentIndex],
+              amount: updatedAmount
+            };
+            
+            console.log(`Reinvestimento aplicado: ${item.amount} adicionado ao investimento ${item.parent_investment_id}`);
+          }
         }
       });
 
@@ -112,10 +128,8 @@ export const useTransactions = (
         const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
         const combinedInvestments = [...investments, ...uniqueExistingInvestments];
         
-        const incomeTotal = incomes.reduce((sum, inc) => sum + inc.amount, 0);
-        const expenseTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-        const investmentTotal = investments.reduce((sum, inv) => sum + inv.amount, 0);
-        const calculatedBalance = incomeTotal - expenseTotal - investmentTotal;
+        // Usar o novo cálculo de saldo que exclui rendimentos de investimentos
+        const calculatedBalance = calculateBalanceExcludingInvestmentReturns(incomes, expenses);
         
         console.log(`Updated finances for user ${userId}:`, {
           incomes: incomes.length,
@@ -213,25 +227,20 @@ export const useTransactions = (
     
     const monthsToLookAhead = 24;
     
+    // Adicionar todas as despesas (atuais e futuras)
     userFinances.expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
-      const currentMonth = today.getMonth();
-      const expenseMonth = expenseDate.getMonth();
-      const expenseYear = expenseDate.getFullYear();
-      const currentYear = today.getFullYear();
-      
-      if ((expenseMonth === currentMonth && expenseYear === currentYear) || expenseDate > today) {
-        futureTransactions.push({
-          id: expense.id,
-          date: expenseDate,
-          description: expense.description,
-          amount: expense.amount,
-          type: 'expense',
-          category: expense.category,
-          sourceCategory: expense.sourceCategory
-        });
-      }
+      // Incluir despesas do mês atual e futuras
+      futureTransactions.push({
+        id: expense.id,
+        date: expenseDate,
+        description: expense.description,
+        amount: expense.amount,
+        type: 'expense',
+        category: expense.category,
+        sourceCategory: expense.sourceCategory
+      });
       
       if (expense.installment && expense.installment.remaining > 0) {
         const installmentAmount = expense.amount;
@@ -296,45 +305,64 @@ export const useTransactions = (
       }
     });
     
+    // Adicionar todas as rendas (atuais e futuras)
     userFinances.incomes.forEach(income => {
       const incomeDate = new Date(income.date);
       
-      const currentMonth = today.getMonth();
-      const incomeMonth = incomeDate.getMonth();
-      const incomeYear = incomeDate.getFullYear();
-      const currentYear = today.getFullYear();
-      
-      if ((incomeMonth === currentMonth && incomeYear === currentYear) || incomeDate > today) {
-        futureTransactions.push({
-          id: income.id,
-          date: incomeDate,
-          description: income.description,
-          amount: income.amount,
-          type: 'income',
-          category: income.category
-        });
+      // Adicionar indicador de recorrência à descrição original se for recorrente
+      let description = income.description;
+      if (income.recurring) {
+        if (typeof income.recurring === 'object' && income.recurring.type) {
+          // Se tiver tipo específico de recorrência
+          const recurringType = income.recurring.type;
+          if (recurringType === 'daily') {
+            description = `${income.description} (Diário)`;
+          } else if (recurringType === 'weekly') {
+            description = `${income.description} (Semanal)`;
+          } else if (recurringType === 'monthly') {
+            description = `${income.description} (Mensal)`;
+          }
+        } else if (income.recurring === true) {
+          // Se for apenas marcado como recorrente sem tipo específico
+          description = `${income.description} (Mensal)`;
+        }
       }
+      
+      // Incluir rendas do mês atual e futuras
+      futureTransactions.push({
+        id: income.id,
+        date: incomeDate,
+        description: description,
+        amount: income.amount,
+        type: 'income',
+        category: income.category
+      });
       
       if (income.recurring) {
         const nextMonths = [];
-        for (let i = 0; i <= monthsToLookAhead; i++) {
+        for (let i = 1; i <= monthsToLookAhead; i++) {
           nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
         }
         
         nextMonths.forEach(month => {
           const futureDate = new Date(month);
-          futureDate.setDate(new Date(income.date).getDate());
+          futureDate.setDate(incomeDate.getDate());
           
-          if (futureDate > today) {
-            futureTransactions.push({
-              id: `${income.id}-recurring-${month.getMonth()}`,
-              date: futureDate,
-              description: `${income.description} (Mensal)`,
-              amount: income.amount,
-              type: 'income',
-              category: income.category
-            });
+          // Determinar o tipo de recorrência para a descrição
+          let recurringType = "Mensal";
+          if (typeof income.recurring === 'object' && income.recurring.type) {
+            if (income.recurring.type === 'daily') recurringType = "Diário";
+            if (income.recurring.type === 'weekly') recurringType = "Semanal";
           }
+          
+          futureTransactions.push({
+            id: `${income.id}-recurring-${month.getMonth()}`,
+            date: futureDate,
+            description: `${income.description} (${recurringType})`,
+            amount: income.amount,
+            type: 'income',
+            category: income.category
+          });
         });
       }
     });
@@ -343,27 +371,20 @@ export const useTransactions = (
       const months = 24;
       
       const investmentDate = new Date(investment.startDate);
-      const currentMonth = today.getMonth();
-      const investmentMonth = investmentDate.getMonth();
-      const investmentYear = investmentDate.getFullYear();
-      const currentYear = today.getFullYear();
       
-      if ((investmentMonth === currentMonth && investmentYear === currentYear) || investmentDate > today) {
-        futureTransactions.push({
-          id: `${investment.id}-initial`,
-          date: investmentDate,
-          description: `${investment.description} (Investimento Inicial)`,
-          amount: investment.amount,
-          type: 'investment',
-          category: 'investment'
-        });
-      }
+      // Incluir investimento inicial
+      futureTransactions.push({
+        id: `${investment.id}-initial`,
+        date: investmentDate,
+        description: `${investment.description} (Investimento Inicial)`,
+        amount: investment.amount,
+        type: 'investment',
+        category: 'investment'
+      });
       
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date(investmentDate);
         futureDate.setMonth(futureDate.getMonth() + i);
-        
-        if (futureDate < today) continue;
         
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompound = investment.isCompound !== false;

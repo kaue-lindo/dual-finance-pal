@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Income, IncomeCategory } from '../types';
@@ -31,18 +30,35 @@ export const useIncomes = (
         return;
       }
       
+      // Preparar os dados para inserção no Supabase
+      const supabaseData: any = {
+        user_id: currentUser.id,
+        auth_id: sessionData.session.user.id,
+        type: 'income',
+        description: income.description,
+        amount: income.amount,
+        category: income.category,
+        date: income.date.toISOString()
+      };
+      
+      // Tratar o campo recurring de acordo com seu tipo
+      if (typeof income.recurring === 'object') {
+        // Se for um objeto, extrair type e days
+        supabaseData.recurring = false; // Campo booleano no Supabase
+        supabaseData.recurring_type = income.recurring.type;
+        supabaseData.recurring_days = income.recurring.days;
+      } else if (income.recurring === true) {
+        // Se for apenas um booleano true
+        supabaseData.recurring = true;
+        supabaseData.recurring_type = 'monthly'; // Padrão para recorrência simples
+      } else {
+        // Se for false ou undefined
+        supabaseData.recurring = false;
+      }
+      
       const { data, error } = await supabase
         .from('finances')
-        .insert({
-          user_id: currentUser.id, // This is the finance profile ID
-          auth_id: sessionData.session.user.id, // This is the actual auth user ID
-          type: 'income',
-          description: income.description,
-          amount: income.amount,
-          category: income.category,
-          date: income.date.toISOString(),
-          recurring: income.recurring
-        })
+        .insert(supabaseData)
         .select()
         .single();
 
@@ -52,14 +68,30 @@ export const useIncomes = (
         return;
       }
 
+      // Construir o objeto Income a partir dos dados retornados
       const newIncome: Income = {
         id: data.id,
         description: data.description,
         amount: parseFloat(data.amount.toString()),
         date: new Date(data.date),
-        category: data.category as IncomeCategory,
-        recurring: data.recurring
+        category: data.category as IncomeCategory
       };
+      
+      // Reconstruir o campo recurring com base nos dados salvos
+      if (data.recurring) {
+        if (data.recurring_type) {
+          // Se tiver tipo de recorrência, é um objeto
+          newIncome.recurring = {
+            type: data.recurring_type as 'daily' | 'weekly' | 'monthly',
+            days: data.recurring_days || []
+          };
+        } else {
+          // Senão, é apenas um booleano
+          newIncome.recurring = true;
+        }
+      } else {
+        newIncome.recurring = false;
+      }
 
       console.log("Successfully added income:", newIncome);
 
@@ -91,6 +123,68 @@ export const useIncomes = (
     }
   };
 
+  const deleteIncome = async (incomeId: string) => {
+    if (!currentUser) {
+      toast.error('Usuário não encontrado. Faça login novamente.');
+      return;
+    }
+    
+    try {
+      // Get the current Supabase authentication session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw new Error(`Erro ao obter sessão: ${sessionError.message}`);
+      }
+      
+      if (!sessionData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
+      // Excluir do Supabase
+      const { error } = await supabase
+        .from('finances')
+        .delete()
+        .eq('id', incomeId)
+        .eq('user_id', currentUser.id)
+        .eq('type', 'income');
+      
+      if (error) {
+        console.error('Error deleting income:', error);
+        toast.error(`Erro ao excluir receita: ${error.message}`);
+        return;
+      }
+      
+      // Atualizar o estado local
+      setFinances(prev => {
+        const userFinances = prev[currentUser.id] || {
+          incomes: [],
+          expenses: [],
+          investments: [],
+          balance: 0
+        };
+        
+        const updatedIncomes = userFinances.incomes.filter(income => income.id !== incomeId);
+        const updatedExpenses = [...userFinances.expenses];
+        
+        return {
+          ...prev,
+          [currentUser.id]: {
+            ...userFinances,
+            incomes: updatedIncomes,
+            balance: calculateBalanceFromData(updatedIncomes, updatedExpenses)
+          }
+        };
+      });
+      
+      toast.success('Receita excluída com sucesso');
+    } catch (error) {
+      console.error('Error in deleteIncome:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir receita');
+    }
+  };
+
   const getIncomeCategories = () => {
     return incomeCategories;
   };
@@ -104,6 +198,7 @@ export const useIncomes = (
 
   return {
     addIncome,
+    deleteIncome,
     getIncomeCategories,
     getRealIncome,
   };

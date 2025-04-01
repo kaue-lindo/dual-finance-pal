@@ -28,6 +28,7 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          parent_investment_id: string | null
         }
         Insert: {
           amount: number
@@ -47,6 +48,7 @@ export type Database = {
           type: string
           updated_at?: string
           user_id: string
+          parent_investment_id?: string | null
         }
         Update: {
           amount?: number
@@ -66,6 +68,37 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          parent_investment_id?: string | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          auth_id: string
+          name: string
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          auth_id: string
+          name: string
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          auth_id?: string
+          name?: string
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

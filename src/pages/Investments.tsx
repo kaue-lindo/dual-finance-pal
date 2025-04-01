@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { ArrowLeft, Plus, TrendingUp } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
 import InvestmentCalculator from '@/components/InvestmentCalculator';
+import BottomNav from '@/components/ui/bottom-nav'; // Import the BottomNav component
 
 const Investments = () => {
   const { currentUser, finances, deleteInvestment } = useFinance();
@@ -128,6 +128,8 @@ const Investments = () => {
           </div>
         )}
       </div>
+      
+      <BottomNav currentPath="/investments" />
     </div>
   );
 };

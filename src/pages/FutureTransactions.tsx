@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getCategoryColor } from '@/utils/chartUtils';
+import { BottomNav } from '@/components/ui/bottom-nav';
 
 type TransactionType = {
   id: string;
@@ -54,8 +54,8 @@ const FutureTransactions = () => {
     const futureTransactions = getFutureTransactions();
     
     // Convert to our TransactionType format
-    const formattedTransactions = futureTransactions.map(t => ({
-      id: t.id || `temp-${Date.now()}-${Math.random()}`,
+    const formattedTransactions = futureTransactions.map((t, index) => ({
+      id: t.id || `temp-${Date.now()}-${Math.random()}-${index}`,
       date: t.date,
       description: t.description,
       amount: t.amount,
@@ -115,7 +115,7 @@ const FutureTransactions = () => {
             variant="ghost" 
             size="icon" 
             className="navbar-icon"
-            onClick={() => navigate('/future-graphs')}
+            onClick={() => navigate('/cashflow')}
           >
             <PieChart size={24} className="text-white" />
           </Button>
@@ -193,8 +193,8 @@ const FutureTransactions = () => {
 
           {getFilteredTransactions().length > 0 ? (
             <div className="space-y-4">
-              {getFilteredTransactions().map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between">
+              {getFilteredTransactions().map((transaction, index) => (
+                <div key={`${transaction.id}-${index}`} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full ${
                       transaction.type === 'income' 
@@ -301,37 +301,16 @@ const FutureTransactions = () => {
         <div className="flex justify-center mt-4">
           <Button 
             className="finance-btn"
-            onClick={() => navigate('/future-graphs')}
+            onClick={() => navigate('/cashflow')}
           >
             <PieChart size={16} className="mr-1" />
-            Ver Gráficos de Previsão
+            Ver Gráficos de Fluxo de Caixa
           </Button>
         </div>
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-finance-dark-card py-3 flex justify-around items-center">
-        <button className="navbar-icon" onClick={() => navigate('/dashboard')}>
-          <Home size={24} className="text-white" />
-        </button>
-        <button className="navbar-icon" onClick={() => navigate('/expenses')}>
-          <ShoppingCart size={24} className="text-white" />
-        </button>
-        <div className="-mt-8">
-          <button 
-            className="w-12 h-12 rounded-full bg-finance-blue flex items-center justify-center"
-            onClick={() => navigate('/add-income')}
-          >
-            <DollarSign size={24} className="text-white" />
-          </button>
-        </div>
-        <button className="navbar-icon" onClick={() => navigate('/investments')}>
-          <BarChart size={24} className="text-white" />
-        </button>
-        <button className="navbar-icon" onClick={() => navigate('/simulator')}>
-          <TrendingUp size={24} className="text-white" />
-        </button>
-      </div>
+      <BottomNav currentPath="/future-transactions" />
     </div>
   );
 };
