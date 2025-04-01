@@ -1,3 +1,4 @@
+
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
@@ -18,6 +19,7 @@ export type Expense = {
     current: number;
     remaining: number;
   };
+  parent_investment_id?: string;
 };
 
 export type Income = {
@@ -57,6 +59,7 @@ export type FutureTransaction = {
   type: 'income' | 'expense' | 'investment';
   category: string;
   sourceCategory?: string;
+  parent_investment_id?: string;
 };
 
 export type FinanceContextType = {

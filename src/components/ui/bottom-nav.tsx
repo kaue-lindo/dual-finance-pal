@@ -31,7 +31,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentPath }) => {
       return currentPath === '/investments' || currentPath === '/investment-returns';
     }
     if (path === '/cashflow') {
-      return currentPath === '/cashflow' || currentPath === '/future-graphs';
+      return currentPath === '/cashflow' || 
+             currentPath === '/future-graphs' ||
+             currentPath === '/simulator';
     }
     if (path === '/settings') {
       return currentPath === '/settings';
