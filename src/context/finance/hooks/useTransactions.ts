@@ -4,6 +4,27 @@ import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFin
 import { calculateBalanceFromData, calculateBalanceExcludingInvestmentReturns } from '../utils/calculations';
 import { getMonthlyReturn, calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../utils/projections';
 
+interface FinanceData {
+  id: string;
+  amount: number;
+  date: string;
+  recurring: boolean;
+  recurring_days: any[];
+  installment_total: number;
+  installment_current: number;
+  created_at: string;
+  updated_at: string;
+  is_compound: boolean;
+  auth_id: string;
+  user_id: string;
+  type: string;
+  description: string;
+  category: string;
+  recurring_type: string;
+  source_category: string;
+  parent_investment_id?: string;
+}
+
 export const useTransactions = (
   currentUser: any,
   finances: Record<string, any>,
@@ -17,7 +38,6 @@ export const useTransactions = (
   const fetchTransactionsByUserId = async (userId: string) => {
     try {
       console.log("Fetching transactions for user:", userId);
-      // Get the current Supabase authentication session
       const { data: sessionData } = await supabase.auth.getSession();
       
       let query = supabase
@@ -25,7 +45,6 @@ export const useTransactions = (
         .select('*')
         .eq('user_id', userId);
       
-      // If we have an authenticated session, also filter by auth_id
       if (sessionData?.session?.user?.id) {
         query = query.eq('auth_id', sessionData.session.user.id);
       }
@@ -57,7 +76,7 @@ export const useTransactions = (
         return prev;
       });
 
-      data.forEach(item => {
+      (data as FinanceData[]).forEach(item => {
         if (item.type === 'income') {
           incomes.push({
             id: item.id,
@@ -97,11 +116,9 @@ export const useTransactions = (
             isCompound: item.is_compound
           });
         } else if (item.type === 'investment_update' && item.parent_investment_id) {
-          // Encontrar o investimento pai para aplicar o reinvestimento
           const parentInvestmentIndex = investments.findIndex(inv => inv.id === item.parent_investment_id);
           
           if (parentInvestmentIndex >= 0) {
-            // Adicionar o valor do reinvestimento ao investimento pai
             const updatedAmount = parseFloat(investments[parentInvestmentIndex].amount.toString()) + 
                                 parseFloat(item.amount.toString());
             
@@ -128,7 +145,6 @@ export const useTransactions = (
         const uniqueExistingInvestments = existingInvestments.filter(inv => !existingIds.has(inv.id));
         const combinedInvestments = [...investments, ...uniqueExistingInvestments];
         
-        // Usar o novo cálculo de saldo que exclui rendimentos de investimentos
         const calculatedBalance = calculateBalanceExcludingInvestmentReturns(incomes, expenses);
         
         console.log(`Updated finances for user ${userId}:`, {
@@ -158,7 +174,6 @@ export const useTransactions = (
     if (!currentUser) return;
     
     try {
-      // Get the current Supabase authentication session
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData.session) {
@@ -227,11 +242,9 @@ export const useTransactions = (
     
     const monthsToLookAhead = 24;
     
-    // Adicionar todas as despesas (atuais e futuras)
     userFinances.expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
-      // Incluir despesas do mês atual e futuras
       futureTransactions.push({
         id: expense.id,
         date: expenseDate,
@@ -305,15 +318,12 @@ export const useTransactions = (
       }
     });
     
-    // Adicionar todas as rendas (atuais e futuras)
     userFinances.incomes.forEach(income => {
       const incomeDate = new Date(income.date);
       
-      // Adicionar indicador de recorrência à descrição original se for recorrente
       let description = income.description;
       if (income.recurring) {
         if (typeof income.recurring === 'object' && income.recurring.type) {
-          // Se tiver tipo específico de recorrência
           const recurringType = income.recurring.type;
           if (recurringType === 'daily') {
             description = `${income.description} (Diário)`;
@@ -323,12 +333,10 @@ export const useTransactions = (
             description = `${income.description} (Mensal)`;
           }
         } else if (income.recurring === true) {
-          // Se for apenas marcado como recorrente sem tipo específico
           description = `${income.description} (Mensal)`;
         }
       }
       
-      // Incluir rendas do mês atual e futuras
       futureTransactions.push({
         id: income.id,
         date: incomeDate,
@@ -348,7 +356,6 @@ export const useTransactions = (
           const futureDate = new Date(month);
           futureDate.setDate(incomeDate.getDate());
           
-          // Determinar o tipo de recorrência para a descrição
           let recurringType = "Mensal";
           if (typeof income.recurring === 'object' && income.recurring.type) {
             if (income.recurring.type === 'daily') recurringType = "Diário";
@@ -372,7 +379,6 @@ export const useTransactions = (
       
       const investmentDate = new Date(investment.startDate);
       
-      // Incluir investimento inicial
       futureTransactions.push({
         id: `${investment.id}-initial`,
         date: investmentDate,
