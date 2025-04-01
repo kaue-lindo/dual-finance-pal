@@ -28,7 +28,6 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
-          parent_investment_id: string | null
         }
         Insert: {
           amount: number
@@ -48,7 +47,6 @@ export type Database = {
           type: string
           updated_at?: string
           user_id: string
-          parent_investment_id?: string | null
         }
         Update: {
           amount?: number
@@ -68,39 +66,55 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
-          parent_investment_id?: string | null
         }
         Relationships: []
       }
-      user_profiles: {
+      investments: {
         Row: {
+          amount: number
+          created_at: string | null
+          end_date: string
           id: string
-          user_id: string
-          auth_id: string
+          interest_rate: number
           name: string
-          avatar_url: string | null
-          created_at: string
-          updated_at: string
+          start_date: string
+          type: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
+          amount: number
+          created_at?: string | null
+          end_date: string
           id?: string
-          user_id: string
-          auth_id: string
+          interest_rate: number
           name: string
-          avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
+          start_date: string
+          type: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
+          amount?: number
+          created_at?: string | null
+          end_date?: string
           id?: string
-          user_id?: string
-          auth_id?: string
+          interest_rate?: number
           name?: string
-          avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
+          start_date?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "investments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leads: {
         Row: {
@@ -366,6 +380,89 @@ export type Database = {
           last_name?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          is_recurring: boolean | null
+          recurrence_days: number[] | null
+          recurrence_type: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          recurrence_days?: number[] | null
+          recurrence_type?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          recurrence_days?: number[] | null
+          recurrence_type?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          auth_id: string
+          avatar_url: string | null
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_id: string
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_id?: string
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

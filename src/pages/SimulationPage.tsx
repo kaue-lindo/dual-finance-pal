@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ interface SimulationData {
   duration: number;
 }
 
-export function SimulationPage() {
+const SimulationPage = () => {
   const [simulation, setSimulation] = useState<SimulationData>({
     installmentValue: 0,
     startDate: new Date(),
@@ -115,4 +116,6 @@ export function SimulationPage() {
       </Card>
     </div>
   );
-}
+};
+
+export default SimulationPage;
