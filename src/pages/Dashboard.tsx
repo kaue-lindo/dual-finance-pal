@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -63,6 +64,7 @@ const Dashboard = () => {
   } = useFinance();
   const navigate = useNavigate();
 
+  // Buscando dados atualizados para garantir que todas as despesas sejam contabilizadas
   const expensesByCategory = getCategoryExpenses();
   const totalExpenses = getMonthlyExpenseTotal();
   const currentBalance = calculateBalance();
@@ -70,6 +72,7 @@ const Dashboard = () => {
   const investmentAmount = getTotalInvestments();
   const projectedReturn = getProjectedInvestmentReturn(12);
   const totalInvestment = getTotalInvestments();
+  
   // Evitar divisão por zero e garantir um valor percentual válido
   const projectedReturnPercentage = totalInvestment > 0 
     ? Math.min(100, (projectedReturn / totalInvestment) * 100) 
