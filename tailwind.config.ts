@@ -65,14 +65,29 @@ export default {
 				},
 				finance: {
 					blue: {
-						DEFAULT: '#0e84de',
-						dark: '#0a65b1',
-						light: '#39a9ff'
+						DEFAULT: '#1A73E8',
+						dark: '#0D47A1',
+						light: '#4285F4'
+					},
+					green: {
+						DEFAULT: '#34A853',
+						dark: '#0D652D',
+						light: '#7CB342'
+					},
+					red: {
+						DEFAULT: '#EA4335',
+						dark: '#B31412',
+						light: '#FF5252'
+					},
+					yellow: {
+						DEFAULT: '#FBBC04',
+						dark: '#F57F17',
+						light: '#FDD835'
 					},
 					dark: {
-						DEFAULT: '#1e1f23',
-						card: '#27292f',
-						lighter: '#323438'
+						DEFAULT: '#121212',
+						card: '#1E1E1E',
+						lighter: '#2C2C2C'
 					}
 				}
 			},
@@ -97,11 +112,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' }
+				},
+				'scale-in': {
+					'0%': { transform: 'scale(0.95)', opacity: '0' },
+					'100%': { transform: 'scale(1)', opacity: '1' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'scale-in': 'scale-in 0.2s ease-out'
 			}
 		}
 	},
