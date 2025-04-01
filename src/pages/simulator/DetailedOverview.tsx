@@ -12,7 +12,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  Cell 
+  Cell,
+  LineChart,
+  Line,
+  Legend
 } from 'recharts';
 import { PieChart as PieChartIcon, Calculator, ArrowUpDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +67,51 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
           </div>
         </div>
         
+        {/* Gráfico de projeção mensal */}
+        {results && results.monthlyData.length > 0 && (
+          <div>
+            <h3 className="text-white font-medium mb-3">Projeção Mensal</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={results.monthlyData}
+                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="month" stroke="#999" />
+                  <YAxis stroke="#999" />
+                  <Tooltip 
+                    formatter={(value) => [`${formatCurrency(value as number)}`, '']}
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="balance" 
+                    name="Saldo Normal" 
+                    stroke="#10B981" 
+                    activeDot={{ r: 8 }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="withExpense" 
+                    name="Com Despesa" 
+                    stroke={results.monthlyDeficit < 0 ? "#EF4444" : "#3B82F6"} 
+                    activeDot={{ r: 8 }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="investments" 
+                    name="Investimentos" 
+                    stroke="#8B5CF6" 
+                    activeDot={{ r: 8 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+        
         {/* Tabela detalhada */}
         {results && (
           <div>
@@ -75,6 +123,7 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
                     <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Mês</th>
                     <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Saldo Normal</th>
                     <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Com Despesa</th>
+                    <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Investimentos</th>
                     <th className="px-4 py-2 text-right text-sm font-medium text-gray-400">Diferença</th>
                   </tr>
                 </thead>
@@ -85,6 +134,9 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
                       <td className="px-4 py-3 text-sm text-right text-green-400">{formatCurrency(month.balance)}</td>
                       <td className={`px-4 py-3 text-sm text-right ${month.withExpense < 0 ? 'text-red-400' : 'text-blue-400'}`}>
                         {formatCurrency(month.withExpense)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-purple-400">
+                        {formatCurrency(month.investments)}
                       </td>
                       <td className={`px-4 py-3 text-sm text-right ${month.withExpense - month.balance < 0 ? 'text-red-400' : 'text-green-400'}`}>
                         {formatCurrency(month.withExpense - month.balance)}

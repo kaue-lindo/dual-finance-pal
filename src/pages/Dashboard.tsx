@@ -289,8 +289,12 @@ const Dashboard = () => {
               const otherUserInvestments = otherUserFinances.investments.reduce(
                 (sum, inv) => sum + inv.amount, 0
               );
+              const otherUserExpenses = otherUserFinances.expenses.reduce(
+                (sum, exp) => sum + exp.amount, 0
+              );
               const balanceDiff = currentBalance - otherUserBalance;
               const investmentDiff = investmentAmount - otherUserInvestments;
+              const expenseDiff = totalExpenses - otherUserExpenses;
               
               return (
                 <Card 
@@ -312,7 +316,7 @@ const Dashboard = () => {
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="bg-finance-dark-card rounded-lg p-3">
                       <p className="text-gray-400 text-sm mb-1">Saldo</p>
                       <p className="text-white font-bold">
@@ -332,6 +336,17 @@ const Dashboard = () => {
                       <div className={`flex items-center mt-1 text-xs ${investmentDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {investmentDiff > 0 ? <TrendingUp size={14} /> : <ArrowDown size={14} />}
                         <span>{formatCurrency(Math.abs(investmentDiff))} {investmentDiff > 0 ? 'a mais' : 'a menos'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-finance-dark-card rounded-lg p-3">
+                      <p className="text-gray-400 text-sm mb-1">Despesas</p>
+                      <p className="text-white font-bold">
+                        {formatCurrency(otherUserExpenses)}
+                      </p>
+                      <div className={`flex items-center mt-1 text-xs ${expenseDiff < 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {expenseDiff < 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+                        <span>{formatCurrency(Math.abs(expenseDiff))} {expenseDiff < 0 ? 'a menos' : 'a mais'}</span>
                       </div>
                     </div>
                   </div>

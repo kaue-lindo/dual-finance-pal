@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -27,7 +28,8 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  Radar
+  Radar,
+  Cell
 } from 'recharts';
 
 const UserComparison = () => {
@@ -41,18 +43,32 @@ const UserComparison = () => {
     return null;
   }
 
+  // Cores personalizadas para cada tipo de dado
+  const COLORS = {
+    balance: '#10B981', // Verde para saldo
+    expenses: '#EF4444', // Vermelho para despesas
+    income: '#3B82F6',  // Azul para entradas
+    investments: '#8B5CF6' // Roxo para investimentos
+  };
+
   // Filtrar usuários para não incluir o usuário atual
   const otherUsers = users.filter(user => user.id !== currentUser.id);
 
   // Obter dados do usuário atual
   const currentUserFinances = getUserFinances(currentUser.id);
   const currentUserBalance = getUserBalance(currentUser.id);
-  const currentUserExpensesByCategory = getCategoryExpenses(currentUser.id); // Passando o id do usuário atual
+  const currentUserExpensesByCategory = getCategoryExpenses(currentUser.id); 
+  const currentUserTotalIncome = currentUserFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
+  const currentUserTotalExpenses = currentUserFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const currentUserTotalInvestments = currentUserFinances.investments.reduce((sum, inv) => sum + inv.amount, 0);
   
   // Obter dados do usuário selecionado para comparação
   const selectedUserFinances = selectedUserId ? getUserFinances(selectedUserId) : null;
   const selectedUserBalance = selectedUserId ? getUserBalance(selectedUserId) : 0;
-  const selectedUserExpensesByCategory = selectedUserId ? getCategoryExpenses(selectedUserId) : []; // Passando o id do usuário selecionado
+  const selectedUserExpensesByCategory = selectedUserId ? getCategoryExpenses(selectedUserId) : []; 
+  const selectedUserTotalIncome = selectedUserFinances?.incomes.reduce((sum, income) => sum + income.amount, 0) || 0;
+  const selectedUserTotalExpenses = selectedUserFinances?.expenses.reduce((sum, expense) => sum + expense.amount, 0) || 0;
+  const selectedUserTotalInvestments = selectedUserFinances?.investments.reduce((sum, inv) => sum + inv.amount, 0) || 0;
   
   // Calcular rendimentos totais para ambos os usuários
   const currentUserReturns = currentUserFinances.incomes
@@ -76,22 +92,31 @@ const UserComparison = () => {
   const incomeExpenseComparisonData = [
     {
       name: 'Entradas',
-      [currentUser.name || 'Você']: currentUserFinances.incomes.reduce((sum, income) => sum + income.amount, 0),
+      type: 'income',
+      [currentUser.name || 'Você']: currentUserTotalIncome,
       ...(selectedUserId && { 
-        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: 
-        selectedUserFinances?.incomes.reduce((sum, income) => sum + income.amount, 0) || 0 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserTotalIncome 
       })
     },
     {
       name: 'Saídas',
-      [currentUser.name || 'Você']: currentUserFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0),
+      type: 'expenses',
+      [currentUser.name || 'Você']: currentUserTotalExpenses,
       ...(selectedUserId && { 
-        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: 
-        selectedUserFinances?.expenses.reduce((sum, expense) => sum + expense.amount, 0) || 0 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserTotalExpenses
+      })
+    },
+    {
+      name: 'Investimentos',
+      type: 'investments',
+      [currentUser.name || 'Você']: currentUserTotalInvestments,
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserTotalInvestments
       })
     },
     {
       name: 'Rendimentos',
+      type: 'income',
       [currentUser.name || 'Você']: currentUserReturns,
       ...(selectedUserId && { 
         [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserReturns
@@ -99,6 +124,7 @@ const UserComparison = () => {
     },
     {
       name: 'Saldo',
+      type: 'balance',
       [currentUser.name || 'Você']: currentUserBalance,
       ...(selectedUserId && { 
         [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserBalance
@@ -158,11 +184,16 @@ const UserComparison = () => {
   const currentUserName = currentUser.name || 'Você';
   const selectedUserName = selectedUserId ? (users.find(u => u.id === selectedUserId)?.name || 'Outro') : '';
 
+  // Função para determinar a cor com base no tipo de dado
+  const getBarColor = (type) => {
+    return COLORS[type] || COLORS.balance;
+  };
+
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       {/* Header */}
       <div className="finance-card rounded-b-xl">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 p-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft size={24} className="text-white" />
           </Button>
@@ -224,7 +255,7 @@ const UserComparison = () => {
                         contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
                       />
                       <Legend />
-                      <Bar dataKey={currentUserName} fill="#10B981" />
+                      <Bar dataKey={currentUserName} fill={COLORS.balance} />
                       <Bar dataKey={selectedUserName} fill="#6366F1" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -266,7 +297,7 @@ const UserComparison = () => {
                           contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
                         />
                         <Legend />
-                        <Bar dataKey={currentUserName} fill="#10B981" />
+                        <Bar dataKey={currentUserName} fill={COLORS.balance} />
                         <Bar dataKey={selectedUserName} fill="#6366F1" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -317,8 +348,16 @@ const UserComparison = () => {
                           contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
                         />
                         <Legend />
-                        <Bar dataKey={currentUserName} fill="#10B981" />
-                        <Bar dataKey={selectedUserName} fill="#6366F1" />
+                        <Bar dataKey={currentUserName}>
+                          {incomeExpenseComparisonData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getBarColor(entry.type)} />
+                          ))}
+                        </Bar>
+                        <Bar dataKey={selectedUserName}>
+                          {incomeExpenseComparisonData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getBarColor(entry.type)} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -341,21 +380,21 @@ const UserComparison = () => {
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div className="bg-finance-dark-card p-4 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-green-500" />
+                      <TrendingUp size={16} className="text-blue-500" />
                       <p className="text-gray-400">Suas entradas</p>
                     </div>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(currentUserFinances.incomes.reduce((sum, income) => sum + income.amount, 0))}
+                    <p className="text-xl font-bold text-blue-500">
+                      {formatCurrency(currentUserTotalIncome)}
                     </p>
                   </div>
                   
                   <div className="bg-finance-dark-card p-4 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-green-500" />
+                      <TrendingUp size={16} className="text-blue-500" />
                       <p className="text-gray-400">Entradas de {selectedUserName}</p>
                     </div>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(selectedUserFinances?.incomes.reduce((sum, income) => sum + income.amount, 0) || 0)}
+                    <p className="text-xl font-bold text-blue-500">
+                      {formatCurrency(selectedUserTotalIncome)}
                     </p>
                   </div>
                   
@@ -364,8 +403,8 @@ const UserComparison = () => {
                       <TrendingDown size={16} className="text-red-500" />
                       <p className="text-gray-400">Suas saídas</p>
                     </div>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(currentUserFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0))}
+                    <p className="text-xl font-bold text-red-500">
+                      {formatCurrency(currentUserTotalExpenses)}
                     </p>
                   </div>
                   
@@ -374,46 +413,49 @@ const UserComparison = () => {
                       <TrendingDown size={16} className="text-red-500" />
                       <p className="text-gray-400">Saídas de {selectedUserName}</p>
                     </div>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(selectedUserFinances?.expenses.reduce((sum, expense) => sum + expense.amount, 0) || 0)}
+                    <p className="text-xl font-bold text-red-500">
+                      {formatCurrency(selectedUserTotalExpenses)}
                     </p>
                   </div>
                   
                   <div className="bg-finance-dark-card p-4 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-blue-500" />
-                      <p className="text-gray-400">Seus rendimentos</p>
+                      <TrendingUp size={16} className="text-purple-500" />
+                      <p className="text-gray-400">Seus investimentos</p>
                     </div>
-                    <p className="text-xl font-bold text-white">
+                    <p className="text-xl font-bold text-purple-500">
+                      {formatCurrency(currentUserTotalInvestments)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-purple-500" />
+                      <p className="text-gray-400">Investimentos de {selectedUserName}</p>
+                    </div>
+                    <p className="text-xl font-bold text-purple-500">
+                      {formatCurrency(selectedUserTotalInvestments)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-green-500" />
+                      <p className="text-gray-400">Seu rendimento</p>
+                    </div>
+                    <p className="text-xl font-bold text-green-500">
                       {formatCurrency(currentUserReturns)}
                     </p>
                   </div>
                   
                   <div className="bg-finance-dark-card p-4 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-blue-500" />
-                      <p className="text-gray-400">Rendimentos de {selectedUserName}</p>
+                      <TrendingUp size={16} className="text-green-500" />
+                      <p className="text-gray-400">Rendimento de {selectedUserName}</p>
                     </div>
-                    <p className="text-xl font-bold text-white">
+                    <p className="text-xl font-bold text-green-500">
                       {formatCurrency(selectedUserReturns)}
                     </p>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <h3 className="text-white font-medium mb-2">Taxa de Economia</h3>
-                  <div className="space-y-2">
-                    <div className="bg-finance-dark-card p-4 rounded-lg">
-                      <p className="text-gray-400">Sua taxa de economia</p>
-                      <p className="text-xl font-bold text-white">{currentUserSavingsRate.toFixed(2)}%</p>
-                    </div>
-                    
-                    {selectedUserId && (
-                      <div className="bg-finance-dark-card p-4 rounded-lg">
-                        <p className="text-gray-400">Taxa de economia de {selectedUserName}</p>
-                        <p className="text-xl font-bold text-white">{selectedUserSavingsRate.toFixed(2)}%</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </Card>
@@ -436,8 +478,8 @@ const UserComparison = () => {
                         <Radar 
                           name={currentUserName} 
                           dataKey={currentUserName} 
-                          stroke="#10B981" 
-                          fill="#10B981" 
+                          stroke={COLORS.expenses} 
+                          fill={COLORS.expenses}
                           fillOpacity={0.6} 
                         />
                         <Radar 
@@ -487,8 +529,8 @@ const UserComparison = () => {
                             <p className="text-white font-medium">{item.category}</p>
                             <div className="flex gap-4">
                               <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                                <span className="text-green-500">{formatCurrency(Number(item[currentUserName]))}</span>
+                                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                                <span className="text-red-500">{formatCurrency(Number(item[currentUserName]))}</span>
                               </div>
                               <div className="flex items-center">
                                 <div className="w-3 h-3 rounded-full bg-indigo-400 mr-2"></div>
@@ -500,7 +542,7 @@ const UserComparison = () => {
                           {/* Barra de progresso comparativa */}
                           <div className="w-full bg-finance-dark-lighter h-2 rounded-full overflow-hidden">
                             <div 
-                              className="bg-green-500 h-full" 
+                              className="bg-red-500 h-full" 
                               style={{ 
                                 width: `${(Number(item[currentUserName]) / (Number(item[currentUserName]) + Number(item[selectedUserName]))) * 100}%`,
                                 float: 'left'
