@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, CreditCard, PiggyBank, Settings, Plus, ArrowUpDown, Calculator } from 'lucide-react';
+import { Home, CreditCard, PiggyBank, Settings, Plus, ArrowUpDown, Calculator, Users } from 'lucide-react';
 
 interface BottomNavProps {
   currentPath: string;
@@ -35,8 +35,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentPath }) => {
     if (path === '/settings') {
       return currentPath === '/settings';
     }
-    if (path === '/simulation') {
-      return currentPath === '/simulation';
+    if (path === '/compare') {
+      return currentPath === '/compare';
     }
     return currentPath === path;
   };
@@ -46,17 +46,30 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentPath }) => {
       <div className="flex justify-around items-center">
         <button 
           className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
-          onClick={() => handleNavigation('/dashboard')}
+          onClick={() => handleNavigation('/investments')}
         >
           <div className="relative">
-            <Home className={`w-6 h-6 transition-colors duration-200 ${isActive('/dashboard') ? 'text-finance-blue' : 'text-white'}`} />
-            {isActive('/dashboard') && (
+            <PiggyBank className={`w-6 h-6 transition-colors duration-200 ${isActive('/investments') ? 'text-finance-blue' : 'text-white'}`} />
+            {isActive('/investments') && (
               <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
             )}
           </div>
-          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/dashboard') ? 'text-finance-blue font-medium' : 'text-white'}`}>Início</span>
+          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/investments') ? 'text-finance-blue font-medium' : 'text-white'}`}>Investir</span>
         </button>
         
+        <button 
+          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
+          onClick={() => handleNavigation('/cashflow')}
+        >
+          <div className="relative">
+            <ArrowUpDown className={`w-6 h-6 transition-colors duration-200 ${isActive('/cashflow') ? 'text-finance-blue' : 'text-white'}`} />
+            {isActive('/cashflow') && (
+              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
+            )}
+          </div>
+          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/cashflow') ? 'text-finance-blue font-medium' : 'text-white'}`}>Fluxo</span>
+        </button>
+
         <button 
           className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
           onClick={() => handleNavigation('/transactions')}
@@ -71,6 +84,45 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentPath }) => {
         </button>
 
         <button 
+          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
+          onClick={() => handleNavigation('/compare')}
+        >
+          <div className="relative">
+            <Users className={`w-6 h-6 transition-colors duration-200 ${isActive('/compare') ? 'text-finance-blue' : 'text-white'}`} />
+            {isActive('/compare') && (
+              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
+            )}
+          </div>
+          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/compare') ? 'text-finance-blue font-medium' : 'text-white'}`}>Comparar</span>
+        </button>
+
+        <button 
+          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
+          onClick={() => handleNavigation('/dashboard')}
+        >
+          <div className="relative">
+            <Home className={`w-6 h-6 transition-colors duration-200 ${isActive('/dashboard') ? 'text-finance-blue' : 'text-white'}`} />
+            {isActive('/dashboard') && (
+              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
+            )}
+          </div>
+          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/dashboard') ? 'text-finance-blue font-medium' : 'text-white'}`}>Início</span>
+        </button>
+
+        <button 
+          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
+          onClick={() => handleNavigation('/settings')}
+        >
+          <div className="relative">
+            <Settings className={`w-6 h-6 transition-colors duration-200 ${isActive('/settings') ? 'text-finance-blue' : 'text-white'}`} />
+            {isActive('/settings') && (
+              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
+            )}
+          </div>
+          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/settings') ? 'text-finance-blue font-medium' : 'text-white'}`}>Config.</span>
+        </button>
+
+        <button 
           className="flex flex-col items-center justify-center px-2 relative transition-all duration-200 hover:scale-105"
           onClick={() => handleNavigation('/add-transaction')}
         >
@@ -78,45 +130,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentPath }) => {
             <Plus className="w-6 h-6 text-white" />
           </div>
           <span className="text-xs mt-1 text-white">Adicionar</span>
-        </button>
-
-        <button 
-          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
-          onClick={() => handleNavigation('/cashflow')}
-        >
-          <div className="relative">
-            <ArrowUpDown className={`w-6 h-6 transition-colors duration-200 ${isActive('/cashflow') ? 'text-finance-blue' : 'text-white'}`} />
-            {isActive('/cashflow') && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
-            )}
-          </div>
-          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/cashflow') ? 'text-finance-blue font-medium' : 'text-white'}`}>Fluxo</span>
-        </button>
-        
-        <button 
-          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
-          onClick={() => handleNavigation('/investments')}
-        >
-          <div className="relative">
-            <PiggyBank className={`w-6 h-6 transition-colors duration-200 ${isActive('/investments') ? 'text-finance-blue' : 'text-white'}`} />
-            {isActive('/investments') && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
-            )}
-          </div>
-          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/investments') ? 'text-finance-blue font-medium' : 'text-white'}`}>Investimentos</span>
-        </button>
-
-        <button 
-          className="flex flex-col items-center justify-center px-2 transition-all duration-200 hover:scale-110"
-          onClick={() => handleNavigation('/simulation')}
-        >
-          <div className="relative">
-            <Calculator className={`w-6 h-6 transition-colors duration-200 ${isActive('/simulation') ? 'text-finance-blue' : 'text-white'}`} />
-            {isActive('/simulation') && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-finance-blue rounded-full" />
-            )}
-          </div>
-          <span className={`text-xs mt-1 transition-colors duration-200 ${isActive('/simulation') ? 'text-finance-blue font-medium' : 'text-white'}`}>Simulação</span>
         </button>
       </div>
     </div>

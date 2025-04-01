@@ -3,11 +3,9 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { ChartContainer } from '@/components/ui/chart';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 interface SimulationData {
   installmentValue: number;
@@ -15,7 +13,7 @@ interface SimulationData {
   duration: number;
 }
 
-const SimulationPage = () => {
+export function SimulationPage() {
   const [simulation, setSimulation] = useState<SimulationData>({
     installmentValue: 0,
     startDate: new Date(),
@@ -112,27 +110,9 @@ const SimulationPage = () => {
       <Card className="p-6">
         <h3 className="text-xl font-bold mb-4">Impacto Mensal</h3>
         <div className="w-full h-[300px]">
-          <BarChart
-            width={500}
-            height={300}
-            data={calculateMonthlyImpact()}
-            margin={{
-              top: 5,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="value" fill="#3B82F6" />
-          </BarChart>
+          {/* Gráfico não implementado */}
         </div>
       </Card>
     </div>
   );
-};
-
-export default SimulationPage;
+}

@@ -102,7 +102,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      <Route path="/simulation" element={
+      <Route path="/simulation-page" element={
         <ProtectedRoute>
           <SimulationPage />
         </ProtectedRoute>
