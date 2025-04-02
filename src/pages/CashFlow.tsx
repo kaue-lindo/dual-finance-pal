@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -50,11 +51,16 @@ const CashFlow = () => {
     const totalIncome = getRealIncome();
     const userFinances = finances[currentUser.id] || { investments: [] };
     
+    // Configurar para mostrar de janeiro a janeiro do ano seguinte
     const today = new Date();
+    const currentYear = today.getFullYear();
+    const startMonth = new Date(currentYear, 0, 1); // Janeiro do ano atual
+    
     const monthlyData: Record<string, any> = {};
     
-    for (let i = 0; i < 12; i++) {
-      const monthDate = addMonths(today, i);
+    // 13 meses para incluir janeiro do próximo ano (0 a 12)
+    for (let i = 0; i < 13; i++) {
+      const monthDate = addMonths(startMonth, i);
       const monthKey = format(monthDate, 'MMM/yy');
       
       monthlyData[monthKey] = {
@@ -103,7 +109,7 @@ const CashFlow = () => {
     Object.keys(monthlyData).sort((a, b) => {
       return monthlyData[a].date.getTime() - monthlyData[b].date.getTime();
     }).forEach(monthKey => {
-      if (monthKey === format(today, 'MMM/yy')) {
+      if (monthKey === format(startMonth, 'MMM/yy')) {
         runningBalance = monthlyData[monthKey].balance;
       } else {
         runningBalance = runningBalance + 
@@ -205,7 +211,7 @@ const CashFlow = () => {
         <Card className="finance-card bg-finance-dark-card border border-finance-dark-lighter shadow-lg mb-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <LineChartIcon className="w-5 h-5 text-finance-blue" />
-            Projeção Financeira
+            Projeção Financeira (Jan-Jan)
           </h2>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -224,7 +230,7 @@ const CashFlow = () => {
           </div>
           <div className="mt-6 p-3 bg-finance-dark-lighter rounded-lg">
             <p className="text-gray-300 text-sm">
-              Esta projeção mostra como seu saldo financeiro vai evoluir nos próximos meses, considerando todas as 
+              Esta projeção mostra como seu saldo financeiro vai evoluir ao longo do ano, considerando todas as 
               entradas e saídas programadas e recorrentes.
             </p>
           </div>
@@ -338,6 +344,52 @@ const CashFlow = () => {
       <BottomNav />
     </div>
   );
+};
+
+// Definição dos componentes de Tooltip para o gráfico
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-finance-dark-card p-3 border border-finance-dark-lighter rounded-md">
+        <p className="text-gray-200 font-medium">{`${label}`}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
+            {`${entry.name}: ${formatCurrency(entry.value)}`}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+const CategoryTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-finance-dark-card p-3 border border-finance-dark-lighter rounded-md">
+        <p className="text-gray-200 font-medium">{data.name}</p>
+        <p className="text-sm text-white">Valor: {formatCurrency(data.value)}</p>
+        <p className="text-sm text-white">Percentual: {data.percentage}%</p>
+        <p className="text-sm text-white">Usuário: {data.user}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const DistributionTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-finance-dark-card p-3 border border-finance-dark-lighter rounded-md">
+        <p className="text-gray-200 font-medium">{data.name}</p>
+        <p className="text-sm text-white">Valor: {formatCurrency(data.value)}</p>
+        <p className="text-sm text-white">Percentual: {data.percentage}%</p>
+      </div>
+    );
+  }
+  return null;
 };
 
 export default CashFlow;

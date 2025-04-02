@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -138,6 +139,10 @@ const Dashboard = () => {
            year === today.getFullYear();
   };
 
+  // Formatação do nome do mês atual do calendário
+  const currentMonthName = formatDate(currentMonth, 'MMMM yyyy');
+  const capitalizedMonthName = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+
   return (
     <div className="min-h-screen pb-20 bg-finance-dark">
       <div className="finance-card rounded-b-xl p-4">
@@ -240,7 +245,10 @@ const Dashboard = () => {
             
       <div className="px-4 mt-6">
         <div className="mb-8">
-          <h2 className="text-lg font-bold text-white mb-3">Calendário</h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold text-white">Calendário</h2>
+            <span className="text-gray-400 text-sm">{capitalizedMonthName}</span>
+          </div>
           
           <div className="grid grid-cols-7 gap-1 mb-2">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (

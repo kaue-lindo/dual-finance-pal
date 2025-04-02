@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Income, IncomeCategory } from '../types';
@@ -41,16 +42,20 @@ export const useIncomes = (
         date: income.date.toISOString()
       };
       
-      // Tratar o campo recurring de acordo com seu tipo
-      if (typeof income.recurring === 'object') {
+      // Correção: Tratar o campo recurring de acordo com seu tipo
+      if (typeof income.recurring === 'object' && income.recurring !== null) {
         // Se for um objeto, extrair type e days
-        supabaseData.recurring = false; // Campo booleano no Supabase
+        supabaseData.recurring = true; // Campo booleano no Supabase
         supabaseData.recurring_type = income.recurring.type;
-        supabaseData.recurring_days = income.recurring.days;
+        supabaseData.recurring_days = income.recurring.days || [];
       } else if (income.recurring === true) {
         // Se for apenas um booleano true
         supabaseData.recurring = true;
         supabaseData.recurring_type = 'monthly'; // Padrão para recorrência simples
+        
+        // Para recorrência mensal simples, usar o dia da data selecionada
+        const selectedDay = income.date.getDate();
+        supabaseData.recurring_days = [selectedDay];
       } else {
         // Se for false ou undefined
         supabaseData.recurring = false;

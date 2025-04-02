@@ -5,6 +5,7 @@ import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFin
 import { calculateBalanceFromData, calculateBalanceExcludingInvestmentReturns } from '../utils/calculations';
 import { getMonthlyReturn, calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../utils/projections';
 
+// Interfaces e tipos auxiliares
 interface FinanceData {
   id: string;
   amount: number;
@@ -246,9 +247,24 @@ export const useTransactions = (
     
     const monthsToLookAhead = 24;
     
-    userFinances.expenses.forEach(expense => {
+    // Processar despesas
+    processExpenses(userFinances.expenses, futureTransactions, today, monthsToLookAhead);
+    
+    // Processar receitas
+    processIncomes(userFinances.incomes, futureTransactions, today, monthsToLookAhead);
+    
+    // Processar investimentos
+    processInvestments(userFinances.investments, futureTransactions, monthsToLookAhead);
+    
+    return futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+  };
+
+  // Função auxiliar para processar despesas
+  const processExpenses = (expenses: Expense[], futureTransactions: FutureTransaction[], today: Date, monthsToLookAhead: number) => {
+    expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
       
+      // Adicionar a despesa original
       futureTransactions.push({
         id: expense.id,
         date: expenseDate,
@@ -259,92 +275,113 @@ export const useTransactions = (
         sourceCategory: expense.sourceCategory
       });
       
+      // Processar prestações
       if (expense.installment && expense.installment.remaining > 0) {
-        const installmentAmount = expense.amount;
-        
-        for (let i = 1; i <= expense.installment.remaining; i++) {
-          const futureDate = new Date(expenseDate);
-          futureDate.setMonth(futureDate.getMonth() + i);
-          
-          futureTransactions.push({
-            id: `${expense.id}-installment-${i}`,
-            date: futureDate,
-            description: `${expense.description} (${expense.installment.current + i}/${expense.installment.total})`,
-            amount: installmentAmount,
-            type: 'expense',
-            category: expense.category,
-            sourceCategory: expense.sourceCategory
-          });
-        }
+        processInstallments(expense, futureTransactions);
       }
       
+      // Processar recorrências
       if (expense.recurring) {
-        const nextMonths = [];
-        for (let i = 0; i <= monthsToLookAhead; i++) {
-          nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
-        }
-        
-        nextMonths.forEach(month => {
-          if (expense.recurring?.type === 'monthly' && expense.recurring.days && expense.recurring.days.length > 0) {
-            expense.recurring.days.forEach(day => {
-              const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
-              
-              // Só adiciona transações futuras ou a partir do primeiro dia do mês atual
-              if (futureDate >= new Date(today.getFullYear(), today.getMonth(), 1)) {
-                futureTransactions.push({
-                  id: `${expense.id}-recurring-${month.getMonth()}-${day}`,
-                  date: futureDate,
-                  description: `${expense.description} (Mensal)`,
-                  amount: expense.amount,
-                  type: 'expense',
-                  category: expense.category,
-                  sourceCategory: expense.sourceCategory
-                });
-              }
-            });
-          } else if (expense.recurring?.type === 'weekly') {
-            for (let week = 0; week < 4; week++) {
-              const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
-              
-              if (futureDate >= new Date(today.getFullYear(), today.getMonth(), 1)) {
-                futureTransactions.push({
-                  id: `${expense.id}-recurring-weekly-${month.getMonth()}-${week}`,
-                  date: futureDate,
-                  description: `${expense.description} (Semanal)`,
-                  amount: expense.amount,
-                  type: 'expense',
-                  category: expense.category,
-                  sourceCategory: expense.sourceCategory
-                });
-              }
-            }
-          } else if (expense.recurring?.type === 'daily') {
-            // Para despesas diárias, gera uma transação para cada dia do mês
-            const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-            
-            for (let day = 1; day <= daysInMonth; day++) {
-              const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
-              
-              if (futureDate >= new Date(today.getFullYear(), today.getMonth(), 1)) {
-                futureTransactions.push({
-                  id: `${expense.id}-recurring-daily-${month.getMonth()}-${day}`,
-                  date: futureDate,
-                  description: `${expense.description} (Diário)`,
-                  amount: expense.amount,
-                  type: 'expense',
-                  category: expense.category,
-                  sourceCategory: expense.sourceCategory
-                });
-              }
-            }
-          }
-        });
+        processRecurringExpenses(expense, futureTransactions, today, monthsToLookAhead);
       }
     });
+  };
+
+  // Função auxiliar para processar prestações
+  const processInstallments = (expense: Expense, futureTransactions: FutureTransaction[]) => {
+    if (!expense.installment) return;
     
-    userFinances.incomes.forEach(income => {
+    const installmentAmount = expense.amount;
+    const expenseDate = new Date(expense.date);
+    
+    for (let i = 1; i <= expense.installment.remaining; i++) {
+      const futureDate = new Date(expenseDate);
+      futureDate.setMonth(futureDate.getMonth() + i);
+      
+      futureTransactions.push({
+        id: `${expense.id}-installment-${i}`,
+        date: futureDate,
+        description: `${expense.description} (${expense.installment.current + i}/${expense.installment.total})`,
+        amount: installmentAmount,
+        type: 'expense',
+        category: expense.category,
+        sourceCategory: expense.sourceCategory
+      });
+    }
+  };
+
+  // Função auxiliar para processar despesas recorrentes
+  const processRecurringExpenses = (expense: Expense, futureTransactions: FutureTransaction[], today: Date, monthsToLookAhead: number) => {
+    if (!expense.recurring) return;
+    
+    const nextMonths = [];
+    for (let i = 0; i <= monthsToLookAhead; i++) {
+      nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
+    }
+    
+    nextMonths.forEach(month => {
+      if (expense.recurring?.type === 'monthly' && expense.recurring.days && expense.recurring.days.length > 0) {
+        expense.recurring.days.forEach(day => {
+          const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
+          
+          // Só adiciona transações futuras ou a partir do primeiro dia do mês atual
+          if (futureDate >= new Date(today.getFullYear(), today.getMonth(), 1)) {
+            futureTransactions.push({
+              id: `${expense.id}-recurring-${month.getMonth()}-${day}`,
+              date: futureDate,
+              description: `${expense.description} (Mensal)`,
+              amount: expense.amount,
+              type: 'expense',
+              category: expense.category,
+              sourceCategory: expense.sourceCategory
+            });
+          }
+        });
+      } else if (expense.recurring?.type === 'weekly') {
+        for (let week = 0; week < 4; week++) {
+          const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
+          
+          if (futureDate >= new Date(today.getFullYear(), today.getMonth(), 1)) {
+            futureTransactions.push({
+              id: `${expense.id}-recurring-weekly-${month.getMonth()}-${week}`,
+              date: futureDate,
+              description: `${expense.description} (Semanal)`,
+              amount: expense.amount,
+              type: 'expense',
+              category: expense.category,
+              sourceCategory: expense.sourceCategory
+            });
+          }
+        }
+      } else if (expense.recurring?.type === 'daily') {
+        // Para despesas diárias, gera uma transação para cada dia do mês
+        const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+          const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
+          
+          if (futureDate >= new Date(today.getFullYear(), today.getMonth(), 1)) {
+            futureTransactions.push({
+              id: `${expense.id}-recurring-daily-${month.getMonth()}-${day}`,
+              date: futureDate,
+              description: `${expense.description} (Diário)`,
+              amount: expense.amount,
+              type: 'expense',
+              category: expense.category,
+              sourceCategory: expense.sourceCategory
+            });
+          }
+        }
+      }
+    });
+  };
+
+  // Função auxiliar para processar receitas
+  const processIncomes = (incomes: Income[], futureTransactions: FutureTransaction[], today: Date, monthsToLookAhead: number) => {
+    incomes.forEach(income => {
       const incomeDate = new Date(income.date);
       
+      // Determinar descrição com base no tipo de recorrência (se houver)
       let description = income.description;
       if (income.recurring) {
         if (typeof income.recurring === 'object' && income.recurring.type) {
@@ -361,6 +398,7 @@ export const useTransactions = (
         }
       }
       
+      // Adicionar a receita original
       futureTransactions.push({
         id: income.id,
         date: incomeDate,
@@ -370,86 +408,98 @@ export const useTransactions = (
         category: income.category
       });
       
+      // Processar receitas recorrentes
       if (income.recurring) {
-        const nextMonths = [];
-        for (let i = 1; i <= monthsToLookAhead; i++) {
-          nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
+        processRecurringIncomes(income, futureTransactions, today, monthsToLookAhead, incomeDate);
+      }
+    });
+  };
+
+  // Função auxiliar para processar receitas recorrentes
+  const processRecurringIncomes = (income: Income, futureTransactions: FutureTransaction[], today: Date, monthsToLookAhead: number, incomeDate: Date) => {
+    if (!income.recurring) return;
+    
+    const nextMonths = [];
+    for (let i = 1; i <= monthsToLookAhead; i++) {
+      nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
+    }
+    
+    nextMonths.forEach(month => {
+      const recurringDays = (typeof income.recurring === 'object' && income.recurring.days && income.recurring.days.length > 0) ? 
+        income.recurring.days : [incomeDate.getDate()];
+      
+      const recurringType = (typeof income.recurring === 'object' && income.recurring.type) ? 
+        income.recurring.type : 'monthly';
+      
+      let recurringLabel = "Mensal";
+      if (recurringType === 'daily') recurringLabel = "Diário";
+      if (recurringType === 'weekly') recurringLabel = "Semanal";
+      
+      if (recurringType === 'monthly') {
+        recurringDays.forEach(day => {
+          const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
+          
+          futureTransactions.push({
+            id: `${income.id}-recurring-${month.getMonth()}-${day}`,
+            date: futureDate,
+            description: `${income.description} (${recurringLabel})`,
+            amount: income.amount,
+            type: 'income',
+            category: income.category
+          });
+        });
+      } else if (recurringType === 'weekly') {
+        for (let week = 0; week < 4; week++) {
+          const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
+          
+          futureTransactions.push({
+            id: `${income.id}-recurring-weekly-${month.getMonth()}-${week}`,
+            date: futureDate,
+            description: `${income.description} (${recurringLabel})`,
+            amount: income.amount,
+            type: 'income',
+            category: income.category
+          });
         }
+      } else if (recurringType === 'daily') {
+        const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
         
-        nextMonths.forEach(month => {
-          const recurringDays = (typeof income.recurring === 'object' && income.recurring.days) ? 
-            income.recurring.days : [incomeDate.getDate()];
+        for (let day = 1; day <= daysInMonth; day++) {
+          const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
           
-          const recurringType = (typeof income.recurring === 'object' && income.recurring.type) ? 
-            income.recurring.type : 'monthly';
-          
-          let recurringLabel = "Mensal";
-          if (recurringType === 'daily') recurringLabel = "Diário";
-          if (recurringType === 'weekly') recurringLabel = "Semanal";
-          
-          if (recurringType === 'monthly' && recurringDays && recurringDays.length > 0) {
-            recurringDays.forEach(day => {
-              const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
-              
-              futureTransactions.push({
-                id: `${income.id}-recurring-${month.getMonth()}-${day}`,
-                date: futureDate,
-                description: `${income.description} (${recurringLabel})`,
-                amount: income.amount,
-                type: 'income',
-                category: income.category
-              });
-            });
-          } else if (recurringType === 'weekly') {
-            for (let week = 0; week < 4; week++) {
-              const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
-              
-              futureTransactions.push({
-                id: `${income.id}-recurring-weekly-${month.getMonth()}-${week}`,
-                date: futureDate,
-                description: `${income.description} (${recurringLabel})`,
-                amount: income.amount,
-                type: 'income',
-                category: income.category
-              });
-            }
-          } else if (recurringType === 'daily') {
-            const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-            
-            for (let day = 1; day <= daysInMonth; day++) {
-              const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
-              
-              futureTransactions.push({
-                id: `${income.id}-recurring-daily-${month.getMonth()}-${day}`,
-                date: futureDate,
-                description: `${income.description} (${recurringLabel})`,
-                amount: income.amount,
-                type: 'income',
-                category: income.category
-              });
-            }
-          } else {
-            // Se não tiver dias definidos ou tipo específico, usa a data base
-            const futureDate = new Date(month.getFullYear(), month.getMonth(), incomeDate.getDate());
-            
-            futureTransactions.push({
-              id: `${income.id}-recurring-${month.getMonth()}`,
-              date: futureDate,
-              description: `${income.description} (${recurringLabel})`,
-              amount: income.amount,
-              type: 'income',
-              category: income.category
-            });
-          }
+          futureTransactions.push({
+            id: `${income.id}-recurring-daily-${month.getMonth()}-${day}`,
+            date: futureDate,
+            description: `${income.description} (${recurringLabel})`,
+            amount: income.amount,
+            type: 'income',
+            category: income.category
+          });
+        }
+      } else {
+        // Se não tiver tipo específico, usa a data base
+        const futureDate = new Date(month.getFullYear(), month.getMonth(), incomeDate.getDate());
+        
+        futureTransactions.push({
+          id: `${income.id}-recurring-${month.getMonth()}`,
+          date: futureDate,
+          description: `${income.description} (${recurringLabel})`,
+          amount: income.amount,
+          type: 'income',
+          category: income.category
         });
       }
     });
+  };
 
-    userFinances.investments.forEach(investment => {
-      const months = 24;
+  // Função auxiliar para processar investimentos
+  const processInvestments = (investments: Investment[], futureTransactions: FutureTransaction[], monthsToLookAhead: number) => {
+    investments.forEach(investment => {
+      const months = monthsToLookAhead;
       
       const investmentDate = new Date(investment.startDate);
       
+      // Adicionar o investimento inicial
       futureTransactions.push({
         id: `${investment.id}-initial`,
         date: investmentDate,
@@ -459,6 +509,7 @@ export const useTransactions = (
         category: 'investment'
       });
       
+      // Adicionar os rendimentos mensais
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date(investmentDate);
         futureDate.setMonth(futureDate.getMonth() + i);
@@ -496,8 +547,6 @@ export const useTransactions = (
         }
       }
     });
-    
-    return futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
   };
 
   return {
