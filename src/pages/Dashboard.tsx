@@ -1,22 +1,16 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowDown, 
   ArrowUp, 
-  Calculator, 
-  Calendar, 
+  Calculator,
   CreditCard, 
-  Home, 
   PiggyBank, 
   Plus, 
-  Receipt, 
-  Wallet,
   TrendingUp,
   Users,
   ChevronRight,
   Settings,
-  BarChart,
   LogOut as LogOutIcon,
   User as UserIcon,
   ArrowUpDown,
@@ -64,7 +58,6 @@ const Dashboard = () => {
   } = useFinance();
   const navigate = useNavigate();
 
-  // Buscando dados atualizados para garantir que todas as despesas sejam contabilizadas
   const expensesByCategory = getCategoryExpenses();
   const totalExpenses = getMonthlyExpenseTotal();
   const currentBalance = calculateBalance();
@@ -73,7 +66,6 @@ const Dashboard = () => {
   const projectedReturn = getProjectedInvestmentReturn(12);
   const totalInvestment = getTotalInvestments();
   
-  // Evitar divisão por zero e garantir um valor percentual válido
   const projectedReturnPercentage = totalInvestment > 0 
     ? Math.min(100, (projectedReturn / totalInvestment) * 100) 
     : 0;
@@ -85,7 +77,6 @@ const Dashboard = () => {
     value: item.amount,
   }));
 
-  // Calculate if the balance is positive, negative or neutral
   const getBalanceStatus = () => {
     if (currentBalance > 0) return "positive";
     if (currentBalance < 0) return "negative";
@@ -94,7 +85,6 @@ const Dashboard = () => {
 
   const balanceStatus = getBalanceStatus();
 
-  // Navigate to different screens
   const handleNavigation = (path) => {
     navigate(path);
   };
@@ -276,7 +266,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* User Comparison Section - Improved */}
       {otherUsers.length > 0 && (
         <div className="px-4 mt-6">
           <h2 className="text-white text-xl font-bold mb-4">
@@ -357,7 +346,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Improved Quick Actions Section */}
       <div className="px-4 mt-6 mb-20">
         <Card className="finance-card p-4">
           <h2 className="text-white text-xl font-bold mb-4">
@@ -427,8 +415,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Barra de navegação inferior */}
-      <BottomNav currentPath="/dashboard" />
+      <BottomNav />
     </div>
   );
 };

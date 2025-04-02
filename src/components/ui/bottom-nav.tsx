@@ -3,22 +3,26 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Users, ArrowUpDown, Plus, TrendingUp, Calculator, Settings } from 'lucide-react';
 
-const BottomNav = ({ currentPath }: { currentPath: string }) => {
+const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // For dynamic path checking - allows us to still show the navbar on child routes
+  // Simplificada a lógica de verificação de rotas ativas
   const isActive = (path: string) => {
     if (path === '/dashboard' && location.pathname === '/dashboard') return true;
     if (path === '/user-comparison' && location.pathname === '/user-comparison') return true;
-    if (['/transactions', '/expenses', '/cashflow'].includes(path) && 
-        ['/transactions', '/expenses', '/cashflow'].includes(location.pathname)) return true;
-    if (path === '/add-transaction' && 
-        ['/add-transaction', '/add-income'].includes(location.pathname)) return true;
-    if (path === '/investments' && 
-        ['/investments', '/investment-returns'].includes(location.pathname)) return true;
-    if (path === '/simulator' && 
-        ['/simulator', '/simulation-page'].includes(location.pathname)) return true;
+    if (path === '/transactions' && location.pathname.includes('/transactions')) return true;
+    if (path === '/expenses' && location.pathname === '/expenses') return true;
+    if (path === '/cashflow' && location.pathname === '/cashflow') return true;
+    if (path === '/add-transaction' && (
+      location.pathname === '/add-transaction' || location.pathname === '/add-income'
+    )) return true;
+    if (path === '/investments' && (
+      location.pathname === '/investments' || location.pathname === '/investment-returns'
+    )) return true;
+    if (path === '/simulator' && (
+      location.pathname === '/simulator' || location.pathname === '/simulation-page'
+    )) return true;
     if (path === '/settings' && location.pathname === '/settings') return true;
     return false;
   };
@@ -78,7 +82,7 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       <button
         onClick={() => navigate('/cashflow')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          isActive('/simulator') ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/cashflow') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <Calculator size={20} />
