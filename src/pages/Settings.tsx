@@ -207,7 +207,7 @@ const Settings = () => {
         </Card>
       </div>
 
-      <BottomNav currentPath="/settings" />
+      <BottomNav />
     </div>
   );
 };

@@ -42,15 +42,12 @@ const InvestmentReturns = () => {
     const userFinances = getUserFinances(currentUser.id);
     const investments = userFinances.investments || [];
     
-    // Calcular o total investido
     const totalInvestedAmount = investments.reduce((sum, investment) => sum + investment.amount, 0);
     setTotalInvested(totalInvestedAmount);
     
-    // Gerar dados para o gráfico de projeção de rendimentos
     const data = [];
     const today = new Date();
 
-    // Valor inicial para o mês atual (mês 0)
     let previousMonthTotalValue = totalInvestedAmount;
 
     for (let i = 0; i <= projectionMonths; i++) {
@@ -60,12 +57,10 @@ const InvestmentReturns = () => {
       let totalValue = 0;
       let monthlyReturns = 0;
       
-      // Calcular o valor de cada investimento neste mês
       investments.forEach(investment => {
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompound = investment.isCompound !== false;
         
-        // Calcular apenas o valor do investimento neste mês
         const value = calculateInvestmentGrowthForMonth(
           investment.amount,
           investment.rate,
@@ -77,12 +72,10 @@ const InvestmentReturns = () => {
         totalValue += value;
       });
       
-      // Calcular apenas os rendimentos deste mês (diferença em relação ao mês anterior)
       if (i > 0) {
         monthlyReturns = totalValue - previousMonthTotalValue;
       }
       
-      // Armazenar o valor total para o próximo mês
       previousMonthTotalValue = totalValue;
       
       data.push({
@@ -96,7 +89,6 @@ const InvestmentReturns = () => {
     
     setReturnProjectionData(data);
     
-    // Calcular o retorno total projetado
     const projectedReturn = data.length > 0 
       ? data[data.length - 1].value - totalInvestedAmount
       : 0;
@@ -311,7 +303,7 @@ const InvestmentReturns = () => {
         </div>
       </div>
 
-      <BottomNav currentPath="/investment-returns" />
+      <BottomNav />
     </div>
   );
 };

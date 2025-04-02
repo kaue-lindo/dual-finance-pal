@@ -302,7 +302,7 @@ const FutureTransactions = () => {
         </div>
       </div>
 
-      <BottomNav currentPath="/future-transactions" />
+      <BottomNav />
     </div>
   );
 };

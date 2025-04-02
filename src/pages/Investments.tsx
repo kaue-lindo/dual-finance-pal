@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, TrendingUp } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
 import InvestmentCalculator from '@/components/InvestmentCalculator';
-import BottomNav from '@/components/ui/bottom-nav'; // Import the BottomNav component
+import BottomNav from '@/components/ui/bottom-nav';
 
 const Investments = () => {
   const { currentUser, finances, deleteInvestment } = useFinance();
@@ -20,10 +20,8 @@ const Investments = () => {
   const userFinances = finances[currentUser.id];
   const investments = userFinances.investments || [];
 
-  // Calculate total investment
   const totalInvested = investments.reduce((sum, investment) => sum + investment.amount, 0);
 
-  // Calculate projected returns with appropriate method
   const calculateProjectedReturn = (investment: {
     amount: number;
     rate: number;
@@ -33,11 +31,9 @@ const Investments = () => {
     const { amount, rate, period, isCompound } = investment;
     
     if (isCompound !== false) {
-      // Compound interest calculation
       const annualRate = period === 'monthly' ? (1 + rate / 100) ** 12 - 1 : rate / 100;
       return amount * (1 + annualRate);
     } else {
-      // Simple interest calculation
       const annualRate = period === 'monthly' ? rate * 12 / 100 : rate / 100;
       return amount * (1 + annualRate);
     }
@@ -50,7 +46,6 @@ const Investments = () => {
 
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
-      {/* Header */}
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
@@ -88,7 +83,6 @@ const Investments = () => {
           </div>
         </Card>
 
-        {/* Investment Calculator */}
         <InvestmentCalculator />
 
         {investments.length > 0 ? (
@@ -129,7 +123,7 @@ const Investments = () => {
         )}
       </div>
       
-      <BottomNav currentPath="/investments" />
+      <BottomNav />
     </div>
   );
 };

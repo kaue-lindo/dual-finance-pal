@@ -335,7 +335,7 @@ const CashFlow = () => {
         </div>
       </div>
 
-      <BottomNav currentPath="/cashflow" />
+      <BottomNav />
     </div>
   );
 };

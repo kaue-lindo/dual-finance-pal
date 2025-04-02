@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -567,7 +566,7 @@ const UserComparison = () => {
         )}
       </div>
       
-      <BottomNav currentPath="/user-comparison" />
+      <BottomNav />
     </div>
   );
 };

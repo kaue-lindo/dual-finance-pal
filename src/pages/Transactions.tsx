@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, Plus, Filter, Search, Trash2, ArrowLeft, PieChart, BarChart3, LineChart as LineChartIcon, Calendar, TrendingUp, DollarSign, ShoppingCart } from 'lucide-react';
@@ -50,7 +49,6 @@ const Transactions = () => {
     await fetchTransactions();
     const future = getFutureTransactions();
     
-    // Converter para o formato de transação
     const formattedFuture = future.map((t, index) => ({
       id: t.id || `temp-${Date.now()}-${Math.random()}-${index}`,
       date: t.date,
@@ -73,13 +71,11 @@ const Transactions = () => {
   const totalExpenses = getMonthlyExpenseTotal();
   const totalInvestments = getTotalInvestments();
 
-  // Função para excluir uma transação
   const handleDeleteTransaction = async (id: string, type: 'income' | 'expense' | 'investment') => {
     if (window.confirm('Tem certeza que deseja excluir esta transação?')) {
       try {
-        // Usar a função deleteTransaction do contexto que lida com todos os tipos
         await deleteTransaction(id);
-        await loadTransactions(); // Recarregar transações após a exclusão
+        await loadTransactions();
         toast.success('Transação excluída com sucesso!');
       } catch (error) {
         console.error('Error deleting transaction:', error);
@@ -88,7 +84,6 @@ const Transactions = () => {
     }
   };
 
-  // Combinar transações de entrada e saída
   const incomes = userFinances.incomes.map(income => ({
     ...income,
     type: 'income',
@@ -108,10 +103,8 @@ const Transactions = () => {
     description: investment.description
   }));
   
-  // Filtrar transações com base na aba ativa e termo de pesquisa
   let filteredTransactions = [];
   
-  // Filtrar por período (atual ou futuro)
   const today = startOfDay(new Date());
   
   if (timeFilter === 'current' || timeFilter === 'all') {
@@ -137,7 +130,6 @@ const Transactions = () => {
       ];
     }
     
-    // Investimentos são sempre considerados transações atuais
     if (activeTab === 'all' || activeTab === 'investment') {
       filteredTransactions = [
         ...filteredTransactions,
@@ -149,29 +141,23 @@ const Transactions = () => {
     }
   }
   
-  // Adicionar transações futuras
   if (timeFilter === 'future' || timeFilter === 'all') {
     filteredTransactions = [
       ...filteredTransactions,
       ...futureTransactions
         .filter(transaction => {
-          // Filtrar por tipo (excluindo investimentos das transações futuras)
           if (transaction.type === 'investment') return false;
           if (activeTab !== 'all' && transaction.type !== activeTab) return false;
           
-          // Filtrar por termo de pesquisa
           if (!transaction.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
           
-          // Filtrar por data futura
           return timeFilter === 'all' || isAfter(new Date(transaction.date), today);
         })
     ];
   }
 
-  // Ordenar transações por data (mais recentes primeiro)
   filteredTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-  // Função auxiliar para renderizar a lista de transações
   const renderTransactionsList = (transactions: any[]) => {
     if (transactions.length === 0) {
       return (
@@ -181,7 +167,6 @@ const Transactions = () => {
       );
     }
     
-    // Agrupar transações por mês
     const groupedByMonth: Record<string, any[]> = {};
     
     transactions.forEach(transaction => {
@@ -195,17 +180,14 @@ const Transactions = () => {
     return (
       <div className="space-y-6">
         {Object.entries(groupedByMonth).map(([monthYear, monthTransactions]) => {
-          // Calcular o total de entradas para o mês
           const monthlyIncomeTotal = monthTransactions
             .filter(t => t.type === 'income')
             .reduce((sum, t) => sum + t.amount, 0);
           
-          // Calcular o total de saídas para o mês
           const monthlyExpenseTotal = monthTransactions
             .filter(t => t.type === 'expense')
             .reduce((sum, t) => sum + t.amount, 0);
           
-          // Calcular o total de investimentos para o mês
           const monthlyInvestmentTotal = monthTransactions
             .filter(t => t.type === 'investment')
             .reduce((sum, t) => sum + t.amount, 0);
@@ -427,8 +409,7 @@ const Transactions = () => {
         )}
       </div>
       
-      {/* Barra de navegação inferior */}
-      <BottomNav currentPath="/transactions" />
+      <BottomNav />
     </div>
   );
 };

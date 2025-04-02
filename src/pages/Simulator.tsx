@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +7,6 @@ import { ArrowLeft, Calculator, TrendingUp, PieChart } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { toast } from 'sonner';
 
-// Importação dos componentes refatorados
 import SimulationForm from './simulator/SimulationForm';
 import SimulationResultsComponent from './simulator/SimulationResults';
 import DetailedOverview from './simulator/DetailedOverview';
@@ -29,7 +27,6 @@ const Simulator = () => {
   } = useFinance();
   const navigate = useNavigate();
 
-  // Estado inicial para o formulário de simulação
   const [simulationData, setSimulationData] = useState<SimulationData>({
     description: '',
     amount: '',
@@ -42,13 +39,10 @@ const Simulator = () => {
     useInvestments: false
   });
   
-  // Estado para a aba ativa
   const [activeTab, setActiveTab] = useState('simulate');
   
-  // Estado para os resultados da simulação
   const [simulationResults, setSimulationResults] = useState<SimulationResults | null>(null);
 
-  // Estado para dados financeiros atuais
   const [financialData, setFinancialData] = useState<FinancialSummary>({
     currentBalance: 0,
     monthlyIncome: 0,
@@ -56,12 +50,10 @@ const Simulator = () => {
     totalInvestments: 0
   });
 
-  // Atualizar dados quando o usuário for carregado
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
     } else {
-      // Obter dados financeiros atuais
       setFinancialData({
         currentBalance: calculateBalance(),
         monthlyIncome: getRealIncome(),
@@ -75,7 +67,6 @@ const Simulator = () => {
     return null;
   }
 
-  // Função auxiliar para obter o número real de parcelas
   const getActualInstallments = () => {
     if (simulationData.installments === 'custom') {
       return parseInt(simulationData.customInstallments) || 1;
@@ -83,12 +74,10 @@ const Simulator = () => {
     return parseInt(simulationData.installments);
   };
 
-  // Atualizar os dados da simulação
   const updateSimulationData = (data: Partial<SimulationData>) => {
     setSimulationData(prev => ({ ...prev, ...data }));
   };
 
-  // Função para simular o impacto financeiro
   const handleSimulate = () => {
     if (!simulationData.amount || !simulationData.date || !simulationData.category) {
       toast.error("Preencha todos os campos obrigatórios");
@@ -102,16 +91,12 @@ const Simulator = () => {
     const monthlyIncome = getRealIncome();
     const monthlyExpenses = getMonthlyExpenseTotal();
     
-    // Calcular pagamento mensal
     const monthlyPayment = simulationData.isRecurring ? expenseAmount : expenseAmount / months;
     
-    // Calcular déficit mensal (se houver)
     const monthlyDeficit = Math.max(0, monthlyPayment - (monthlyIncome - monthlyExpenses));
     
-    // Get future transactions to incorporate into simulation
     const futureTransactions = getFutureTransactions();
     
-    // Generate simulation data
     const monthlyData = generateSimulationData(
       currentBalance,
       expenseAmount,
@@ -121,12 +106,11 @@ const Simulator = () => {
       futureTransactions,
       totalInvestments,
       getProjectedInvestmentReturn,
-      true // simulatedExpense flag
+      true
     );
 
     let afterExpenseBalance = currentBalance - (simulationData.isRecurring ? monthlyPayment : expenseAmount);
     
-    // If user wants to use investments to cover expense and balance is negative
     if (simulationData.useInvestments && afterExpenseBalance < 0) {
       const amountNeededFromInvestments = Math.min(Math.abs(afterExpenseBalance), totalInvestments);
       afterExpenseBalance = afterExpenseBalance + amountNeededFromInvestments;
@@ -143,13 +127,11 @@ const Simulator = () => {
       totalExpense: expenseAmount
     });
     
-    // Mudar para a aba de resultados se o resultado for calculado
     if (activeTab === 'simulate') {
       setActiveTab('results');
     }
   };
 
-  // Função para adicionar a despesa
   const handleAddExpense = async () => {
     if (!simulationData.description || !simulationData.amount || !simulationData.date || !simulationData.category) {
       toast.error("Preencha todos os campos obrigatórios");
@@ -157,7 +139,6 @@ const Simulator = () => {
     }
 
     try {
-      // Preparar objeto de despesa
       const newExpense = {
         description: simulationData.description,
         amount: parseFloat(simulationData.amount),
@@ -174,12 +155,10 @@ const Simulator = () => {
         } : undefined
       };
 
-      // Adicionar a despesa
       await addExpense(newExpense);
       
       toast.success("Despesa adicionada com sucesso");
       
-      // Limpar o formulário
       setSimulationData({
         description: '',
         amount: '',
@@ -192,7 +171,6 @@ const Simulator = () => {
         useInvestments: false
       });
       
-      // Atualizar dados financeiros
       setFinancialData({
         currentBalance: calculateBalance(),
         monthlyIncome: getRealIncome(),
@@ -200,7 +178,6 @@ const Simulator = () => {
         totalInvestments: getTotalInvestments()
       });
       
-      // Voltar para a aba de simulação
       setActiveTab('simulate');
       setSimulationResults(null);
       
@@ -210,7 +187,6 @@ const Simulator = () => {
     }
   };
 
-  // Obter dados de categorias para o gráfico
   const categoryExpenses = getCategoryExpenses();
   const categoryData: CategoryData[] = categoryExpenses.map(item => ({
     name: item.category === 'food' ? 'Alimentação' :
@@ -236,7 +212,6 @@ const Simulator = () => {
 
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
-      {/* Header */}
       <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
@@ -297,7 +272,7 @@ const Simulator = () => {
         </Tabs>
       </div>
 
-      <BottomNav currentPath="/cashflow" />
+      <BottomNav />
     </div>
   );
 };
