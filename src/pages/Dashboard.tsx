@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -9,12 +8,11 @@ import { formatDate, formatCurrency, formatCompactCurrency, cn } from '@/lib/uti
 import TransactionsList from '@/components/TransactionsList';
 import { useFinance } from '@/context/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
-import { useMobileDetect } from '@/hooks/use-mobile';
-import QuickActions from '@/components/QuickActions';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const isMobile = useMobileDetect();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const { currentUser, fetchTransactions, getFutureTransactions, finances } = useFinance();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activePeriod, setActivePeriod] = useState<'day' | 'week' | 'month'>('day');
@@ -33,11 +31,9 @@ const Dashboard = () => {
   
   const userFinances = finances[currentUser.id] || { incomes: [], expenses: [], balance: 0 };
   
-  // Formatar data atual
   const formattedDate = formatDate(new Date(), 'MMMM, yyyy');
   const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
   
-  // Funções para navegação entre meses
   const goToPreviousMonth = () => {
     const prevMonth = new Date(currentMonth);
     prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -54,13 +50,11 @@ const Dashboard = () => {
     setCurrentMonth(new Date());
   };
   
-  // Filtrar transações para o mês atual
   const futureTransactions = getFutureTransactions();
   
   const firstDayOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   const lastDayOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
   
-  // Filtrar transações por período
   const filterTransactionsByPeriod = () => {
     const today = new Date();
     const currentDate = today.getDate();
@@ -71,20 +65,17 @@ const Dashboard = () => {
     let startDate, endDate;
     
     if (activePeriod === 'day' && isCurrentMonth) {
-      // Hoje
       startDate = new Date(today.setHours(0, 0, 0, 0));
       endDate = new Date(today.setHours(23, 59, 59, 999));
     } else if (activePeriod === 'week' && isCurrentMonth) {
-      // Esta semana
       const dayOfWeek = today.getDay();
-      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // ajuste para iniciar na segunda-feira
+      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       startDate = new Date(today.setDate(diff));
       startDate.setHours(0, 0, 0, 0);
       endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 6);
       endDate.setHours(23, 59, 59, 999);
     } else {
-      // Mês inteiro
       startDate = new Date(firstDayOfCurrentMonth);
       endDate = new Date(lastDayOfCurrentMonth);
     }
@@ -97,7 +88,6 @@ const Dashboard = () => {
   
   const filteredTransactions = filterTransactionsByPeriod();
   
-  // Calcular entradas e saídas
   const calculateIncomeAndExpense = () => {
     let totalIncome = 0;
     let totalExpense = 0;
@@ -116,25 +106,20 @@ const Dashboard = () => {
   const { totalIncome, totalExpense } = calculateIncomeAndExpense();
   const balance = totalIncome - totalExpense;
   
-  // Obter dia atual para destacar no calendário
   const currentDay = new Date().getDate();
   const month = currentMonth.getMonth();
   const year = currentMonth.getFullYear();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   
-  // Gerar dias para o calendário
   const calendarDays = [];
-  // Adicionar dias vazios antes do primeiro dia do mês
   for (let i = 0; i < firstDayOfMonth; i++) {
     calendarDays.push(null);
   }
-  // Adicionar os dias do mês
   for (let i = 1; i <= daysInMonth; i++) {
     calendarDays.push(i);
   }
   
-  // Verificar transações por dia
   const getTransactionsForDay = (day: number) => {
     const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
     const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
@@ -145,7 +130,6 @@ const Dashboard = () => {
     });
   };
   
-  // Verificar se é hoje
   const isToday = (day: number) => {
     const today = new Date();
     return day === today.getDate() && 
@@ -155,7 +139,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen pb-20 bg-finance-dark">
-      {/* Cabeçalho */}
       <div className="finance-card rounded-b-xl p-4">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
@@ -172,13 +155,11 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Saldo */}
         <div className="text-center mb-6">
           <p className="text-sm text-gray-400 mb-1">Saldo Total</p>
           <p className="text-3xl font-bold text-white">{formatCurrency(userFinances.balance)}</p>
         </div>
         
-        {/* Navegação do mês */}
         <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" onClick={goToPreviousMonth} className="text-white">
             <ChevronLeft size={20} />
@@ -195,7 +176,6 @@ const Dashboard = () => {
           </Button>
         </div>
         
-        {/* Navegação do período */}
         <div className="flex justify-center items-center mt-4 mb-2">
           <div className="inline-flex rounded-md overflow-hidden border border-gray-700">
             <button
@@ -234,7 +214,6 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Cards de Entrada e Saída */}
         <div className="grid grid-cols-2 gap-3 mt-4">
           <Card className="bg-finance-dark-lighter border-none">
             <div className="p-3">
@@ -258,12 +237,10 @@ const Dashboard = () => {
         </div>
       </div>
             
-      {/* Principal */}
       <div className="px-4 mt-6">
         <div className="mb-8">
           <h2 className="text-lg font-bold text-white mb-3">Calendário</h2>
           
-          {/* Dias da semana */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
               <div key={index} className="text-center text-gray-400 text-xs">
@@ -272,7 +249,6 @@ const Dashboard = () => {
             ))}
           </div>
           
-          {/* Calendário */}
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((day, index) => {
               if (day === null) {
@@ -293,12 +269,10 @@ const Dashboard = () => {
                     !today && "hover:bg-finance-dark-lighter"
                   )}
                   onClick={() => {
-                    // Apenas reage aos cliques se estiver no mês atual
                     const currentDate = new Date();
                     const isCurrentMonth = currentDate.getMonth() === month && currentDate.getFullYear() === year;
                     
                     if (isCurrentMonth) {
-                      // Atualiza para o dia selecionado
                       currentDate.setDate(day);
                       setCurrentMonth(new Date(currentDate));
                       setActivePeriod('day');
@@ -312,7 +286,6 @@ const Dashboard = () => {
                     {day}
                   </span>
                   
-                  {/* Indicadores de transação */}
                   <div className="flex gap-1 mt-1">
                     {hasIncome && (
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
@@ -327,7 +300,6 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Transações */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-bold text-white">Transações</h2>
