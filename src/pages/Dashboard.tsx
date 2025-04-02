@@ -1,420 +1,352 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowDown, 
-  ArrowUp, 
-  Calculator,
-  CreditCard, 
-  PiggyBank, 
-  Plus, 
-  TrendingUp,
-  Users,
-  ChevronRight,
-  Settings,
-  LogOut as LogOutIcon,
-  User as UserIcon,
-  ArrowUpDown,
-  UserPlus
-} from 'lucide-react';
-import { Card } from "@/components/ui/card";
-import { CircularProgressIndicator } from "@/components/CircularProgressIndicator";
-import BottomNav from "@/components/ui/bottom-nav";
-import { useFinance } from "@/context/FinanceContext";
-import { formatCurrency } from "@/context/finance/utils/formatting";
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  Tooltip,
-} from "recharts";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Menu, MoreVertical } from 'lucide-react';
+import { formatDate, formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
+import TransactionsList from '@/components/TransactionsList';
+import { useFinance } from '@/context/FinanceContext';
+import BottomNav from '@/components/ui/bottom-nav';
+import { useMobileDetect } from '@/hooks/use-mobile';
+import QuickActions from '@/components/QuickActions';
 
 const Dashboard = () => {
-  const {
-    currentUser,
-    users,
-    calculateBalance,
-    getMonthlyExpenseTotal,
-    getCategoryExpenses,
-    getRealIncome,
-    getTotalInvestments,
-    getProjectedInvestmentReturn,
-    getUserBalance,
-    getUserFinances,
-    logout,
-    selectProfile
-  } = useFinance();
   const navigate = useNavigate();
-
-  const expensesByCategory = getCategoryExpenses();
-  const totalExpenses = getMonthlyExpenseTotal();
-  const currentBalance = calculateBalance();
-  const realIncome = getRealIncome();
-  const investmentAmount = getTotalInvestments();
-  const projectedReturn = getProjectedInvestmentReturn(12);
-  const totalInvestment = getTotalInvestments();
+  const isMobile = useMobileDetect();
+  const { currentUser, fetchTransactions, getFutureTransactions, finances } = useFinance();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [activePeriod, setActivePeriod] = useState<'day' | 'week' | 'month'>('day');
   
-  const projectedReturnPercentage = totalInvestment > 0 
-    ? Math.min(100, (projectedReturn / totalInvestment) * 100) 
-    : 0;
-
-  const otherUsers = users.filter(user => user.id !== currentUser?.id);
-
-  const chartData = expensesByCategory.map((item) => ({
-    name: item.category,
-    value: item.amount,
-  }));
-
-  const getBalanceStatus = () => {
-    if (currentBalance > 0) return "positive";
-    if (currentBalance < 0) return "negative";
-    return "neutral";
+  useEffect(() => {
+    if (currentUser) {
+      fetchTransactions();
+    } else {
+      navigate('/login');
+    }
+  }, [currentUser, fetchTransactions, navigate]);
+  
+  if (!currentUser) {
+    return null;
+  }
+  
+  const userFinances = finances[currentUser.id] || { incomes: [], expenses: [], balance: 0 };
+  
+  // Formatar data atual
+  const formattedDate = formatDate(new Date(), 'MMMM, yyyy');
+  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+  
+  // Funções para navegação entre meses
+  const goToPreviousMonth = () => {
+    const prevMonth = new Date(currentMonth);
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    setCurrentMonth(prevMonth);
   };
-
-  const balanceStatus = getBalanceStatus();
-
-  const handleNavigation = (path) => {
-    navigate(path);
+  
+  const goToNextMonth = () => {
+    const nextMonth = new Date(currentMonth);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    setCurrentMonth(nextMonth);
   };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  
+  const goToCurrentMonth = () => {
+    setCurrentMonth(new Date());
   };
-
-  const handleSwitchUser = (userId) => {
-    selectProfile(userId);
+  
+  // Filtrar transações para o mês atual
+  const futureTransactions = getFutureTransactions();
+  
+  const firstDayOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+  const lastDayOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+  
+  // Filtrar transações por período
+  const filterTransactionsByPeriod = () => {
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
+    const displayedMonthYear = `${currentMonth.getMonth()}-${currentMonth.getFullYear()}`;
+    const isCurrentMonth = currentMonthYear === displayedMonthYear;
+    
+    let startDate, endDate;
+    
+    if (activePeriod === 'day' && isCurrentMonth) {
+      // Hoje
+      startDate = new Date(today.setHours(0, 0, 0, 0));
+      endDate = new Date(today.setHours(23, 59, 59, 999));
+    } else if (activePeriod === 'week' && isCurrentMonth) {
+      // Esta semana
+      const dayOfWeek = today.getDay();
+      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // ajuste para iniciar na segunda-feira
+      startDate = new Date(today.setDate(diff));
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Mês inteiro
+      startDate = new Date(firstDayOfCurrentMonth);
+      endDate = new Date(lastDayOfCurrentMonth);
+    }
+    
+    return futureTransactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= startDate && transactionDate <= endDate;
+    });
+  };
+  
+  const filteredTransactions = filterTransactionsByPeriod();
+  
+  // Calcular entradas e saídas
+  const calculateIncomeAndExpense = () => {
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    filteredTransactions.forEach(transaction => {
+      if (transaction.type === 'income') {
+        totalIncome += transaction.amount;
+      } else if (transaction.type === 'expense') {
+        totalExpense += transaction.amount;
+      }
+    });
+    
+    return { totalIncome, totalExpense };
+  };
+  
+  const { totalIncome, totalExpense } = calculateIncomeAndExpense();
+  const balance = totalIncome - totalExpense;
+  
+  // Obter dia atual para destacar no calendário
+  const currentDay = new Date().getDate();
+  const month = currentMonth.getMonth();
+  const year = currentMonth.getFullYear();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  
+  // Gerar dias para o calendário
+  const calendarDays = [];
+  // Adicionar dias vazios antes do primeiro dia do mês
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    calendarDays.push(null);
+  }
+  // Adicionar os dias do mês
+  for (let i = 1; i <= daysInMonth; i++) {
+    calendarDays.push(i);
+  }
+  
+  // Verificar transações por dia
+  const getTransactionsForDay = (day: number) => {
+    const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+    const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+    
+    return futureTransactions.filter(t => {
+      const date = new Date(t.date);
+      return date >= startOfDay && date <= endOfDay;
+    });
+  };
+  
+  // Verificar se é hoje
+  const isToday = (day: number) => {
+    const today = new Date();
+    return day === today.getDate() && 
+           month === today.getMonth() && 
+           year === today.getFullYear();
   };
 
   return (
-    <div className="min-h-screen bg-finance-dark pb-20">
-      <div className="finance-card rounded-b-xl">
-        <div className="p-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold text-white">
-              Olá, {currentUser?.name || 'Usuário'}!
-            </h1>
-            <p className="text-gray-400">
-              Bem-vindo de volta ao DualFinance 👋
-            </p>
+    <div className="min-h-screen pb-20 bg-finance-dark">
+      {/* Cabeçalho */}
+      <div className="finance-card rounded-b-xl p-4">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center">
+            <span className="text-xl font-bold text-white mr-2">Olá, {currentUser.name || 'Usuário'}</span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="w-10 h-10 rounded-full overflow-hidden cursor-pointer">
-                <Avatar>
-                  {currentUser?.avatarUrl ? (
-                    <AvatarImage 
-                      src={currentUser.avatarUrl} 
-                      alt={currentUser.name} 
-                    />
-                  ) : (
-                    <AvatarFallback className="bg-gray-700 text-white">
-                      {currentUser?.name ? currentUser.name.substring(0, 1).toUpperCase() : 'U'}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-finance-dark-card border-finance-dark-lighter">
-              <DropdownMenuLabel className="text-white">Minha Conta</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-gray-700" />
-              <DropdownMenuItem 
-                className="text-white hover:bg-finance-dark-lighter cursor-pointer"
-                onClick={() => navigate('/settings')}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
-              </DropdownMenuItem>
-              
-              {otherUsers.length > 0 && (
-                <>
-                  <DropdownMenuSeparator className="bg-gray-700" />
-                  <DropdownMenuLabel className="text-white">Trocar de Usuário</DropdownMenuLabel>
-                  {otherUsers.map(user => (
-                    <DropdownMenuItem 
-                      key={user.id}
-                      className="text-white hover:bg-finance-dark-lighter cursor-pointer"
-                      onClick={() => handleSwitchUser(user.id)}
-                    >
-                      <UserIcon className="mr-2 h-4 w-4" />
-                      {user.name}
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-              
-              <DropdownMenuSeparator className="bg-gray-700" />
-              <DropdownMenuItem 
-                className="text-red-500 hover:bg-finance-dark-lighter cursor-pointer"
-                onClick={handleLogout}
-              >
-                <LogOutIcon className="mr-2 h-4 w-4" />
-                Sair da Conta
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-          <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-gray-400 text-sm">Saldo Atual</p>
-                <h2 className="text-2xl font-bold">{formatCurrency(currentBalance)}</h2>
-              </div>
-              {balanceStatus === "positive" && <ArrowUp className="text-green-500 w-6 h-6" />}
-              {balanceStatus === "negative" && <ArrowDown className="text-red-500 w-6 h-6" />}
-              {balanceStatus === "neutral" && <TrendingUp className="text-yellow-500 w-6 h-6" />}
-            </div>
-          </Card>
-          <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-gray-400 text-sm">Despesas Mensais</p>
-                <h2 className="text-2xl font-bold">{formatCurrency(totalExpenses)}</h2>
-              </div>
-              <ArrowDown className="text-red-500 w-6 h-6" />
-            </div>
-          </Card>
-          <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-gray-400 text-sm">Renda Real</p>
-                <h2 className="text-2xl font-bold">{formatCurrency(realIncome)}</h2>
-              </div>
-              <ArrowUp className="text-green-500 w-6 h-6" />
-            </div>
-          </Card>
-          <Card className="bg-finance-dark-card text-white">
-            <div className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-gray-400 text-sm">Total Investido</p>
-                <h2 className="text-2xl font-bold">{formatCurrency(investmentAmount)}</h2>
-              </div>
-              <TrendingUp className="text-green-500 w-6 h-6" />
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      <div className="mt-6 px-4">
-        <Card className="finance-card p-4">
-          <h2 className="text-white text-xl font-bold mb-4">
-            Despesas por Categoria
-          </h2>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  dataKey="value"
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  label
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="text-center text-gray-400">
-              Nenhuma despesa registrada neste mês.
-            </div>
-          )}
-        </Card>
-      </div>
-
-      <div className="mt-6 px-4">
-        <Card className="finance-card p-4">
-          <h2 className="text-white text-xl font-bold mb-4">
-            Projeção de Investimentos (12 meses)
-          </h2>
-          <div className="flex flex-col items-center">
-            <CircularProgressIndicator
-              value={projectedReturnPercentage}
-              size={150}
-              centerContent={
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{projectedReturnPercentage.toFixed(1)}%</p>
-                </div>
+          <div className="flex items-center gap-2">
+            <QuickActions 
+              trigger={
+                <Button variant="ghost" size="icon" className="navbar-icon">
+                  <Menu size={24} className="text-white" />
+                </Button>
               }
             />
-            <p className="text-white mt-4">
-              Retorno Projetado: {formatCurrency(projectedReturn)}
-            </p>
           </div>
-        </Card>
+        </div>
+        
+        {/* Saldo */}
+        <div className="text-center mb-6">
+          <p className="text-sm text-gray-400 mb-1">Saldo Total</p>
+          <p className="text-3xl font-bold text-white">{formatCurrency(userFinances.balance)}</p>
+        </div>
+        
+        {/* Navegação do mês */}
+        <div className="flex justify-between items-center mb-4">
+          <Button variant="ghost" size="icon" onClick={goToPreviousMonth} className="text-white">
+            <ChevronLeft size={20} />
+          </Button>
+          <div 
+            className="flex gap-1 items-center cursor-pointer"
+            onClick={goToCurrentMonth}
+          >
+            <Calendar size={16} className="text-finance-blue" />
+            <span className="text-white font-medium">{capitalizedDate}</span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={goToNextMonth} className="text-white">
+            <ChevronRight size={20} />
+          </Button>
+        </div>
+        
+        {/* Navegação do período */}
+        <div className="flex justify-center items-center mt-4 mb-2">
+          <div className="inline-flex rounded-md overflow-hidden border border-gray-700">
+            <button
+              className={cn(
+                "px-4 py-2 text-sm transition-colors",
+                activePeriod === 'day' 
+                  ? "bg-finance-blue text-white" 
+                  : "bg-finance-dark-lighter text-gray-300 hover:bg-finance-dark-card"
+              )}
+              onClick={() => setActivePeriod('day')}
+            >
+              Dia
+            </button>
+            <button
+              className={cn(
+                "px-4 py-2 text-sm transition-colors",
+                activePeriod === 'week' 
+                  ? "bg-finance-blue text-white" 
+                  : "bg-finance-dark-lighter text-gray-300 hover:bg-finance-dark-card"
+              )}
+              onClick={() => setActivePeriod('week')}
+            >
+              Semana
+            </button>
+            <button
+              className={cn(
+                "px-4 py-2 text-sm transition-colors",
+                activePeriod === 'month' 
+                  ? "bg-finance-blue text-white" 
+                  : "bg-finance-dark-lighter text-gray-300 hover:bg-finance-dark-card"
+              )}
+              onClick={() => setActivePeriod('month')}
+            >
+              Mês
+            </button>
+          </div>
+        </div>
+        
+        {/* Cards de Entrada e Saída */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <Card className="bg-finance-dark-lighter border-none">
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp size={16} className="text-green-500" />
+                <p className="text-gray-400 text-sm">Entradas</p>
+              </div>
+              <p className="text-xl font-bold text-green-500">{formatCurrency(totalIncome)}</p>
+            </div>
+          </Card>
+          
+          <Card className="bg-finance-dark-lighter border-none">
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingDown size={16} className="text-red-500" />
+                <p className="text-gray-400 text-sm">Saídas</p>
+              </div>
+              <p className="text-xl font-bold text-red-500">{formatCurrency(totalExpense)}</p>
+            </div>
+          </Card>
+        </div>
       </div>
-
-      {otherUsers.length > 0 && (
-        <div className="px-4 mt-6">
-          <h2 className="text-white text-xl font-bold mb-4">
-            Comparação de Finanças
-          </h2>
-          <div className="space-y-4">
-            {otherUsers.map(user => {
-              const otherUserBalance = getUserBalance(user.id);
-              const otherUserFinances = getUserFinances(user.id);
-              const otherUserInvestments = otherUserFinances.investments.reduce(
-                (sum, inv) => sum + inv.amount, 0
-              );
-              const otherUserExpenses = otherUserFinances.expenses.reduce(
-                (sum, exp) => sum + exp.amount, 0
-              );
-              const balanceDiff = currentBalance - otherUserBalance;
-              const investmentDiff = investmentAmount - otherUserInvestments;
-              const expenseDiff = totalExpenses - otherUserExpenses;
+            
+      {/* Principal */}
+      <div className="px-4 mt-6">
+        <div className="mb-8">
+          <h2 className="text-lg font-bold text-white mb-3">Calendário</h2>
+          
+          {/* Dias da semana */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
+              <div key={index} className="text-center text-gray-400 text-xs">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          {/* Calendário */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((day, index) => {
+              if (day === null) {
+                return <div key={`empty-${index}`} className="h-10" />;
+              }
+              
+              const transactions = getTransactionsForDay(day);
+              const hasIncome = transactions.some(t => t.type === 'income');
+              const hasExpense = transactions.some(t => t.type === 'expense');
+              const today = isToday(day);
               
               return (
-                <Card 
-                  key={user.id} 
-                  className="finance-card p-4 cursor-pointer hover:bg-finance-dark-lighter transition-colors"
-                  onClick={() => handleNavigation('/user-comparison')}
+                <div
+                  key={`day-${day}`}
+                  className={cn(
+                    "h-10 rounded-full flex flex-col items-center justify-center cursor-pointer relative",
+                    today && "bg-finance-blue text-white font-bold",
+                    !today && "hover:bg-finance-dark-lighter"
+                  )}
+                  onClick={() => {
+                    // Apenas reage aos cliques se estiver no mês atual
+                    const currentDate = new Date();
+                    const isCurrentMonth = currentDate.getMonth() === month && currentDate.getFullYear() === year;
+                    
+                    if (isCurrentMonth) {
+                      // Atualiza para o dia selecionado
+                      currentDate.setDate(day);
+                      setCurrentMonth(new Date(currentDate));
+                      setActivePeriod('day');
+                    }
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <div className="w-12 h-12 rounded-full bg-finance-dark-lighter flex items-center justify-center mr-3 overflow-hidden">
-                        {user.avatarUrl ? (
-                          <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <Users className="w-6 h-6 text-white" />
-                        )}
-                      </div>
-                      <h3 className="text-white font-bold">{user.name}</h3>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
+                  <span className={cn(
+                    "text-sm",
+                    today ? "text-white" : "text-gray-300"
+                  )}>
+                    {day}
+                  </span>
                   
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-finance-dark-card rounded-lg p-3">
-                      <p className="text-gray-400 text-sm mb-1">Saldo</p>
-                      <p className="text-white font-bold">
-                        {formatCurrency(otherUserBalance)}
-                      </p>
-                      <div className={`flex items-center mt-1 text-xs ${balanceDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {balanceDiff > 0 ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                        <span>{formatCurrency(Math.abs(balanceDiff))} {balanceDiff > 0 ? 'a mais' : 'a menos'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-finance-dark-card rounded-lg p-3">
-                      <p className="text-gray-400 text-sm mb-1">Investimentos</p>
-                      <p className="text-white font-bold">
-                        {formatCurrency(otherUserInvestments)}
-                      </p>
-                      <div className={`flex items-center mt-1 text-xs ${investmentDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {investmentDiff > 0 ? <TrendingUp size={14} /> : <ArrowDown size={14} />}
-                        <span>{formatCurrency(Math.abs(investmentDiff))} {investmentDiff > 0 ? 'a mais' : 'a menos'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-finance-dark-card rounded-lg p-3">
-                      <p className="text-gray-400 text-sm mb-1">Despesas</p>
-                      <p className="text-white font-bold">
-                        {formatCurrency(otherUserExpenses)}
-                      </p>
-                      <div className={`flex items-center mt-1 text-xs ${expenseDiff < 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {expenseDiff < 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
-                        <span>{formatCurrency(Math.abs(expenseDiff))} {expenseDiff < 0 ? 'a menos' : 'a mais'}</span>
-                      </div>
-                    </div>
+                  {/* Indicadores de transação */}
+                  <div className="flex gap-1 mt-1">
+                    {hasIncome && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    )}
+                    {hasExpense && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                    )}
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>
         </div>
-      )}
-
-      <div className="px-4 mt-6 mb-20">
-        <Card className="finance-card p-4">
-          <h2 className="text-white text-xl font-bold mb-4">
-            Ações Rápidas
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button 
-              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/cashflow')}
+        
+        {/* Transações */}
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold text-white">Transações</h2>
+            <Button 
+              variant="ghost" 
+              className="text-finance-blue hover:text-finance-blue/80 hover:bg-transparent p-0 h-auto"
+              onClick={() => navigate('/transactions')}
             >
-              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center mb-3">
-                <ArrowUpDown className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-medium">Fluxo de Caixa</span>
-            </button>
-            
-            <button 
-              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/add-transaction')}
-            >
-              <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center mb-3">
-                <Plus className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-medium">Nova Transação</span>
-            </button>
-            
-            <button 
-              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/investment-returns')}
-            >
-              <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center mb-3">
-                <TrendingUp className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-medium">Rendimentos</span>
-            </button>
-            
-            <button 
-              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/investments')}
-            >
-              <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center mb-3">
-                <PiggyBank className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-medium">Investimentos</span>
-            </button>
-            
-            <button 
-              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/user-comparison')}
-            >
-              <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center mb-3">
-                <UserPlus className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-medium">Comparação de Finanças</span>
-            </button>
-            
-            <button 
-              className="bg-finance-dark-card hover:bg-finance-dark-lighter transition-colors p-4 rounded-lg flex flex-col items-center justify-center"
-              onClick={() => handleNavigation('/settings')}
-            >
-              <div className="w-12 h-12 rounded-full bg-amber-600 flex items-center justify-center mb-3">
-                <Settings className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-medium">Configurações</span>
-            </button>
+              Ver Todas
+            </Button>
           </div>
-        </Card>
+          
+          <TransactionsList 
+            transactions={filteredTransactions.slice(0, 5)} 
+            emptyMessage="Nenhuma transação neste período"
+          />
+        </div>
       </div>
-
+      
       <BottomNav />
     </div>
   );

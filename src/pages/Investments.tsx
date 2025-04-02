@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -91,9 +92,9 @@ const Investments = () => {
             {investments.map((investment) => (
               <Card key={investment.id} className="finance-card mb-3">
                 <div className="flex justify-between">
-                  <div>
-                    <h3 className="text-white font-medium">{investment.description}</h3>
-                    <p className="text-gray-400 text-sm">
+                  <div className="max-w-[60%]">
+                    <h3 className="text-white font-medium truncate">{investment.description}</h3>
+                    <p className="text-gray-400 text-sm truncate">
                       {investment.period === 'monthly' ? 'Mensal' : 'Anual'} • {investment.rate}% • 
                       {investment.isCompound !== false ? ' Juros Compostos' : ' Juros Simples'}
                     </p>

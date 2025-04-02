@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -28,7 +29,9 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
-  Cell
+  Cell,
+  PieChart as RechartsPieChart,
+  Pie
 } from 'recharts';
 
 const UserComparison = () => {
@@ -49,6 +52,9 @@ const UserComparison = () => {
     income: '#3B82F6',  // Azul para entradas
     investments: '#8B5CF6' // Roxo para investimentos
   };
+  
+  // Cores para os gráficos de pizza
+  const PIE_COLORS = ['#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#EF4444', '#6366F1', '#14B8A6', '#F97316', '#8D4F00'];
 
   // Filtrar usuários para não incluir o usuário atual
   const otherUsers = users.filter(user => user.id !== currentUser.id);
@@ -177,7 +183,51 @@ const UserComparison = () => {
     });
   };
   
+  // Preparar dados para o gráfico de pizza para o usuário atual
+  const prepareCurrentUserPieData = () => {
+    if (currentUserExpensesByCategory.length === 0) return [];
+    
+    return currentUserExpensesByCategory.map(item => ({
+      name: translateCategory(item.category),
+      value: item.amount
+    }));
+  };
+  
+  // Preparar dados para o gráfico de pizza para o usuário selecionado
+  const prepareSelectedUserPieData = () => {
+    if (!selectedUserId || selectedUserExpensesByCategory.length === 0) return [];
+    
+    return selectedUserExpensesByCategory.map(item => ({
+      name: translateCategory(item.category),
+      value: item.amount
+    }));
+  };
+  
+  // Função para traduzir categorias para português
+  const translateCategory = (category: string) => {
+    const translations = {
+      'food': 'Alimentação',
+      'housing': 'Moradia',
+      'transportation': 'Transporte',
+      'health': 'Saúde',
+      'education': 'Educação',
+      'entertainment': 'Entretenimento',
+      'clothing': 'Vestuário',
+      'utilities': 'Contas',
+      'other': 'Outros',
+      'electronics': 'Eletrônicos',
+      'appliances': 'Eletrodomésticos',
+      'furniture': 'Móveis',
+      'bills': 'Contas',
+      'shopping': 'Compras'
+    };
+    
+    return translations[category] || category;
+  };
+  
   const expenseCategoryData = prepareExpenseCategoryData();
+  const currentUserPieData = prepareCurrentUserPieData();
+  const selectedUserPieData = prepareSelectedUserPieData();
   
   // Obter nomes para legendas
   const currentUserName = currentUser.name || 'Você';
@@ -186,6 +236,29 @@ const UserComparison = () => {
   // Função para determinar a cor com base no tipo de dado
   const getBarColor = (type) => {
     return COLORS[type] || COLORS.balance;
+  };
+  
+  // Renderizar gráfico de pizza personalizado
+  const renderCustomizedLabel = (props) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+    
+    if (percent < 0.05) return null;
+    
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        className="text-xs font-medium"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
   };
 
   return (
@@ -512,6 +585,101 @@ const UserComparison = () => {
                   )}
                 </div>
                 
+                {/* Gráficos de pizza para cada usuário */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Gráfico de pizza para o usuário atual */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-medium">Suas categorias de despesas</h3>
+                    <div className="h-80 w-full">
+                      {currentUserPieData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie
+                              data={currentUserPieData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={renderCustomizedLabel}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              animationDuration={500}
+                            >
+                              {currentUserPieData.map((entry, index) => (
+                                <Cell key={`cell-current-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value) => [formatCurrency(Number(value)), '']}
+                              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                            />
+                            <Legend 
+                              verticalAlign="bottom" 
+                              height={36} 
+                              formatter={(value) => <span className="text-white">{value}</span>}
+                            />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                          <div className="text-gray-400 mb-2">
+                            <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-lg font-medium">Nenhuma despesa encontrada</p>
+                            <p className="text-sm mt-2">Adicione despesas para visualizar o gráfico</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Gráfico de pizza para o usuário selecionado */}
+                  {selectedUserId && (
+                    <div className="space-y-3">
+                      <h3 className="text-white font-medium">Categorias de despesas de {selectedUserName}</h3>
+                      <div className="h-80 w-full">
+                        {selectedUserPieData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                              <Pie
+                                data={selectedUserPieData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={renderCustomizedLabel}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                animationDuration={500}
+                              >
+                                {selectedUserPieData.map((entry, index) => (
+                                  <Cell key={`cell-selected-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value) => [formatCurrency(Number(value)), '']}
+                                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                              />
+                              <Legend 
+                                verticalAlign="bottom" 
+                                height={36} 
+                                formatter={(value) => <span className="text-white">{value}</span>}
+                              />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                            <div className="text-gray-400 mb-2">
+                              <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-lg font-medium">Nenhuma despesa encontrada</p>
+                              <p className="text-sm mt-2">Este usuário não tem despesas registradas</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
                 <div className="mt-6">
                   <h3 className="text-white font-medium mb-3">Principais categorias de despesas:</h3>
                   <div className="space-y-3">
@@ -525,7 +693,7 @@ const UserComparison = () => {
                       .map((item, index) => (
                         <div key={index} className="bg-finance-dark-card p-4 rounded-lg">
                           <div className="flex justify-between items-center mb-2">
-                            <p className="text-white font-medium">{item.category}</p>
+                            <p className="text-white font-medium">{translateCategory(item.category)}</p>
                             <div className="flex gap-4">
                               <div className="flex items-center">
                                 <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
