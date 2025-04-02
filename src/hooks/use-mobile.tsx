@@ -17,3 +17,7 @@ export function useIsMobile() {
 
   return !!isMobile
 }
+
+export const useMediaQuery = (query: string) => {
+  return useIsMobile()
+}

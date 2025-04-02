@@ -8,11 +8,12 @@ import { formatDate, formatCurrency, formatCompactCurrency, cn } from '@/lib/uti
 import TransactionsList from '@/components/TransactionsList';
 import { useFinance } from '@/context/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
+import QuickActions from '@/components/QuickActions';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
   const { currentUser, fetchTransactions, getFutureTransactions, finances } = useFinance();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activePeriod, setActivePeriod] = useState<'day' | 'week' | 'month'>('day');
