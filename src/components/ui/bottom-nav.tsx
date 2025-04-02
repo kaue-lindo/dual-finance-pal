@@ -1,16 +1,34 @@
+
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Users, ArrowUpDown, Plus, TrendingUp, Calculator, Settings } from 'lucide-react';
 
 const BottomNav = ({ currentPath }: { currentPath: string }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // For dynamic path checking - allows us to still show the navbar on child routes
+  const isActive = (path: string) => {
+    if (path === '/dashboard' && location.pathname === '/dashboard') return true;
+    if (path === '/user-comparison' && location.pathname === '/user-comparison') return true;
+    if (['/transactions', '/expenses', '/cashflow'].includes(path) && 
+        ['/transactions', '/expenses', '/cashflow'].includes(location.pathname)) return true;
+    if (path === '/add-transaction' && 
+        ['/add-transaction', '/add-income'].includes(location.pathname)) return true;
+    if (path === '/investments' && 
+        ['/investments', '/investment-returns'].includes(location.pathname)) return true;
+    if (path === '/simulator' && 
+        ['/simulator', '/simulation-page'].includes(location.pathname)) return true;
+    if (path === '/settings' && location.pathname === '/settings') return true;
+    return false;
+  };
   
   return (
     <nav className="glass-nav fixed bottom-0 left-0 right-0 h-16 bg-finance-dark-card border-t border-gray-800 flex justify-around items-center z-50">
       <button
         onClick={() => navigate('/dashboard')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          currentPath === '/dashboard' ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/dashboard') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <Home size={20} />
@@ -20,7 +38,7 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       <button
         onClick={() => navigate('/user-comparison')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          currentPath === '/user-comparison' ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/user-comparison') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <Users size={20} />
@@ -30,7 +48,7 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       <button
         onClick={() => navigate('/transactions')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          ['/transactions', '/expenses', '/cashflow'].includes(currentPath) ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/transactions') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <ArrowUpDown size={20} />
@@ -40,7 +58,7 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       <button
         onClick={() => navigate('/add-transaction')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          currentPath === '/add-transaction' ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/add-transaction') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <Plus size={20} className="bg-finance-blue text-white p-1 rounded-full" />
@@ -50,7 +68,7 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       <button
         onClick={() => navigate('/investments')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          currentPath === '/investments' ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/investments') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <TrendingUp size={20} />
@@ -58,9 +76,9 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       </button>
       
       <button
-        onClick={() => navigate('/simulator')}
+        onClick={() => navigate('/cashflow')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          currentPath === '/simulator' ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/simulator') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <Calculator size={20} />
@@ -70,7 +88,7 @@ const BottomNav = ({ currentPath }: { currentPath: string }) => {
       <button
         onClick={() => navigate('/settings')}
         className={`flex flex-col items-center justify-center w-full h-full ${
-          currentPath === '/settings' ? 'text-finance-blue' : 'text-gray-400'
+          isActive('/settings') ? 'text-finance-blue' : 'text-gray-400'
         }`}
       >
         <Settings size={20} />

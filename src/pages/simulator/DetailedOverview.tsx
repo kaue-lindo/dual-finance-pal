@@ -36,16 +36,16 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
   return (
     <Card className="finance-card bg-finance-dark-card border border-finance-dark-lighter rounded-xl shadow-lg">
       <div className="flex items-center gap-2 mb-4">
-        <PieChartIcon size={22} className="text-finance-blue" />
-        <h2 className="text-xl font-semibold text-white">Visão Detalhada</h2>
+        <PieChartIcon size={22} className="text-finance-blue flex-shrink-0" />
+        <h2 className="text-xl font-semibold text-white truncate">Visão Detalhada</h2>
       </div>
       
       <div className="space-y-6">
         {/* Gráfico de despesas por categoria */}
         <div>
           <h3 className="text-white font-medium mb-3 flex items-center">
-            <span className="w-2 h-2 bg-finance-blue rounded-full mr-2"></span>
-            Despesas por Categoria
+            <span className="w-2 h-2 bg-finance-blue rounded-full mr-2 flex-shrink-0"></span>
+            <span className="truncate">Despesas por Categoria</span>
           </h3>
           <div className="h-64 bg-finance-dark-lighter p-3 rounded-lg">
             <ResponsiveContainer width="100%" height="100%">
@@ -54,7 +54,7 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
                 margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="name" stroke="#999" />
+                <XAxis dataKey="name" stroke="#999" tickFormatter={(value) => value.length > 8 ? `${value.substring(0, 8)}...` : value} />
                 <YAxis stroke="#999" />
                 <Tooltip 
                   formatter={(value) => [`${formatCurrency(value as number)}`, 'Valor']}
@@ -74,8 +74,8 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
         {results && results.monthlyData && results.monthlyData.length > 0 && (
           <div>
             <h3 className="text-white font-medium mb-3 flex items-center">
-              <span className="w-2 h-2 bg-finance-blue rounded-full mr-2"></span>
-              Projeção Mensal
+              <span className="w-2 h-2 bg-finance-blue rounded-full mr-2 flex-shrink-0"></span>
+              <span className="truncate">Projeção Mensal</span>
             </h3>
             <div className="h-64 bg-finance-dark-lighter p-3 rounded-lg">
               <ResponsiveContainer width="100%" height="100%">
@@ -84,7 +84,17 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
                   margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="month" stroke="#999" />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#999" 
+                    tickFormatter={(value) => {
+                      // Abbreviate month names on small screens
+                      const parts = value.split(' ');
+                      return window.innerWidth < 640 && parts.length > 1 
+                        ? `${parts[0].substring(0, 3)}` 
+                        : value;
+                    }}
+                  />
                   <YAxis stroke="#999" />
                   <Tooltip 
                     formatter={(value) => [`${formatCurrency(value as number)}`, '']}
@@ -124,15 +134,15 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
           </div>
         )}
         
-        {/* Tabela detalhada */}
+        {/* Tabela detalhada - responsiva */}
         {results && results.monthlyData && results.monthlyData.length > 0 && (
           <div>
             <h3 className="text-white font-medium mb-3 flex items-center">
-              <span className="w-2 h-2 bg-finance-blue rounded-full mr-2"></span>
-              Projeção Mensal Detalhada
+              <span className="w-2 h-2 bg-finance-blue rounded-full mr-2 flex-shrink-0"></span>
+              <span className="truncate">Projeção Mensal Detalhada</span>
             </h3>
             <div className="overflow-x-auto bg-finance-dark-lighter p-2 rounded-lg">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse min-w-[600px]">
                 <thead>
                   <tr className="bg-finance-dark border-b border-gray-700">
                     <th className="px-4 py-2 text-left text-sm font-medium text-gray-400">Mês</th>
@@ -171,21 +181,21 @@ const DetailedOverview: React.FC<DetailedOverviewProps> = ({
           </p>
         </div>
         
-        <div className="flex justify-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
           <Button 
             onClick={onGoToSimulation}
             variant="outline"
             className="bg-finance-dark-lighter border-finance-dark text-white hover:bg-finance-dark transition-colors"
           >
-            <Calculator className="w-4 h-4 mr-2" />
+            <Calculator className="w-4 h-4 mr-2 flex-shrink-0" />
             Nova Simulação
           </Button>
           {results && (
             <Button 
-              className="bg-finance-blue hover:bg-finance-blue-dark text-white transition-colors"
+              className="bg-finance-blue hover:bg-finance-blue-dark text-white transition-colors mt-2 sm:mt-0"
               onClick={() => navigate('/cashflow')}
             >
-              <ArrowUpDown className="w-4 h-4 mr-2" />
+              <ArrowUpDown className="w-4 h-4 mr-2 flex-shrink-0" />
               Ver Fluxo de Caixa
             </Button>
           )}
