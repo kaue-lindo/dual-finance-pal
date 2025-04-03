@@ -1,9 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances } from '../types';
+import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances, RecurringType } from '../types';
 import { calculateBalanceFromData, calculateBalanceExcludingInvestmentReturns } from '../utils/calculations';
 import { getMonthlyReturn, calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../utils/projections';
+import { processRecurringIncomes, processRecurringExpenses, processInstallments } from '../utils/recurring';
 
 // Interfaces e tipos auxiliares
 interface FinanceData {
@@ -80,16 +81,19 @@ export const useTransactions = (
 
       (data as FinanceData[]).forEach(item => {
         if (item.type === 'income') {
+          const recurring = item.recurring ? 
+            (item.recurring_type ? {
+              type: (item.recurring_type || 'monthly') as RecurringType,
+              days: item.recurring_days || []
+            } : true) : undefined;
+          
           incomes.push({
             id: item.id,
             description: item.description,
             amount: parseFloat(item.amount.toString()),
             date: new Date(item.date),
             category: (item.category || 'other') as IncomeCategory,
-            recurring: item.recurring ? {
-              type: (item.recurring_type || 'monthly') as 'daily' | 'weekly' | 'monthly',
-              days: item.recurring_days || []
-            } : undefined
+            recurring
           });
         } else if (item.type === 'expense') {
           expenses.push({
@@ -100,7 +104,7 @@ export const useTransactions = (
             date: new Date(item.date),
             sourceCategory: item.source_category as IncomeCategory | undefined,
             recurring: item.recurring ? {
-              type: (item.recurring_type || 'monthly') as 'daily' | 'weekly' | 'monthly',
+              type: (item.recurring_type || 'monthly') as RecurringType,
               days: item.recurring_days || []
             } : undefined,
             installment: item.installment_total ? {

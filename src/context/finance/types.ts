@@ -3,6 +3,13 @@ import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
 
+export type RecurringType = 'daily' | 'weekly' | 'monthly';
+
+export type RecurringInfo = {
+  type: RecurringType;
+  days?: number[]; // Days of month for monthly recurring
+};
+
 export type Expense = {
   id: string;
   description: string;
@@ -10,10 +17,7 @@ export type Expense = {
   category: string;
   date: Date;
   sourceCategory?: IncomeCategory;
-  recurring?: {
-    type: 'daily' | 'weekly' | 'monthly';
-    days?: number[]; // Days of month for monthly recurring
-  };
+  recurring?: RecurringInfo;
   installment?: {
     total: number;
     current: number;
@@ -28,10 +32,7 @@ export type Income = {
   amount: number;
   date: Date;
   category: IncomeCategory;
-  recurring?: boolean | {
-    type: 'daily' | 'weekly' | 'monthly';
-    days?: number[]; // Days of month for monthly recurring
-  };
+  recurring?: boolean | RecurringInfo;
 };
 
 export type Investment = {

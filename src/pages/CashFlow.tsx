@@ -144,7 +144,7 @@ const CashFlow = () => {
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value, true)} 
+              tickFormatter={(value) => formatCurrency(value)} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
@@ -173,7 +173,7 @@ const CashFlow = () => {
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value, true)} 
+              tickFormatter={(value) => formatCurrency(value)} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
@@ -202,7 +202,7 @@ const CashFlow = () => {
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value, true)} 
+              tickFormatter={(value) => formatCurrency(value)} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />

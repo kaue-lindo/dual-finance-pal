@@ -132,8 +132,8 @@ const UserComparison = () => {
     
     // Ordenar por maior diferença de valores para melhor visualização
     return result.sort((a, b) => {
-      const diffA = Math.abs(a[user1Name] - a[user2Name]);
-      const diffB = Math.abs(b[user1Name] - b[user2Name]);
+      const diffA = Math.abs(Number(a[user1Name]) - Number(a[user2Name]));
+      const diffB = Math.abs(Number(b[user1Name]) - Number(b[user2Name]));
       return diffB - diffA;
     });
   };
@@ -239,7 +239,7 @@ const UserComparison = () => {
                   <BarChart data={comparisonData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                     <XAxis dataKey="name" tick={{ fill: '#ccc' }} />
-                    <YAxis tickFormatter={(value) => formatCurrency(value, true)} tick={{ fill: '#ccc' }} />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} tick={{ fill: '#ccc' }} />
                     <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                     <Legend />
                     <Bar dataKey={user1Name} fill="#3b82f6" />
@@ -277,7 +277,7 @@ const UserComparison = () => {
                         <BarChart data={user1ExpensesData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                           <XAxis dataKey="name" tick={{ fill: '#ccc' }} />
-                          <YAxis tickFormatter={(value) => formatCurrency(value, true)} tick={{ fill: '#ccc' }} />
+                          <YAxis tickFormatter={(value) => formatCurrency(value)} tick={{ fill: '#ccc' }} />
                           <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                           <Bar dataKey="value" fill="#3b82f6">
                             {user1ExpensesData.map((entry, index) => (
@@ -322,7 +322,7 @@ const UserComparison = () => {
                         <BarChart data={user2ExpensesData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                           <XAxis dataKey="name" tick={{ fill: '#ccc' }} />
-                          <YAxis tickFormatter={(value) => formatCurrency(value, true)} tick={{ fill: '#ccc' }} />
+                          <YAxis tickFormatter={(value) => formatCurrency(value)} tick={{ fill: '#ccc' }} />
                           <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                           <Bar dataKey="value" fill="#8b5cf6">
                             {user2ExpensesData.map((entry, index) => (
