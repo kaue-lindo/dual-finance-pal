@@ -31,12 +31,20 @@ export const calculateBalanceExcludingInvestmentReturns = (incomes: Income[], ex
 
 // Calculate real income without mixing with expenses
 export const calculateRealIncome = (incomes: Income[]): number => {
-  return incomes.reduce((sum, income) => sum + income.amount, 0);
+  // Filter unique incomes by ID to prevent duplication
+  const uniqueIncomes = incomes.filter((income, index, self) => 
+    index === self.findIndex(i => i.id === income.id)
+  );
+  return uniqueIncomes.reduce((sum, income) => sum + income.amount, 0);
 };
 
 // Calculate real income excluding investment returns
 export const calculateRealIncomeExcludingInvestmentReturns = (incomes: Income[]): number => {
-  return incomes
+  // Filter unique incomes by ID to prevent duplication
+  const uniqueIncomes = incomes.filter((income, index, self) => 
+    index === self.findIndex(i => i.id === income.id)
+  );
+  return uniqueIncomes
     .filter(income => income.category !== 'investment_returns')
     .reduce((sum, income) => sum + income.amount, 0);
 };

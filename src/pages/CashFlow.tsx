@@ -85,38 +85,48 @@ const CashFlow = () => {
       currentDate = addMonths(currentDate, 1);
     }
     
-    // Track processed transaction IDs to prevent duplicates
-    const processedTransactionIds = new Set<string>();
-    
     // Calcular saldos para cada mês
     return months.map(month => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       
+      // Track processed transaction IDs to prevent duplicates
+      const processedIncomeIds = new Set<string>();
+      const processedExpenseIds = new Set<string>();
+      const processedInvestmentIds = new Set<string>();
+      
       let income = 0;
       let expense = 0;
       let investmentValue = 0;
       
-      // Reset processed IDs for each month
-      processedTransactionIds.clear();
-      
-      // Somar transações para o mês
+      // Somar transações para o mês - ensuring no duplicates
       futureTransactions.forEach(transaction => {
         const transactionDate = new Date(transaction.date);
         
-        // Verificar se a transação está dentro do mês
-        if (isSameMonth(transactionDate, month)) {
-          // Skip if we've already processed this transaction ID
-          if (processedTransactionIds.has(transaction.id)) return;
-          processedTransactionIds.add(transaction.id);
-          
-          if (transaction.type === 'income') {
-            if (transaction.category !== 'investment-return') {
+        // Skip if not in this month
+        if (!isSameMonth(transactionDate, month)) return;
+        
+        if (transaction.type === 'income') {
+          // Only count if we haven't processed this ID yet
+          if (!processedIncomeIds.has(transaction.id)) {
+            processedIncomeIds.add(transaction.id);
+            
+            // Exclude investment returns from regular income
+            if (transaction.category !== 'investment-return' && 
+                transaction.category !== 'investment_returns') {
               income += transaction.amount;
             }
-          } else if (transaction.type === 'expense') {
+          }
+        } else if (transaction.type === 'expense') {
+          // Only count if we haven't processed this ID yet
+          if (!processedExpenseIds.has(transaction.id)) {
+            processedExpenseIds.add(transaction.id);
             expense += transaction.amount;
-          } else if (transaction.type === 'investment') {
+          }
+        } else if (transaction.type === 'investment') {
+          // Only count if we haven't processed this ID yet
+          if (!processedInvestmentIds.has(transaction.id)) {
+            processedInvestmentIds.add(transaction.id);
             investmentValue += transaction.amount;
           }
         }
@@ -138,10 +148,14 @@ const CashFlow = () => {
       // Calcular saldo para o mês
       const balance = income - expense;
       
-      // For investment value, use the total from InvestmentReturns screen if it's the current month
-      const totalInvestmentValue = isSameMonth(month, today) ? 
-        getTotalInvestmentsWithReturns() : 
-        (investmentValue + investmentProjection);
+      // Use getTotalInvestmentsWithReturns for current month, otherwise calculate based on transactions
+      let totalInvestmentValue;
+      if (isSameMonth(month, today)) {
+        totalInvestmentValue = getTotalInvestmentsWithReturns();
+      } else {
+        const baseInvestment = investmentValue;
+        totalInvestmentValue = baseInvestment + investmentProjection;
+      }
       
       return {
         month: format(month, 'MMM yyyy', { locale: ptBR }),
@@ -334,7 +348,7 @@ const CashFlow = () => {
               <ArrowUp className="text-green-500" size={20} />
               <h3 className="text-gray-300">Entradas</h3>
             </div>
-            <p className="text-xl font-bold text-white">{formatCurrency(
+            <p className="text-xl font-bold text-white break-words">{formatCurrency(
               chartData.reduce((sum, month) => sum + month.income, 0)
             )}</p>
             <p className="text-xs text-gray-400 mt-1">Jan - Jan/Próximo</p>
@@ -345,7 +359,7 @@ const CashFlow = () => {
               <ArrowDown className="text-red-500" size={20} />
               <h3 className="text-gray-300">Saídas</h3>
             </div>
-            <p className="text-xl font-bold text-white">{formatCurrency(
+            <p className="text-xl font-bold text-white break-words">{formatCurrency(
               chartData.reduce((sum, month) => sum + month.expense, 0)
             )}</p>
             <p className="text-xs text-gray-400 mt-1">Jan - Jan/Próximo</p>

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
@@ -204,7 +205,13 @@ export const useInvestments = (
   const getTotalInvestments = () => {
     if (!currentUser) return 0;
     const userFinances = finances[currentUser.id] || { investments: [] };
-    return userFinances.investments.reduce((sum, investment) => sum + investment.amount, 0);
+    
+    // Filter unique investments by ID to prevent duplication
+    const uniqueInvestments = userFinances.investments.filter((investment, index, self) => 
+      index === self.findIndex(i => i.id === investment.id)
+    );
+    
+    return uniqueInvestments.reduce((sum, investment) => sum + investment.amount, 0);
   };
 
   const getProjectedInvestmentReturn = (months: number = 12): number => {
@@ -216,9 +223,14 @@ export const useInvestments = (
     const investments = userFinances.investments || [];
     if (investments.length === 0) return 0;
     
+    // Filter unique investments by ID to prevent duplication
+    const uniqueInvestments = investments.filter((investment, index, self) => 
+      index === self.findIndex(i => i.id === investment.id)
+    );
+    
     let totalReturn = 0;
     
-    investments.forEach(investment => {
+    uniqueInvestments.forEach(investment => {
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;
       
@@ -241,7 +253,13 @@ export const useInvestments = (
     if (!currentUser) return 0;
     
     const userFinances = finances[currentUser.id] || { investments: [] };
-    const initialInvestments = userFinances.investments.reduce(
+    
+    // Filter unique investments by ID to prevent duplication
+    const uniqueInvestments = userFinances.investments.filter((investment, index, self) => 
+      index === self.findIndex(i => i.id === investment.id)
+    );
+    
+    const initialInvestments = uniqueInvestments.reduce(
       (sum, investment) => sum + investment.amount, 
       0
     );
