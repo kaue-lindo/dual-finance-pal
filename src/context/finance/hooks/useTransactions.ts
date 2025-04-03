@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FutureTransaction, Income, Expense, Investment, IncomeCategory, UserFinances, RecurringType } from '../types';
@@ -265,8 +264,15 @@ export const useTransactions = (
 
   // Função auxiliar para processar despesas
   const processExpenses = (expenses: Expense[], futureTransactions: FutureTransaction[], today: Date, monthsToLookAhead: number) => {
+    // Create a Set to track unique expense IDs to prevent duplicates
+    const processedIds = new Set<string>();
+    
     expenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
+      
+      // Skip if we've already processed this expense
+      if (processedIds.has(expense.id)) return;
+      processedIds.add(expense.id);
       
       // Adicionar a despesa original
       futureTransactions.push({
@@ -382,8 +388,15 @@ export const useTransactions = (
 
   // Função auxiliar para processar receitas
   const processIncomes = (incomes: Income[], futureTransactions: FutureTransaction[], today: Date, monthsToLookAhead: number) => {
+    // Create a Set to track unique income IDs to prevent duplicates
+    const processedIds = new Set<string>();
+    
     incomes.forEach(income => {
       const incomeDate = new Date(income.date);
+      
+      // Skip if we've already processed this income
+      if (processedIds.has(income.id)) return;
+      processedIds.add(income.id);
       
       // Determinar descrição com base no tipo de recorrência (se houver)
       let description = income.description;
@@ -498,10 +511,16 @@ export const useTransactions = (
 
   // Função auxiliar para processar investimentos
   const processInvestments = (investments: Investment[], futureTransactions: FutureTransaction[], monthsToLookAhead: number) => {
+    // Keep track of accumulated investment returns for each investment
+    const accumulatedReturns: Record<string, number> = {};
+    
     investments.forEach(investment => {
       const months = monthsToLookAhead;
       
       const investmentDate = new Date(investment.startDate);
+      
+      // Initialize accumulated returns for this investment
+      accumulatedReturns[investment.id] = 0;
       
       // Adicionar o investimento inicial
       futureTransactions.push({
@@ -510,7 +529,8 @@ export const useTransactions = (
         description: `${investment.description} (Investimento Inicial)`,
         amount: investment.amount,
         type: 'investment',
-        category: 'investment'
+        category: 'investment',
+        parent_investment_id: investment.id
       });
       
       // Adicionar os rendimentos mensais
@@ -539,18 +559,32 @@ export const useTransactions = (
         
         const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
         
+        // Update accumulated returns for this investment
+        accumulatedReturns[investment.id] += monthlyReturn;
+        
         if (monthlyReturn > 0) {
           futureTransactions.push({
             id: `${investment.id}-growth-${i}`,
             date: futureDate,
-            description: `${investment.description} (Rendimento Mensal)`,
+            description: `${investment.description} (Rendimento Acumulado: ${formatCurrency(accumulatedReturns[investment.id])})`,
             amount: monthlyReturn,
             type: 'income',
-            category: 'investment-return'
+            category: 'investment-return',
+            parent_investment_id: investment.id
           });
         }
       }
     });
+  };
+
+  // Helper function to format currency for descriptions
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   };
 
   return {

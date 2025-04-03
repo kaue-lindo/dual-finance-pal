@@ -1,129 +1,14 @@
-import { Income, Expense, RecurringInfo, RecurringType, FutureTransaction } from '../types';
-import { format, addMonths, getDaysInMonth } from 'date-fns';
 
-// Helper function to process recurring income
-export const processRecurringIncomes = (
-  income: Income, 
-  futureTransactions: FutureTransaction[], 
-  today: Date, 
-  monthsToLookAhead: number
-) => {
-  if (!income.recurring) return;
-  
-  const incomeDate = new Date(income.date);
-  const nextMonths = [];
-  
-  for (let i = 1; i <= monthsToLookAhead; i++) {
-    nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
-  }
-  
-  // Process based on recurring type
-  if (typeof income.recurring === 'boolean' && income.recurring === true) {
-    // Default to monthly if just boolean true
-    processMonthlyRecurringIncome(income, futureTransactions, nextMonths, incomeDate);
-  } else if (typeof income.recurring === 'object') {
-    const recurringInfo = income.recurring as RecurringInfo;
-    switch(recurringInfo.type) {
-      case 'monthly':
-        processMonthlyRecurringIncome(income, futureTransactions, nextMonths, incomeDate, recurringInfo.days);
-        break;
-      case 'weekly':
-        processWeeklyRecurringIncome(income, futureTransactions, nextMonths);
-        break;
-      case 'daily':
-        processDailyRecurringIncome(income, futureTransactions, nextMonths);
-        break;
-      default:
-        processMonthlyRecurringIncome(income, futureTransactions, nextMonths, incomeDate);
-    }
-  }
-};
+import { Expense, Income, FutureTransaction, RecurringType, RecurringInfo } from '../types';
+import { addMonths, addDays, format } from 'date-fns';
 
-// Helper for monthly recurring incomes
-const processMonthlyRecurringIncome = (
-  income: Income,
-  futureTransactions: FutureTransaction[],
-  nextMonths: Date[],
-  incomeDate: Date,
-  specificDays?: number[]
-) => {
-  const days = specificDays && specificDays.length > 0 
-    ? specificDays 
-    : [incomeDate.getDate()];
-  
-  nextMonths.forEach(month => {
-    days.forEach(day => {
-      // Handle case when day is larger than days in month
-      const daysInMonth = getDaysInMonth(new Date(month.getFullYear(), month.getMonth()));
-      const adjustedDay = Math.min(day, daysInMonth);
-      
-      const futureDate = new Date(month.getFullYear(), month.getMonth(), adjustedDay);
-      
-      futureTransactions.push({
-        id: `${income.id}-recurring-${month.getMonth()}-${day}`,
-        date: futureDate,
-        description: `${income.description} (Mensal)`,
-        amount: income.amount,
-        type: 'income',
-        category: income.category
-      });
-    });
-  });
-};
-
-// Helper for weekly recurring incomes
-const processWeeklyRecurringIncome = (
-  income: Income,
-  futureTransactions: FutureTransaction[],
-  nextMonths: Date[]
-) => {
-  nextMonths.forEach(month => {
-    for (let week = 0; week < 4; week++) {
-      const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
-      
-      futureTransactions.push({
-        id: `${income.id}-recurring-weekly-${month.getMonth()}-${week}`,
-        date: futureDate,
-        description: `${income.description} (Semanal)`,
-        amount: income.amount,
-        type: 'income',
-        category: income.category
-      });
-    }
-  });
-};
-
-// Helper for daily recurring incomes
-const processDailyRecurringIncome = (
-  income: Income,
-  futureTransactions: FutureTransaction[],
-  nextMonths: Date[]
-) => {
-  nextMonths.forEach(month => {
-    const daysInMonth = getDaysInMonth(new Date(month.getFullYear(), month.getMonth()));
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-      const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
-      
-      futureTransactions.push({
-        id: `${income.id}-recurring-daily-${month.getMonth()}-${day}`,
-        date: futureDate,
-        description: `${income.description} (Diário)`,
-        amount: income.amount,
-        type: 'income',
-        category: income.category
-      });
-    }
-  });
-};
-
-// Helper function to process recurring expenses
+// Process recurring expenses and generate future expense transactions
 export const processRecurringExpenses = (
-  expense: Expense, 
-  futureTransactions: FutureTransaction[], 
-  today: Date, 
+  expense: Expense,
+  futureTransactions: FutureTransaction[],
+  today: Date,
   monthsToLookAhead: number
-) => {
+): void => {
   if (!expense.recurring) return;
   
   const nextMonths = [];
@@ -188,12 +73,115 @@ export const processRecurringExpenses = (
   });
 };
 
-// Helper function to process installments for expenses
+// Process recurring incomes and generate future income transactions
+export const processRecurringIncomes = (
+  income: Income,
+  futureTransactions: FutureTransaction[],
+  today: Date,
+  monthsToLookAhead: number,
+  incomeDate: Date
+): void => {
+  if (!income.recurring) return;
+  
+  const nextMonths = [];
+  for (let i = 1; i <= monthsToLookAhead; i++) {
+    nextMonths.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
+  }
+  
+  nextMonths.forEach(month => {
+    const recurringDays = (typeof income.recurring === 'object' && income.recurring.days && income.recurring.days.length > 0) ? 
+      income.recurring.days : [incomeDate.getDate()];
+    
+    const recurringType = (typeof income.recurring === 'object' && income.recurring.type) ? 
+      income.recurring.type : 'monthly';
+    
+    let recurringLabel = "Mensal";
+    if (recurringType === 'daily') recurringLabel = "Diário";
+    if (recurringType === 'weekly') recurringLabel = "Semanal";
+    
+    if (recurringType === 'monthly') {
+      recurringDays.forEach(day => {
+        const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
+        
+        // Ensure description contains the recurring label
+        const descriptionWithLabel = income.description.includes(recurringLabel) ? 
+          income.description : 
+          `${income.description} (${recurringLabel})`;
+        
+        futureTransactions.push({
+          id: `${income.id}-recurring-${month.getMonth()}-${day}`,
+          date: futureDate,
+          description: descriptionWithLabel,
+          amount: income.amount,
+          type: 'income',
+          category: income.category
+        });
+      });
+    } else if (recurringType === 'weekly') {
+      for (let week = 0; week < 4; week++) {
+        const futureDate = new Date(month.getFullYear(), month.getMonth(), 1 + (week * 7));
+        
+        // Ensure description contains the recurring label
+        const descriptionWithLabel = income.description.includes(recurringLabel) ? 
+          income.description : 
+          `${income.description} (${recurringLabel})`;
+        
+        futureTransactions.push({
+          id: `${income.id}-recurring-weekly-${month.getMonth()}-${week}`,
+          date: futureDate,
+          description: descriptionWithLabel,
+          amount: income.amount,
+          type: 'income',
+          category: income.category
+        });
+      }
+    } else if (recurringType === 'daily') {
+      const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const futureDate = new Date(month.getFullYear(), month.getMonth(), day);
+        
+        // Ensure description contains the recurring label
+        const descriptionWithLabel = income.description.includes(recurringLabel) ? 
+          income.description : 
+          `${income.description} (${recurringLabel})`;
+        
+        futureTransactions.push({
+          id: `${income.id}-recurring-daily-${month.getMonth()}-${day}`,
+          date: futureDate,
+          description: descriptionWithLabel,
+          amount: income.amount,
+          type: 'income',
+          category: income.category
+        });
+      }
+    } else {
+      // Se não tiver tipo específico, usa a data base
+      const futureDate = new Date(month.getFullYear(), month.getMonth(), incomeDate.getDate());
+      
+      // Ensure description contains the recurring label
+      const descriptionWithLabel = income.description.includes(recurringLabel) ? 
+        income.description : 
+        `${income.description} (${recurringLabel})`;
+      
+      futureTransactions.push({
+        id: `${income.id}-recurring-${month.getMonth()}`,
+        date: futureDate,
+        description: descriptionWithLabel,
+        amount: income.amount,
+        type: 'income',
+        category: income.category
+      });
+    }
+  });
+};
+
+// Process installment expenses and generate future installment transactions
 export const processInstallments = (
-  expense: Expense, 
+  expense: Expense,
   futureTransactions: FutureTransaction[]
-) => {
-  if (!expense.installment || expense.installment.remaining <= 0) return;
+): void => {
+  if (!expense.installment) return;
   
   const installmentAmount = expense.amount;
   const expenseDate = new Date(expense.date);

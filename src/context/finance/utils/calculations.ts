@@ -1,4 +1,5 @@
-import { Income, Expense } from '../types';
+
+import { Income, Expense, Investment } from '../types';
 
 // Calculate balance from income and expense data
 export const calculateBalanceFromData = (incomes: Income[], expenses: Expense[]): number => {
@@ -30,7 +31,24 @@ export const calculateRealIncomeExcludingInvestmentReturns = (incomes: Income[])
 
 // Calculate expenses separately
 export const calculateTotalExpenses = (expenses: Expense[]): number => {
-  return expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  // Make sure we don't double-count expenses
+  const uniqueExpenses = expenses.filter((expense, index, self) => 
+    index === self.findIndex(e => e.id === expense.id)
+  );
+  return uniqueExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+};
+
+// Calculate investments total with accumulated returns
+export const calculateInvestmentsWithReturns = (investments: Investment[], incomes: Income[]): number => {
+  // Get base investments amount
+  const baseInvestments = investments.reduce((sum, investment) => sum + investment.amount, 0);
+  
+  // Get accumulated returns from incomes that are categorized as investment returns
+  const investmentReturns = incomes
+    .filter(income => income.category === 'investment_returns')
+    .reduce((sum, income) => sum + income.amount, 0);
+  
+  return baseInvestments + investmentReturns;
 };
 
 // Calculate monthly installment amount from total
