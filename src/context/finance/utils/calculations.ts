@@ -76,3 +76,30 @@ export const calculateMonthlyPayment = (total: number, months: number): number =
   if (months <= 0) return total;
   return total / months;
 };
+
+// New utility function to get unique transactions by month
+export const getUniqueTransactionsByMonth = (transactions: any[], month: string) => {
+  const transactionsMap = new Map();
+  
+  transactions.forEach(transaction => {
+    // For recurring transactions, we need special handling
+    if (transaction.id && transaction.id.includes('-recurring-')) {
+      const baseId = transaction.id.split('-recurring-')[0];
+      const transDate = new Date(transaction.date);
+      const transMonth = `${transDate.getFullYear()}-${transDate.getMonth()}`;
+      const key = `${baseId}-${transMonth}`;
+      
+      // Only add if we haven't seen this transaction in this month
+      if (!transactionsMap.has(key)) {
+        transactionsMap.set(key, transaction);
+      }
+    } else {
+      // For non-recurring transactions, just use the ID
+      if (!transactionsMap.has(transaction.id)) {
+        transactionsMap.set(transaction.id, transaction);
+      }
+    }
+  });
+  
+  return Array.from(transactionsMap.values());
+};
