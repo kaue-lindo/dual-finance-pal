@@ -85,6 +85,9 @@ const CashFlow = () => {
       currentDate = addMonths(currentDate, 1);
     }
     
+    // Track processed transaction IDs to prevent duplicates
+    const processedTransactionIds = new Set<string>();
+    
     // Calcular saldos para cada mês
     return months.map(month => {
       const monthStart = startOfMonth(month);
@@ -94,12 +97,19 @@ const CashFlow = () => {
       let expense = 0;
       let investmentValue = 0;
       
+      // Reset processed IDs for each month
+      processedTransactionIds.clear();
+      
       // Somar transações para o mês
       futureTransactions.forEach(transaction => {
         const transactionDate = new Date(transaction.date);
         
         // Verificar se a transação está dentro do mês
         if (isSameMonth(transactionDate, month)) {
+          // Skip if we've already processed this transaction ID
+          if (processedTransactionIds.has(transaction.id)) return;
+          processedTransactionIds.add(transaction.id);
+          
           if (transaction.type === 'income') {
             if (transaction.category !== 'investment-return') {
               income += transaction.amount;
@@ -127,6 +137,8 @@ const CashFlow = () => {
       
       // Calcular saldo para o mês
       const balance = income - expense;
+      
+      // For investment value, use the total from InvestmentReturns screen if it's the current month
       const totalInvestmentValue = isSameMonth(month, today) ? 
         getTotalInvestmentsWithReturns() : 
         (investmentValue + investmentProjection);
@@ -345,10 +357,10 @@ const CashFlow = () => {
             <TrendingUp className="text-blue-500" size={20} />
             <h3 className="text-gray-300">Investimentos (com retornos)</h3>
           </div>
-          <p className="text-xl font-bold text-white overflow-visible whitespace-normal">
+          <p className="text-xl font-bold text-white break-words">
             {formatCurrency(getTotalInvestmentsWithReturns())}
           </p>
-          <div className="text-sm text-gray-400 mt-1 overflow-visible whitespace-normal">
+          <div className="text-sm text-gray-400 mt-1 break-words">
             <p>Investido: {formatCurrency(getTotalInvestments())}</p>
             <p>Retorno projetado: {formatCurrency(getProjectedInvestmentReturn(3))}</p>
           </div>

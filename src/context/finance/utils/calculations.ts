@@ -4,7 +4,13 @@ import { Income, Expense, Investment } from '../types';
 // Calculate balance from income and expense data
 export const calculateBalanceFromData = (incomes: Income[], expenses: Expense[]): number => {
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  
+  // Make sure we don't double-count expenses
+  const uniqueExpenses = expenses.filter((expense, index, self) => 
+    index === self.findIndex(e => e.id === expense.id)
+  );
+  const totalExpenses = uniqueExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  
   return totalIncome - totalExpenses;
 };
 
@@ -13,7 +19,13 @@ export const calculateBalanceExcludingInvestmentReturns = (incomes: Income[], ex
   const totalIncome = incomes
     .filter(income => income.category !== 'investment_returns')
     .reduce((sum, income) => sum + income.amount, 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  
+  // Make sure we don't double-count expenses
+  const uniqueExpenses = expenses.filter((expense, index, self) => 
+    index === self.findIndex(e => e.id === expense.id)
+  );
+  const totalExpenses = uniqueExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  
   return totalIncome - totalExpenses;
 };
 
