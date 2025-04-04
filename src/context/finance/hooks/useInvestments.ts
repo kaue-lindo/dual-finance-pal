@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
@@ -72,7 +73,7 @@ export const useInvestments = (
         };
       });
       
-      // Salvar os rendimentos projetados como transações futuras
+      // Salvar os rendimentos projetados como atualizações de investimento
       await saveProjectedReturns(newInvestment);
       
       toast.success('Investimento adicionado com sucesso!');
@@ -96,6 +97,8 @@ export const useInvestments = (
       const months = 12; // Salvar rendimentos para 12 meses à frente
       const today = new Date();
       
+      let accumulatedAmount = investment.amount;
+      
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date(investment.startDate);
         futureDate.setMonth(futureDate.getMonth() + i);
@@ -103,15 +106,8 @@ export const useInvestments = (
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompound = investment.isCompound !== false;
         
-        const prevMonthGrowth = calculateInvestmentGrowthForMonth(
-          investment.amount, 
-          investment.rate, 
-          isPeriodMonthly, 
-          i-1, 
-          isCompound
-        );
-        
-        const currentMonthGrowth = calculateInvestmentGrowthForMonth(
+        // Calcular o crescimento acumulado
+        const newAmount = calculateInvestmentGrowthForMonth(
           investment.amount, 
           investment.rate, 
           isPeriodMonthly, 
@@ -119,17 +115,19 @@ export const useInvestments = (
           isCompound
         );
         
-        const monthlyReturn = currentMonthGrowth - prevMonthGrowth;
+        // O retorno mensal é a diferença entre o novo valor e o valor anterior
+        const monthlyReturn = newAmount - accumulatedAmount;
+        accumulatedAmount = newAmount; // Atualizar o valor acumulado
         
         if (monthlyReturn > 0) {
-          // Em vez de criar uma transação de renda, criamos uma transação de atualização do investimento
+          // Criar uma transação de atualização do investimento
           await supabase
             .from('finances')
             .insert({
               user_id: currentUser.id,
               auth_id: sessionData.session.user.id,
               type: 'investment_update',
-              description: `${investment.description} (Reinvestimento)`,
+              description: `${investment.description} (Rendimento Acumulado)`,
               amount: monthlyReturn,
               category: 'investment_returns',
               date: futureDate.toISOString(),
@@ -237,22 +235,40 @@ export const useInvestments = (
       
       // Calcular o valor futuro com base no tipo de juros
       let futureValue;
+      const initialAmount = investment.amount;
+      
       if (isCompound) {
         // Juros compostos: A = P(1 + r)^t
         const monthlyRate = isPeriodMonthly ? investment.rate / 100 : investment.rate / 12 / 100;
-        futureValue = investment.amount * Math.pow(1 + monthlyRate, months);
+        futureValue = initialAmount * Math.pow(1 + monthlyRate, months);
       } else {
         // Juros simples: A = P(1 + r*t)
         const monthlyRate = isPeriodMonthly ? investment.rate / 100 : investment.rate / 12 / 100;
-        futureValue = investment.amount * (1 + monthlyRate * months);
+        futureValue = initialAmount * (1 + monthlyRate * months);
       }
       
       // O retorno é a diferença entre o valor futuro e o valor inicial
-      const investmentReturn = futureValue - investment.amount;
+      const investmentReturn = futureValue - initialAmount;
       totalReturn += investmentReturn;
     });
     
     return parseFloat(totalReturn.toFixed(2));
+  };
+
+  // Função para obter o valor total acumulado dos investimentos (principal + rendimentos)
+  const getTotalInvestmentsWithReturns = (): number => {
+    if (!currentUser) return 0;
+    
+    const userFinances = finances[currentUser.id] || { investments: [] };
+    const initialInvestments = userFinances.investments.reduce(
+      (sum, investment) => sum + investment.amount, 
+      0
+    );
+    
+    // Adicionar os rendimentos projetados para 3 meses
+    const projectedReturns = getProjectedInvestmentReturn(3);
+    
+    return initialInvestments + projectedReturns;
   };
 
   return {
@@ -260,5 +276,6 @@ export const useInvestments = (
     deleteInvestment,
     getTotalInvestments,
     getProjectedInvestmentReturn,
+    getTotalInvestmentsWithReturns,
   };
 };

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { FinanceContextType, UserFinances } from './types';
 import { defaultFinances } from './constants';
@@ -87,6 +88,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getIncomeCategories: incomes.getIncomeCategories,
         getExpenseCategories: expenses.getExpenseCategories,
         getTotalInvestments: investments.getTotalInvestments,
+        getTotalInvestmentsWithReturns: investments.getTotalInvestmentsWithReturns,
         getProjectedInvestmentReturn: investments.getProjectedInvestmentReturn,
         getCategoryExpenses: expenses.getCategoryExpenses,
         getRealIncome: incomes.getRealIncome,

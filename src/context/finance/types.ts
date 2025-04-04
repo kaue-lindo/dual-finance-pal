@@ -86,6 +86,7 @@ export type FinanceContextType = {
   getIncomeCategories: () => { value: IncomeCategory; label: string }[];
   getExpenseCategories: () => { value: string; label: string }[];
   getTotalInvestments: () => number;
+  getTotalInvestmentsWithReturns: () => number;
   getProjectedInvestmentReturn: (months?: number) => number;
   getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
   getRealIncome: () => number;
