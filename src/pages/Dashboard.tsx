@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -6,14 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Menu, MoreVertical, LineChart } from 'lucide-react';
 import { formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
 import TransactionsList from '@/components/TransactionsList';
-import { useFinance } from '@/context/finance/FinanceContext';
+import { useFinance } from '@/context/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
-import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ const Dashboard = () => {
     fetchTransactions, 
     getFutureTransactions, 
     finances,
-    getTotalInvestments,
+    getTotalInvestments
   } = useFinance();
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -72,30 +72,29 @@ const Dashboard = () => {
   
   const filterTransactionsByPeriod = () => {
     const today = new Date();
-    const displayDate = new Date(currentMonth); // The date we're displaying
+    const currentDate = today.getDate();
+    const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
+    const displayedMonthYear = `${currentMonth.getMonth()}-${currentMonth.getFullYear()}`;
+    const isCurrentMonth = currentMonthYear === displayedMonthYear;
     
-    let startDate: Date, endDate: Date;
+    let startDate, endDate;
     
-    // Adjust for displaying different periods (day, week, month)
-    if (activePeriod === 'day') {
-      // For day view, use the current date from the month we're viewing
-      startDate = startOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
-      endDate = endOfDay(startDate);
-    } else if (activePeriod === 'week') {
-      // For week view, get the week containing today, but in the month we're viewing
-      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
-      startDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate());
+    if (activePeriod === 'day' && isCurrentMonth) {
+      startDate = new Date(today.setHours(0, 0, 0, 0));
+      endDate = new Date(today.setHours(23, 59, 59, 999));
+    } else if (activePeriod === 'week' && isCurrentMonth) {
+      const dayOfWeek = today.getDay();
+      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      startDate = new Date(today.setDate(diff));
+      startDate.setHours(0, 0, 0, 0);
       endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
-      endDate = endOfDay(endDate);
+      endDate.setDate(endDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
     } else {
-      // For month view, use the entire month we're viewing
-      startDate = firstDayOfCurrentMonth;
-      endDate = lastDayOfCurrentMonth;
-      endDate = endOfDay(endDate);
+      startDate = new Date(firstDayOfCurrentMonth);
+      endDate = new Date(lastDayOfCurrentMonth);
     }
     
-    // Filter transactions that fall within the date range
     return futureTransactions.filter(t => {
       const transactionDate = new Date(t.date);
       return transactionDate >= startDate && transactionDate <= endDate;
@@ -105,16 +104,10 @@ const Dashboard = () => {
   const filteredTransactions = filterTransactionsByPeriod();
   
   const calculateIncomeAndExpense = () => {
-    const transactions = filterTransactionsByPeriod();
-    
-    // Use the utility function to deduplicate transactions
-    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, 'dashboard');
-    
-    // Calculate totals from unique transactions
     let totalIncome = 0;
     let totalExpense = 0;
     
-    uniqueTransactions.forEach(transaction => {
+    filteredTransactions.forEach(transaction => {
       if (transaction.type === 'income') {
         totalIncome += transaction.amount;
       } else if (transaction.type === 'expense') {
@@ -146,14 +139,10 @@ const Dashboard = () => {
     const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
     const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
     
-    // Filter transactions for this day
-    const transactionsForDay = futureTransactions.filter(t => {
+    return futureTransactions.filter(t => {
       const date = new Date(t.date);
       return date >= startOfDay && date <= endOfDay;
     });
-    
-    // Apply deduplication using the utility function
-    return getUniqueTransactionsByMonth(transactionsForDay, `day-${day}`);
   };
   
   const checkIsToday = (day: number) => {
@@ -163,31 +152,30 @@ const Dashboard = () => {
            year === today.getFullYear();
   };
 
+  // Novo: Função para mostrar as transações de um dia específico
   const showDayTransactions = (day: number) => {
     const date = new Date(year, month, day);
     setSelectedDay(date);
     setDialogOpen(true);
   };
   
+  // Novo: Filtra as transações do dia selecionado
   const getSelectedDayTransactions = () => {
     if (!selectedDay) return [];
     
-    const startOfSelectedDay = new Date(selectedDay);
-    startOfSelectedDay.setHours(0, 0, 0, 0);
+    const startOfDay = new Date(selectedDay);
+    startOfDay.setHours(0, 0, 0, 0);
     
-    const endOfSelectedDay = new Date(selectedDay);
-    endOfSelectedDay.setHours(23, 59, 59, 999);
+    const endOfDay = new Date(selectedDay);
+    endOfDay.setHours(23, 59, 59, 999);
     
-    // Filter transactions for the selected day
-    const transactionsForDay = futureTransactions.filter(t => {
+    return futureTransactions.filter(t => {
       const date = new Date(t.date);
-      return date >= startOfSelectedDay && date <= endOfSelectedDay;
+      return date >= startOfDay && date <= endOfDay;
     });
-    
-    // Apply deduplication using the utility function
-    return getUniqueTransactionsByMonth(transactionsForDay, 'selected-day');
   };
 
+  // Formatação do nome do mês atual do calendário
   const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
   const capitalizedMonthName = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
@@ -377,6 +365,7 @@ const Dashboard = () => {
         </div>
       </div>
       
+      {/* Novo: Modal para mostrar as transações de um dia */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-finance-dark-card text-white border-gray-700 max-w-md">
           <DialogHeader>

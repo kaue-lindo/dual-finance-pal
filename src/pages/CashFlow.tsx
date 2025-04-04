@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -33,8 +34,6 @@ import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
 import BottomNav from '@/components/ui/bottom-nav';
 import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
-import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
 
 const CashFlow = () => {
   const navigate = useNavigate();
@@ -50,30 +49,24 @@ const CashFlow = () => {
   const [chartPeriod, setChartPeriod] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
   const [showProjection, setShowProjection] = useState(true);
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area');
-  const [isLoading, setIsLoading] = useState(true);
   
   const userFinances = currentUser ? finances[currentUser.id] : undefined;
-
   const futureTransactions = getFutureTransactions();
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
   
   if (!currentUser) {
     navigate('/login');
     return null;
   }
   
+  // Preparar dados para o gráfico
   const prepareChartData = () => {
+    // Determinar intervalo de datas para o gráfico
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const startDate = new Date(currentYear, 0, 1); // Janeiro do ano atual
-    const endDate = new Date(currentYear + 1, 0, 1); // Janeiro do próximo ano
+    const startYear = today.getFullYear();
+    let startDate = new Date(startYear, 0, 1); // Janeiro do ano atual
+    let endDate = new Date(startYear + 1, 0, 1); // Janeiro do próximo ano
     
+    // Criar array de meses para o intervalo
     const months = [];
     let currentDate = new Date(startDate);
     
@@ -82,49 +75,32 @@ const CashFlow = () => {
       currentDate = addMonths(currentDate, 1);
     }
     
+    // Calcular saldos para cada mês
     return months.map(month => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
-      
-      const processedIncomeIds = new Set<string>();
-      const processedExpenseIds = new Set<string>();
-      const processedInvestmentIds = new Set<string>();
       
       let income = 0;
       let expense = 0;
       let investmentValue = 0;
       
-      const monthTransactions = futureTransactions.filter(transaction => 
-        isSameMonth(new Date(transaction.date), month)
-      );
-      
-      const uniqueMonthTransactions = getUniqueTransactionsByMonth(monthTransactions);
-      
-      uniqueMonthTransactions.forEach(transaction => {
-        const transactionId = transaction.id || `${transaction.description}-${transaction.amount}`;
+      // Somar transações para o mês
+      futureTransactions.forEach(transaction => {
+        const transactionDate = new Date(transaction.date);
         
-        if (transaction.type === 'income') {
-          if (!processedIncomeIds.has(transactionId)) {
-            processedIncomeIds.add(transactionId);
-            
-            if (transaction.category !== 'investment-return' && 
-                transaction.category !== 'investment_returns') {
-              income += transaction.amount;
-            }
-          }
-        } else if (transaction.type === 'expense') {
-          if (!processedExpenseIds.has(transactionId)) {
-            processedExpenseIds.add(transactionId);
+        // Verificar se a transação está dentro do mês
+        if (isSameMonth(transactionDate, month)) {
+          if (transaction.type === 'income') {
+            income += transaction.amount;
+          } else if (transaction.type === 'expense') {
             expense += transaction.amount;
-          }
-        } else if (transaction.type === 'investment') {
-          if (!processedInvestmentIds.has(transactionId)) {
-            processedInvestmentIds.add(transactionId);
+          } else if (transaction.type === 'investment') {
             investmentValue += transaction.amount;
           }
         }
       });
       
+      // Se for mês atual ou futuro, adicionar projeção de investimentos
       let investmentProjection = 0;
       if (isAfter(month, today) || isSameMonth(month, today)) {
         const monthsFromNow = Math.max(0, 
@@ -137,15 +113,11 @@ const CashFlow = () => {
         }
       }
       
+      // Calcular saldo para o mês
       const balance = income - expense;
-      
-      let totalInvestmentValue;
-      if (isSameMonth(month, today)) {
-        totalInvestmentValue = getTotalInvestmentsWithReturns();
-      } else {
-        const baseInvestment = investmentValue;
-        totalInvestmentValue = baseInvestment + investmentProjection;
-      }
+      const totalInvestmentValue = isSameMonth(month, today) ? 
+        getTotalInvestmentsWithReturns() : 
+        (investmentValue + investmentProjection);
       
       return {
         month: format(month, 'MMM yyyy', { locale: ptBR }),
@@ -161,14 +133,6 @@ const CashFlow = () => {
   const chartData = prepareChartData();
   
   const renderChart = () => {
-    if (isLoading) {
-      return (
-        <div className="flex flex-col space-y-2 w-full h-[300px] items-center justify-center">
-          <Skeleton className="h-[250px] w-full" />
-        </div>
-      );
-    }
-    
     if (chartType === 'line') {
       return (
         <ResponsiveContainer width="100%" height={300}>
@@ -180,7 +144,7 @@ const CashFlow = () => {
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value)} 
+              tickFormatter={(value) => formatCurrency(value, true)} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
@@ -209,7 +173,7 @@ const CashFlow = () => {
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value)} 
+              tickFormatter={(value) => formatCurrency(value, true)} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
@@ -238,7 +202,7 @@ const CashFlow = () => {
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value)} 
+              tickFormatter={(value) => formatCurrency(value, true)} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
@@ -260,9 +224,9 @@ const CashFlow = () => {
   };
   
   return (
-    <div className="min-h-screen bg-finance-dark pb-20">
-      <div className="finance-card rounded-b-xl p-4">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-finance-dark">
+      <div className="finance-card rounded-b-xl">
+        <div className="flex justify-between items-center p-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-6 h-6 text-white" />
           </Button>
@@ -272,9 +236,9 @@ const CashFlow = () => {
       </div>
       
       <div className="p-4">
-        <div className="flex justify-between mb-4 flex-wrap gap-2">
+        <div className="flex justify-between mb-4">
           <div className="text-gray-300">
-            <div className="flex gap-2 mb-4 flex-wrap">
+            <div className="flex gap-2 mb-4">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -328,17 +292,17 @@ const CashFlow = () => {
           </Button>
         </div>
         
-        <Card className="bg-finance-dark-card p-4 mb-4 overflow-x-auto">
+        <Card className="bg-finance-dark-card p-3 mb-4">
           {renderChart()}
         </Card>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <Card className="bg-finance-dark-card p-4">
             <div className="flex items-center gap-2 mb-2">
               <ArrowUp className="text-green-500" size={20} />
               <h3 className="text-gray-300">Entradas</h3>
             </div>
-            <p className="text-xl font-bold text-white break-words">{formatCurrency(
+            <p className="text-xl font-bold text-white">{formatCurrency(
               chartData.reduce((sum, month) => sum + month.income, 0)
             )}</p>
             <p className="text-xs text-gray-400 mt-1">Jan - Jan/Próximo</p>
@@ -349,25 +313,25 @@ const CashFlow = () => {
               <ArrowDown className="text-red-500" size={20} />
               <h3 className="text-gray-300">Saídas</h3>
             </div>
-            <p className="text-xl font-bold text-white break-words">{formatCurrency(
+            <p className="text-xl font-bold text-white">{formatCurrency(
               chartData.reduce((sum, month) => sum + month.expense, 0)
             )}</p>
             <p className="text-xs text-gray-400 mt-1">Jan - Jan/Próximo</p>
           </Card>
         </div>
         
-        <Card className="bg-finance-dark-card p-4 mb-4 overflow-visible">
+        <Card className="bg-finance-dark-card p-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="text-blue-500" size={20} />
             <h3 className="text-gray-300">Investimentos (com retornos)</h3>
           </div>
-          <p className="text-xl font-bold text-white break-words">
+          <p className="text-xl font-bold text-white">
             {formatCurrency(getTotalInvestmentsWithReturns())}
           </p>
-          <div className="text-sm text-gray-400 mt-1 break-words">
-            <p>Investido: {formatCurrency(getTotalInvestments())}</p>
-            <p>Retorno projetado: {formatCurrency(getProjectedInvestmentReturn(3))}</p>
-          </div>
+          <p className="text-sm text-gray-400 mt-1">
+            Investido: {formatCurrency(getTotalInvestments())} + 
+            Retorno projetado: {formatCurrency(getProjectedInvestmentReturn(3))}
+          </p>
         </Card>
       </div>
       

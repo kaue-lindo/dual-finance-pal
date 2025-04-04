@@ -1,115 +1,117 @@
 
 import React from 'react';
+import { FutureTransaction } from '@/context/finance/types';
+import { formatCurrency } from '@/context/finance/utils/formatting';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
-import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
-import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
-
-interface Transaction {
-  id: string;
-  date: Date;
-  description: string;
-  amount: number;
-  type: 'income' | 'expense' | 'investment';
-  category?: string;
-}
+import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { 
+  ArrowDownCircle, 
+  ArrowUpCircle, 
+  Banknote, 
+  Calendar, 
+  Trash2
+} from 'lucide-react';
 
 interface TransactionsListProps {
-  transactions: Transaction[];
+  transactions: FutureTransaction[];
+  onDelete?: (id: string) => Promise<void>;
+  showDelete?: boolean;
+  title?: string;
+  emptyMessage?: string;
   limit?: number;
-  showBalance?: boolean;
-  onTransactionClick?: (transaction: Transaction) => void;
-  emptyMessage?: string; // Added emptyMessage prop
 }
 
-const TransactionsList: React.FC<TransactionsListProps> = ({
-  transactions,
-  limit,
-  showBalance = false,
-  onTransactionClick,
-  emptyMessage = "Nenhuma transação encontrada" // Default message
-}) => {
-  if (!transactions || transactions.length === 0) {
-    return (
-      <div className="text-center py-6">
-        <p className="text-gray-400">{emptyMessage}</p>
-      </div>
-    );
-  }
+const TransactionsList = ({ 
+  transactions, 
+  onDelete, 
+  showDelete = true,
+  title = "Transações",
+  emptyMessage = "Nenhuma transação encontrada",
+  limit
+}: TransactionsListProps) => {
+  const displayTransactions = limit ? transactions.slice(0, limit) : transactions;
+  
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
+      case 'income':
+        return <ArrowUpCircle className="text-green-500" size={20} />;
+      case 'expense':
+        return <ArrowDownCircle className="text-red-500" size={20} />;
+      case 'investment':
+        return <Banknote className="text-blue-500" size={20} />;
+      default:
+        return <Calendar className="text-gray-500" size={20} />;
+    }
+  };
 
-  // Ensure all transactions have valid dates
-  const validTransactions = transactions.filter(t => t.date instanceof Date && !isNaN(t.date.getTime()));
-  
-  // Sort transactions by date (most recent first)
-  const sortedTransactions = [...validTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
-  
-  // Apply deduplication to prevent showing duplicate transactions
-  const uniqueTransactions = getUniqueTransactionsByMonth(sortedTransactions);
-  
-  // Apply limit if specified
-  const displayTransactions = limit ? uniqueTransactions.slice(0, limit) : uniqueTransactions;
+  const getTransactionColor = (type: string) => {
+    switch (type) {
+      case 'income':
+        return 'text-green-500';
+      case 'expense':
+        return 'text-red-500';
+      case 'investment':
+        return 'text-blue-500';
+      default:
+        return 'text-gray-500';
+    }
+  };
 
   return (
-    <div className="space-y-3">
-      {displayTransactions.map((transaction, index) => (
-        <Card 
-          key={`${transaction.id}-${index}`} 
-          className="finance-card p-4 cursor-pointer"
-          onClick={() => onTransactionClick?.(transaction)}
-        >
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-                transaction.type === 'income' 
-                  ? 'bg-green-500/20' 
-                  : transaction.type === 'investment' 
-                    ? 'bg-blue-500/20' 
-                    : 'bg-red-500/20'
-              }`}>
-                {transaction.type === 'income' ? (
-                  <ArrowUp className="h-5 w-5 text-green-500" />
-                ) : transaction.type === 'investment' ? (
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
-                ) : (
-                  <ArrowDown className="h-5 w-5 text-red-500" />
-                )}
+    <Card className="finance-card p-5 h-full">
+      <h2 className="text-lg font-semibold text-white mb-4">{title}</h2>
+      <Separator className="bg-gray-700 mb-4" />
+      
+      {displayTransactions.length === 0 ? (
+        <div className="text-center text-gray-400 py-8">{emptyMessage}</div>
+      ) : (
+        <div className="space-y-4">
+          {displayTransactions.map((transaction) => (
+            <div key={transaction.id} className="bg-finance-dark-lighter p-3 rounded-lg flex items-center">
+              <div className="mr-3">
+                {getTransactionIcon(transaction.type)}
               </div>
-              <div>
-                <p className="text-white font-medium">{transaction.description}</p>
-                <div className="flex text-xs space-x-2">
-                  <span className="text-gray-400">
-                    {format(transaction.date, 'dd MMM yyyy', { locale: ptBR })}
-                  </span>
-                  {transaction.category && (
-                    <span style={{ color: getCategoryColor(transaction.category) }}>
-                      {formatCategoryName(transaction.category)}
-                    </span>
-                  )}
+              
+              <div className="flex-1">
+                <div className="font-medium text-white">{transaction.description}</div>
+                <div className="text-sm text-gray-400">
+                  {format(new Date(transaction.date), 'dd MMM yyyy', { locale: ptBR })}
+                  {transaction.category && ` • ${transaction.category}`}
                 </div>
               </div>
+              
+              <div className="flex flex-col items-end">
+                <span className={`font-medium ${getTransactionColor(transaction.type)}`}>
+                  {transaction.type === 'expense' ? '-' : '+'} {formatCurrency(transaction.amount)}
+                </span>
+                
+                {showDelete && onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 mt-1 text-gray-400 hover:text-red-500"
+                    onClick={() => onDelete(transaction.id)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                )}
+              </div>
             </div>
-            <span className={`font-bold ${
-              transaction.type === 'income' 
-                ? 'text-green-500' 
-                : transaction.type === 'investment' 
-                  ? 'text-blue-500' 
-                  : 'text-red-500'
-            }`}>
-              {transaction.type === 'income' 
-                ? '+' 
-                : transaction.type === 'investment' 
-                  ? '•' 
-                  : '-'
-              }
-              {formatCurrency(transaction.amount)}
-            </span>
-          </div>
-        </Card>
-      ))}
-    </div>
+          ))}
+          
+          {limit && transactions.length > limit && (
+            <div className="text-center mt-4">
+              <Button variant="link" className="text-finance-blue">
+                Ver todas ({transactions.length})
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 };
 

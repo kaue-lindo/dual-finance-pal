@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { FinanceProvider, useFinance } from "@/context/finance/FinanceContext";
+import { FinanceProvider, useFinance } from "@/context/FinanceContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AddIncome from "./pages/AddIncome";
@@ -24,7 +24,7 @@ import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-// Protected Route component that uses useFinance hook
+// Protected Route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, selectedProfile, loading } = useFinance();
   
@@ -45,7 +45,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// App Routes component with useFinance hook, but now properly wrapped
+// App Routes component to use useFinance hook
 const AppRoutes = () => {
   const { isAuthenticated, selectedProfile } = useFinance();
   
@@ -144,17 +144,16 @@ const AppRoutes = () => {
   );
 };
 
-// Main App component where we arrange providers
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <BrowserRouter>
-        <FinanceProvider>
-          <Toaster />
-          <Sonner />
+      <FinanceProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <AppRoutes />
-        </FinanceProvider>
-      </BrowserRouter>
+        </BrowserRouter>
+      </FinanceProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

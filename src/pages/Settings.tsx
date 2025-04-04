@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -31,8 +30,7 @@ const Settings = () => {
     logout, 
     updateUserProfile, 
     users,
-    selectProfile,
-    supabaseUser
+    selectProfile
   } = useFinance();
   const navigate = useNavigate();
   
@@ -64,37 +62,27 @@ const Settings = () => {
     }
   };
   
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = () => {
     if (!currentUser) return;
     
-    try {
-      // In a real app, we would upload the file to storage
-      // For this demo, we'll just use the file name or existing avatar
-      const newAvatar = fileUpload 
-        ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`
-        : avatarUrl;
-      
-      await updateUserProfile({
-        name: userName,
-        avatarUrl: newAvatar
-      });
-      
-      // Se não houver um novo arquivo para upload, recarregue as informações do perfil
-      if (currentUser.id) {
-        await selectProfile(currentUser.id);
-      }
-      
-      toast.success('Perfil atualizado com sucesso');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Erro ao atualizar perfil');
-    }
+    // In a real app, we would upload the file to storage
+    // For this demo, we'll just use the file name or existing avatar
+    const newAvatar = fileUpload 
+      ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`
+      : avatarUrl;
+    
+    updateUserProfile({
+      name: userName,
+      avatarUrl: newAvatar
+    });
+    
+    toast.success('Perfil atualizado com sucesso');
   };
 
   const otherUsers = users.filter(user => user.id !== currentUser?.id);
   
-  const handleSwitchUser = async (userId: string) => {
-    await selectProfile(userId);
+  const handleSwitchUser = (userId: string) => {
+    selectProfile(userId);
     toast.success('Perfil alterado com sucesso');
   };
   

@@ -1,13 +1,7 @@
+
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
-
-export type RecurringType = 'daily' | 'weekly' | 'monthly';
-
-export type RecurringInfo = {
-  type: RecurringType;
-  days?: number[]; // Days of month for monthly recurring
-};
 
 export type Expense = {
   id: string;
@@ -16,7 +10,10 @@ export type Expense = {
   category: string;
   date: Date;
   sourceCategory?: IncomeCategory;
-  recurring?: RecurringInfo;
+  recurring?: {
+    type: 'daily' | 'weekly' | 'monthly';
+    days?: number[]; // Days of month for monthly recurring
+  };
   installment?: {
     total: number;
     current: number;
@@ -31,7 +28,10 @@ export type Income = {
   amount: number;
   date: Date;
   category: IncomeCategory;
-  recurring?: boolean | RecurringInfo;
+  recurring?: boolean | {
+    type: 'daily' | 'weekly' | 'monthly';
+    days?: number[]; // Days of month for monthly recurring
+  };
 };
 
 export type Investment = {
@@ -60,23 +60,22 @@ export type FutureTransaction = {
   category: string;
   sourceCategory?: string;
   parent_investment_id?: string;
-  parentId?: string; // Added to track the original transaction's ID
 };
 
-export interface FinanceContextType {
+export type FinanceContextType = {
   currentUser: User | null;
   users: User[];
   finances: Record<string, UserFinances>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: any }>;
-  logout: () => Promise<void>;
-  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  logout: () => void;
+  addExpense: (expense: Omit<Expense, 'id'>) => void;
   deleteExpense: (id: string) => Promise<void>;
   addIncome: (income: Omit<Income, 'id'>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
-  addInvestment: (investment: Omit<Investment, 'id'>) => Promise<void>;
-  deleteInvestment: (id: string) => Promise<void>;
+  addInvestment: (investment: Omit<Investment, 'id'>) => void;
+  deleteInvestment: (id: string) => void;
   calculateBalance: () => number;
   getMonthlyExpenseTotal: () => number;
   getFutureTransactions: () => FutureTransaction[];
@@ -84,20 +83,19 @@ export interface FinanceContextType {
   fetchTransactions: () => Promise<void>;
   fetchTransactionsByUserId: (userId: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  getIncomeCategories: () => { value: string; label: string }[];
+  getIncomeCategories: () => { value: IncomeCategory; label: string }[];
   getExpenseCategories: () => { value: string; label: string }[];
   getTotalInvestments: () => number;
   getTotalInvestmentsWithReturns: () => number;
-  getProjectedInvestmentReturn: (months: number) => number;
+  getProjectedInvestmentReturn: (months?: number) => number;
   getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
   getRealIncome: () => number;
-  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => Promise<User>;
+  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => void;
   getUserBalance: (userId: string) => number;
   getUserFinances: (userId: string) => UserFinances;
   supabaseUser: any;
   selectedProfile: string | null;
-  selectProfile: (userId: string) => Promise<void>;
+  selectProfile: (userId: string) => void;
   isAuthenticated: boolean;
   loading: boolean;
-  getUniqueTransactionsByMonth: (transactions: any[], month: string) => any[];
-}
+};

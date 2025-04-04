@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -116,7 +115,7 @@ const InvestmentReturns = () => {
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
       <div className="finance-card rounded-b-xl">
-        <div className="flex justify-between items-center mb-4 p-4">
+        <div className="flex justify-between items-center mb-4">
           <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="w-6 h-6 text-white" />
           </Button>
@@ -140,11 +139,11 @@ const InvestmentReturns = () => {
 
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-3xl font-bold text-white break-words">{formatCurrency(totalInvested)}</p>
+                <p className="text-3xl font-bold text-white">{formatCurrency(totalInvested)}</p>
                 <p className="text-sm text-gray-400">Valor investido</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold text-green-500 break-words">
+                <p className="text-lg font-bold text-green-500">
                   +{formatCurrency(totalProjectedReturn)}
                 </p>
                 <p className="text-xs text-gray-400">Rendimento projetado</p>
@@ -239,14 +238,14 @@ const InvestmentReturns = () => {
                       <div key={index} className="p-3 bg-finance-dark-lighter rounded-lg">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-medium text-white break-words">{investment.description}</h3>
+                            <h3 className="font-medium text-white">{investment.name}</h3>
                             <p className="text-sm text-gray-400">
                               {investment.period === 'monthly' ? 'Rendimento Mensal' : 'Rendimento Anual'} • 
                               {investment.isCompound ? ' Juros Compostos' : ' Juros Simples'}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-white font-bold break-words">{formatCurrency(investment.amount)}</p>
+                            <p className="text-white font-bold">{formatCurrency(investment.amount)}</p>
                             <p className="text-green-500 text-sm">
                               {investment.rate}% {investment.period === 'monthly' ? 'a.m.' : 'a.a.'}
                             </p>
@@ -255,7 +254,7 @@ const InvestmentReturns = () => {
                         <div className="mt-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Rendimento em 12 meses:</span>
-                            <span className="text-green-500 font-medium break-words">
+                            <span className="text-green-500 font-medium">
                               +{formatCurrency(calculateInvestmentGrowthForMonth(
                                 investment.amount,
                                 investment.rate,

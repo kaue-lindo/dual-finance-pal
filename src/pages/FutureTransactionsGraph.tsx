@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -42,6 +43,7 @@ const FutureTransactionsGraph = () => {
     if (!currentUser) return;
     
     const transactions = getFutureTransactions();
+    // Get actual balance without investments
     const currentBalance = calculateBalance();
     const totalInvestments = getTotalInvestments();
     const categoryExpenses = getCategoryExpenses();
@@ -51,6 +53,7 @@ const FutureTransactionsGraph = () => {
     const today = new Date();
     const monthlyData: Record<string, any> = {};
     
+    // Initialize monthly data structure
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(today, i);
       const monthKey = format(monthDate, 'MMM/yy');
@@ -66,6 +69,7 @@ const FutureTransactionsGraph = () => {
       };
     }
     
+    // Add all transaction data to monthly buckets
     transactions.forEach(transaction => {
       const monthKey = format(transaction.date, 'MMM/yy');
       
@@ -73,7 +77,8 @@ const FutureTransactionsGraph = () => {
       
       if (transaction.type === 'income') {
         if (transaction.category === 'investment-return') {
-          monthlyData[monthKey].investmentReturn += transaction.amount;
+          // This is already calculated more accurately above, so skip it
+          // monthlyData[monthKey].investmentReturn += transaction.amount;
         } else {
           monthlyData[monthKey].income += transaction.amount;
         }
@@ -84,6 +89,7 @@ const FutureTransactionsGraph = () => {
       }
     });
     
+    // Calculate running balance
     let runningBalance = currentBalance;
     Object.keys(monthlyData).sort((a, b) => {
       return monthlyData[a].date.getTime() - monthlyData[b].date.getTime();
@@ -91,6 +97,7 @@ const FutureTransactionsGraph = () => {
       if (monthKey === format(today, 'MMM/yy')) {
         runningBalance = monthlyData[monthKey].balance;
       } else {
+        // Update running balance with net flow (including investment returns)
         runningBalance = runningBalance + 
                         monthlyData[monthKey].income + 
                         monthlyData[monthKey].investmentReturn - 
@@ -103,13 +110,7 @@ const FutureTransactionsGraph = () => {
     const monthsArray = Object.values(monthlyData);
     setFutureMonths(monthsArray);
     
-    const formattedData = monthsArray.map(item => ({
-      name: item.month,
-      income: Number(item.income || 0),
-      expense: Number(item.expense || 0),
-      balance: Number(item.income || 0) - Number(item.expense || 0)
-    }));
-    
+    // Prepare category data for pie chart
     const categoryDataForChart = categoryExpenses.map(item => {
       const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
       const percentage = totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0;
@@ -124,8 +125,10 @@ const FutureTransactionsGraph = () => {
     });
     setCategoryData(categoryDataForChart);
     
+    // Calculate the available balance correctly for distribution chart
     const totalExpenses = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
     
+    // Create distribution data for pie chart
     const distributionDataForChart = [
       { name: 'Saldo Disponível', value: currentBalance, color: '#2EC4B6', percentage: ((currentBalance / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) },
       { name: 'Investimentos', value: totalInvestments, color: '#FF9F1C', percentage: ((totalInvestments / (currentBalance + totalInvestments + totalExpenses)) * 100).toFixed(1) },

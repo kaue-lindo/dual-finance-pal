@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -43,25 +44,24 @@ const AddIncome = () => {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (data: FormValues) => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const amount = Number(values.amount);
+      const amount = parseFloat(data.amount.replace(',', '.'));
       
-      if (isNaN(amount) || amount <= 0) {
+      if (isNaN(amount)) {
         toast.error('Valor inválido');
-        setIsLoading(false);
         return;
       }
-      
+
       await addIncome({
-        description: values.description,
-        amount: amount,
-        date: values.date,
-        category: values.category as any,
-        recurring: values.recurring,
+        description: data.description,
+        amount,
+        date: data.date,
+        category: data.category as any,
+        recurring: data.recurring,
       });
-      
+
       toast.success('Entrada adicionada com sucesso!');
       navigate('/dashboard');
     } catch (error) {
