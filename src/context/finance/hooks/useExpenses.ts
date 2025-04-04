@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -196,7 +197,7 @@ export const useExpenses = (
         return;
       }
       
-      // Excluir do Supabase
+      // Delete from Supabase
       const { error } = await supabase
         .from('finances')
         .delete()
@@ -210,7 +211,7 @@ export const useExpenses = (
         return;
       }
       
-      // Atualizar o estado local
+      // Update local state
       setFinances(prev => {
         const userFinances = prev[currentUser.id] || {
           incomes: [],

@@ -4,3 +4,4 @@ export * from './calculations';
 export * from './projections';
 export * from './dates';
 export * from './formatting';
+export * from './recurring';

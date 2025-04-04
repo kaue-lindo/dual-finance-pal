@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { User } from '../constants';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +8,7 @@ export const useUserProfile = (
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>
 ) => {
   const updateUserProfile = async (userData: { name?: string, avatarUrl?: string }) => {
-    if (!currentUser) return;
+    if (!currentUser) return currentUser as User;
     
     try {
       // Get the current Supabase authentication session
@@ -15,7 +16,7 @@ export const useUserProfile = (
       
       if (!sessionData.session) {
         toast.error('Sessão expirada. Faça login novamente.');
-        return;
+        return currentUser;
       }
       
       const updatedUser = {
@@ -37,7 +38,7 @@ export const useUserProfile = (
       if (error) {
         console.error('Error updating profile in Supabase:', error);
         toast.error('Erro ao atualizar perfil no banco de dados');
-        return;
+        return currentUser;
       }
       
       // Update current user state
@@ -50,18 +51,24 @@ export const useUserProfile = (
       
       // Store in users collection for future logins
       const savedUsers = localStorage.getItem('financeUsers');
-      const storedUsers = savedUsers ? JSON.parse(savedUsers) : {};
-      
-      storedUsers[currentUser.id] = updatedUser;
-      localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
+      if (savedUsers) {
+        const storedUsers = JSON.parse(savedUsers);
+        
+        storedUsers[currentUser.id] = updatedUser;
+        localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
+      }
       
       // Update selected profile in localStorage
       localStorage.setItem('selectedFinanceProfile', currentUser.id);
       
       toast.success('Perfil atualizado com sucesso');
+      
+      // Return the updated user for use in the application
+      return updatedUser;
     } catch (error) {
       console.error('Error in updateUserProfile:', error);
       toast.error('Erro ao atualizar perfil');
+      return currentUser;
     }
   };
 

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { FinanceContextType, UserFinances } from './types';
+import { FinanceContextType, UserFinances, FutureTransaction } from './types';
 import { defaultFinances } from './constants';
 import { useAuth } from './hooks/useAuth';
 import { useExpenses } from './hooks/useExpenses';
@@ -8,6 +8,7 @@ import { useIncomes } from './hooks/useIncomes';
 import { useInvestments } from './hooks/useInvestments';
 import { useTransactions } from './hooks/useTransactions';
 import { useUserProfile } from './hooks/useUserProfile';
+import { getUniqueTransactionsByMonth } from './utils/calculations';
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
@@ -99,7 +100,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         selectedProfile,
         selectProfile,
         isAuthenticated,
-        loading
+        loading,
+        getUniqueTransactionsByMonth
       }}
     >
       {children}

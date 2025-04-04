@@ -1,5 +1,6 @@
 
 import { IncomeCategory } from "@/context/finance/types";
+import { format } from 'date-fns';
 
 // Enhanced color mapping for expense and income categories
 export const categoryColors: Record<string, string> = {
@@ -88,4 +89,23 @@ export const getGradientColors = (baseColor: string): {start: string, end: strin
     start: `${baseColor}33`, // 20% opacity
     end: `${baseColor}99`    // 60% opacity
   };
+};
+
+// Calculate total for a specific month from an array of transactions
+export const calculateTotalForMonth = (transactions: any[], monthName: string): number => {
+  return transactions.reduce((total, transaction) => {
+    // Check if the transaction has a date
+    if (!transaction.date) return total;
+    
+    // Convert transaction date to month name
+    const transactionDate = new Date(transaction.date);
+    const transactionMonth = format(transactionDate, 'MMMM');
+    
+    // If the transaction is from the requested month, add its amount to the total
+    if (transactionMonth.toLowerCase() === monthName.toLowerCase()) {
+      return total + (transaction.amount || 0);
+    }
+    
+    return total;
+  }, 0);
 };
