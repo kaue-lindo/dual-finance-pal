@@ -1,3 +1,4 @@
+
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
@@ -70,27 +71,27 @@ export interface FinanceContextType {
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: any }>;
   logout: () => Promise<void>;
-  addExpense: (expense: Expense) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
-  addIncome: (income: Income) => Promise<void>;
+  addIncome: (income: Omit<Income, 'id'>) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
-  addInvestment: (investment: Investment) => Promise<void>;
+  addInvestment: (investment: Omit<Investment, 'id'>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
   calculateBalance: () => number;
   getMonthlyExpenseTotal: () => number;
   getFutureTransactions: () => FutureTransaction[];
-  simulateExpense: (expense: Expense) => Promise<number>;
+  simulateExpense: (expense: Omit<Expense, 'id'>) => number;
   fetchTransactions: () => Promise<void>;
   fetchTransactionsByUserId: (userId: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  getIncomeCategories: () => string[];
-  getExpenseCategories: () => string[];
+  getIncomeCategories: () => { value: string; label: string }[];
+  getExpenseCategories: () => { value: string; label: string }[];
   getTotalInvestments: () => number;
   getTotalInvestmentsWithReturns: () => number;
   getProjectedInvestmentReturn: (months: number) => number;
-  getCategoryExpenses: () => Record<string, number>;
+  getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
   getRealIncome: () => number;
-  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => Promise<void>;
+  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => Promise<User>;
   getUserBalance: (userId: string) => number;
   getUserFinances: (userId: string) => UserFinances;
   supabaseUser: any;

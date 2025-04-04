@@ -35,10 +35,11 @@ const TransactionsList = ({
 }: TransactionsListProps) => {
   const { getUniqueTransactionsByMonth } = useFinance();
   
-  // Aplicar a deduplicação de transações
-  const currentMonthKey = `${new Date().getFullYear()}-${new Date().getMonth()}`;
+  // Apply transaction deduplication using month as key
+  const currentMonthKey = format(new Date(), 'yyyy-MM');
   const uniqueTransactions = getUniqueTransactionsByMonth(transactions, currentMonthKey);
   
+  // Apply limit after deduplication if needed
   const displayTransactions = limit ? uniqueTransactions.slice(0, limit) : uniqueTransactions;
   
   const getTransactionIcon = (type: string) => {

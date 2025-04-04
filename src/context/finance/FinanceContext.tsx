@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { FinanceContextType, UserFinances } from './types';
+import { FinanceContextType, UserFinances, FutureTransaction } from './types';
 import { defaultFinances } from './constants';
 import { useAuth } from './hooks/useAuth';
 import { useExpenses } from './hooks/useExpenses';

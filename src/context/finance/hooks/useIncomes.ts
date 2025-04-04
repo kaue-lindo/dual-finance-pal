@@ -2,7 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Income, IncomeCategory } from '../types';
-import { incomeCategories } from '../constants';
 import { calculateBalanceFromData } from '../utils/calculations';
 
 export const useIncomes = (
@@ -11,103 +10,65 @@ export const useIncomes = (
   setFinances: React.Dispatch<React.SetStateAction<Record<string, any>>>
 ) => {
   const addIncome = async (income: Omit<Income, 'id'>) => {
-    if (!currentUser) {
-      toast.error('Usuário não encontrado. Faça login novamente.');
-      return;
-    }
+    if (!currentUser) return;
     
     try {
-      console.log("Adding income for user:", currentUser.id, income);
-      
-      // Get the current Supabase authentication session
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        throw new Error(`Erro ao obter sessão: ${sessionError.message}`);
-      }
+      const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData.session) {
         toast.error('Sessão expirada. Faça login novamente.');
         return;
       }
       
-      // Preparar os dados para inserção no Supabase
-      const supabaseData: any = {
-        user_id: currentUser.id,
-        auth_id: sessionData.session.user.id,
-        type: 'income',
-        description: income.description,
-        amount: income.amount,
-        category: income.category,
-        date: income.date.toISOString()
-      };
+      // Convert recurring info to the format expected by the database
+      let recurringType = null;
+      let recurringDays = null;
       
-      // Correção: Tratar o campo recurring de acordo com seu tipo
-      if (typeof income.recurring === 'object' && income.recurring !== null) {
-        // Se for um objeto, extrair type e days
-        supabaseData.recurring = true; // Campo booleano no Supabase
-        supabaseData.recurring_type = income.recurring.type;
-        supabaseData.recurring_days = income.recurring.days || [];
-        
-        // Adicionar o texto que indica recorrência na descrição
-        const recurrenceType = income.recurring.type === 'daily' ? 'Diário' : 
-                              income.recurring.type === 'weekly' ? 'Semanal' : 'Mensal';
-        supabaseData.description = `${supabaseData.description} (${recurrenceType})`;
-      } else if (income.recurring === true) {
-        // Se for apenas um booleano true
-        supabaseData.recurring = true;
-        supabaseData.recurring_type = 'monthly'; // Padrão para recorrência simples
-        
-        // Para recorrência mensal simples, usar o dia da data selecionada
-        const selectedDay = income.date.getDate();
-        supabaseData.recurring_days = [selectedDay];
-        
-        // Adicionar o texto que indica recorrência na descrição
-        supabaseData.description = `${supabaseData.description} (Mensal)`;
-      } else {
-        // Se for false ou undefined
-        supabaseData.recurring = false;
+      if (income.recurring) {
+        if (typeof income.recurring === 'object') {
+          recurringType = income.recurring.type;
+          recurringDays = income.recurring.days;
+        } else {
+          recurringType = 'monthly';
+          recurringDays = [new Date(income.date).getDate()];
+        }
       }
       
       const { data, error } = await supabase
         .from('finances')
-        .insert(supabaseData)
+        .insert({
+          user_id: currentUser.id,
+          auth_id: sessionData.session.user.id,
+          type: 'income',
+          description: income.description,
+          amount: income.amount,
+          category: income.category,
+          date: income.date.toISOString(),
+          recurring: !!income.recurring,
+          recurring_type: recurringType,
+          recurring_days: recurringDays
+        })
         .select()
         .single();
-
+      
       if (error) {
         console.error('Error adding income:', error);
-        toast.error(`Erro ao adicionar receita: ${error.message}`);
+        toast.error('Erro ao adicionar receita');
         return;
       }
-
-      // Construir o objeto Income a partir dos dados retornados
+      
       const newIncome: Income = {
         id: data.id,
         description: data.description,
         amount: parseFloat(data.amount.toString()),
+        category: data.category as IncomeCategory,
         date: new Date(data.date),
-        category: data.category as IncomeCategory
+        recurring: data.recurring ? (data.recurring_type ? { 
+          type: data.recurring_type as 'daily' | 'weekly' | 'monthly', 
+          days: data.recurring_days 
+        } : true) : undefined
       };
       
-      // Reconstruir o campo recurring com base nos dados salvos
-      if (data.recurring) {
-        if (data.recurring_type) {
-          // Se tiver tipo de recorrência, é um objeto
-          newIncome.recurring = {
-            type: data.recurring_type as 'daily' | 'weekly' | 'monthly',
-            days: data.recurring_days || []
-          };
-        } else {
-          // Senão, é apenas um booleano
-          newIncome.recurring = true;
-        }
-      } else {
-        newIncome.recurring = false;
-      }
-
-      console.log("Successfully added income:", newIncome);
-
       setFinances(prev => {
         const userFinances = prev[currentUser.id] || {
           incomes: [],
@@ -132,23 +93,15 @@ export const useIncomes = (
       toast.success('Receita adicionada com sucesso');
     } catch (error) {
       console.error('Error in addIncome:', error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao adicionar receita');
+      toast.error('Erro ao adicionar receita');
     }
   };
-
+  
   const deleteIncome = async (incomeId: string) => {
-    if (!currentUser) {
-      toast.error('Usuário não encontrado. Faça login novamente.');
-      return;
-    }
+    if (!currentUser) return;
     
     try {
-      // Get the current Supabase authentication session
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        throw new Error(`Erro ao obter sessão: ${sessionError.message}`);
-      }
+      const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData.session) {
         toast.error('Sessão expirada. Faça login novamente.');
@@ -165,7 +118,7 @@ export const useIncomes = (
       
       if (error) {
         console.error('Error deleting income:', error);
-        toast.error(`Erro ao excluir receita: ${error.message}`);
+        toast.error('Erro ao excluir receita');
         return;
       }
       
@@ -194,25 +147,67 @@ export const useIncomes = (
       toast.success('Receita excluída com sucesso');
     } catch (error) {
       console.error('Error in deleteIncome:', error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao excluir receita');
+      toast.error('Erro ao excluir receita');
     }
   };
-
-  const getIncomeCategories = () => {
-    return incomeCategories;
-  };
-
+  
   const getRealIncome = () => {
     if (!currentUser) return 0;
     
     const userFinances = finances[currentUser.id] || { incomes: [] };
-    return userFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    return userFinances.incomes.reduce((sum: number, income: Income) => {
+      const incomeDate = new Date(income.date);
+      
+      // Only include incomes from the current month
+      if (incomeDate.getMonth() === currentMonth && incomeDate.getFullYear() === currentYear) {
+        return sum + income.amount;
+      }
+      
+      // Add recurring incomes
+      if (income.recurring) {
+        // If recurring is a boolean (true), it's a monthly income
+        if (typeof income.recurring === 'boolean' && income.recurring) {
+          return sum + income.amount;
+        }
+        
+        // If recurring is an object, handle different types
+        if (typeof income.recurring === 'object') {
+          if (income.recurring.type === 'daily') {
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            return sum + (income.amount * daysInMonth);
+          }
+          
+          if (income.recurring.type === 'weekly') {
+            return sum + (income.amount * 4); // Approximate 4 weeks per month
+          }
+          
+          if (income.recurring.type === 'monthly' && income.recurring.days) {
+            return sum + (income.amount * income.recurring.days.length);
+          }
+        }
+      }
+      
+      return sum;
+    }, 0);
   };
-
+  
+  const getIncomeCategories = () => {
+    return [
+      { value: 'salary', label: 'Salário' },
+      { value: 'food-allowance', label: 'Vale Alimentação' },
+      { value: 'transportation-allowance', label: 'Vale Transporte' },
+      { value: 'investment_returns', label: 'Retornos de Investimentos' },
+      { value: 'other', label: 'Outros' }
+    ];
+  };
+  
   return {
     addIncome,
     deleteIncome,
-    getIncomeCategories,
     getRealIncome,
+    getIncomeCategories
   };
 };

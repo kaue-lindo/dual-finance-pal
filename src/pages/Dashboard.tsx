@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -101,9 +100,8 @@ const Dashboard = () => {
       return transactionDate >= startDate && transactionDate <= endDate;
     });
 
-    // Usar a função getUniqueTransactionsByMonth para eliminar duplicatas
-    const currentMonthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
-    return getUniqueTransactionsByMonth(filteredByDate, currentMonthKey);
+    const periodKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}-${activePeriod}`;
+    return getUniqueTransactionsByMonth(filteredByDate, periodKey);
   };
   
   const filteredTransactions = filterTransactionsByPeriod();
@@ -149,7 +147,6 @@ const Dashboard = () => {
       return date >= startOfDay && date <= endOfDay;
     });
 
-    // Aplicar a deduplicação para transações do dia
     const dayKey = `${year}-${month}-${day}`;
     return getUniqueTransactionsByMonth(filteredByDay, dayKey);
   };
@@ -181,7 +178,6 @@ const Dashboard = () => {
       return date >= startOfDay && date <= endOfDay;
     });
 
-    // Aplicar a deduplicação para as transações do dia selecionado
     const dayKey = `${selectedDay.getFullYear()}-${selectedDay.getMonth()}-${selectedDay.getDate()}`;
     return getUniqueTransactionsByMonth(filteredByDay, dayKey);
   };
@@ -375,7 +371,6 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Novo: Modal para mostrar as transações de um dia */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-finance-dark-card text-white border-gray-700 max-w-md">
           <DialogHeader>
