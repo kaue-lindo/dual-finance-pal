@@ -29,7 +29,6 @@ export const useTransactionFuture = (
     // Sort transactions by date
     const sortedTransactions = futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
     
-    // Return unique transactions to avoid duplicates in UI
     return sortedTransactions;
   };
 
@@ -53,7 +52,8 @@ export const useTransactionFuture = (
         amount: expense.amount,
         type: 'expense',
         category: expense.category,
-        sourceCategory: expense.sourceCategory
+        sourceCategory: expense.sourceCategory,
+        parentId: expense.id
       });
       
       // Process installments
@@ -104,7 +104,8 @@ export const useTransactionFuture = (
         description: description,
         amount: income.amount,
         type: 'income',
-        category: income.category
+        category: income.category,
+        parentId: income.id
       });
       
       // Process recurring incomes

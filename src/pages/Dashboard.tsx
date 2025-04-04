@@ -10,7 +10,7 @@ import { useFinance } from '@/context/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
-import { format, isToday } from 'date-fns';
+import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
@@ -23,7 +23,6 @@ const Dashboard = () => {
     getFutureTransactions, 
     finances,
     getTotalInvestments,
-    getUniqueTransactionsByMonth
   } = useFinance();
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -72,45 +71,58 @@ const Dashboard = () => {
   
   const filterTransactionsByPeriod = () => {
     const today = new Date();
-    const currentDate = today.getDate();
-    const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
-    const displayedMonthYear = `${currentMonth.getMonth()}-${currentMonth.getFullYear()}`;
-    const isCurrentMonth = currentMonthYear === displayedMonthYear;
+    const displayDate = new Date(currentMonth); // The date we're displaying
     
-    let startDate, endDate;
+    let startDate: Date, endDate: Date;
     
-    if (activePeriod === 'day' && isCurrentMonth) {
-      startDate = new Date(today.setHours(0, 0, 0, 0));
-      endDate = new Date(today.setHours(23, 59, 59, 999));
-    } else if (activePeriod === 'week' && isCurrentMonth) {
-      const dayOfWeek = today.getDay();
-      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-      startDate = new Date(today.setDate(diff));
-      startDate.setHours(0, 0, 0, 0);
+    // Adjust for displaying different periods (day, week, month)
+    if (activePeriod === 'day') {
+      // For day view, use the current date from the month we're viewing
+      startDate = startOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
+      endDate = endOfDay(startDate);
+    } else if (activePeriod === 'week') {
+      // For week view, get the week containing today, but in the month we're viewing
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
+      startDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate());
       endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 6);
-      endDate.setHours(23, 59, 59, 999);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate = endOfDay(endDate);
     } else {
-      startDate = new Date(firstDayOfCurrentMonth);
-      endDate = new Date(lastDayOfCurrentMonth);
+      // For month view, use the entire month we're viewing
+      startDate = firstDayOfCurrentMonth;
+      endDate = lastDayOfCurrentMonth;
+      endDate = endOfDay(endDate);
     }
     
-    const filteredByDate = futureTransactions.filter(t => {
+    // Filter transactions that fall within the date range
+    return futureTransactions.filter(t => {
       const transactionDate = new Date(t.date);
       return transactionDate >= startDate && transactionDate <= endDate;
     });
-
-    const periodKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}-${activePeriod}`;
-    return getUniqueTransactionsByMonth(filteredByDate, periodKey);
   };
   
   const filteredTransactions = filterTransactionsByPeriod();
   
   const calculateIncomeAndExpense = () => {
+    const transactions = filterTransactionsByPeriod();
+    
+    // Create a map to track unique transactions for deduplication
+    const uniqueTransactions = new Map();
+    
+    transactions.forEach(transaction => {
+      const key = `${transaction.type}-${transaction.description}-${transaction.amount}-${format(new Date(transaction.date), 'yyyy-MM-dd')}`;
+      
+      // If this is a recurring transaction but we've already seen a similar one, skip it
+      if (!uniqueTransactions.has(key)) {
+        uniqueTransactions.set(key, transaction);
+      }
+    });
+    
+    // Calculate totals from unique transactions
     let totalIncome = 0;
     let totalExpense = 0;
     
-    filteredTransactions.forEach(transaction => {
+    uniqueTransactions.forEach(transaction => {
       if (transaction.type === 'income') {
         totalIncome += transaction.amount;
       } else if (transaction.type === 'expense') {
@@ -142,13 +154,24 @@ const Dashboard = () => {
     const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
     const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
     
-    const filteredByDay = futureTransactions.filter(t => {
+    // Filter unique transactions for this day
+    const transactionsForDay = futureTransactions.filter(t => {
       const date = new Date(t.date);
       return date >= startOfDay && date <= endOfDay;
     });
-
-    const dayKey = `${year}-${month}-${day}`;
-    return getUniqueTransactionsByMonth(filteredByDay, dayKey);
+    
+    // Deduplicate transactions
+    const uniqueKeys = new Set();
+    const uniqueTransactions = transactionsForDay.filter(transaction => {
+      const key = `${transaction.type}-${transaction.description}-${transaction.amount}`;
+      if (uniqueKeys.has(key)) {
+        return false;
+      }
+      uniqueKeys.add(key);
+      return true;
+    });
+    
+    return uniqueTransactions;
   };
   
   const checkIsToday = (day: number) => {
@@ -167,19 +190,30 @@ const Dashboard = () => {
   const getSelectedDayTransactions = () => {
     if (!selectedDay) return [];
     
-    const startOfDay = new Date(selectedDay);
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfSelectedDay = new Date(selectedDay);
+    startOfSelectedDay.setHours(0, 0, 0, 0);
     
-    const endOfDay = new Date(selectedDay);
-    endOfDay.setHours(23, 59, 59, 999);
+    const endOfSelectedDay = new Date(selectedDay);
+    endOfSelectedDay.setHours(23, 59, 59, 999);
     
-    const filteredByDay = futureTransactions.filter(t => {
+    // Filter unique transactions for the selected day
+    const transactionsForDay = futureTransactions.filter(t => {
       const date = new Date(t.date);
-      return date >= startOfDay && date <= endOfDay;
+      return date >= startOfSelectedDay && date <= endOfSelectedDay;
     });
-
-    const dayKey = `${selectedDay.getFullYear()}-${selectedDay.getMonth()}-${selectedDay.getDate()}`;
-    return getUniqueTransactionsByMonth(filteredByDay, dayKey);
+    
+    // Deduplicate transactions
+    const uniqueKeys = new Set();
+    const uniqueTransactions = transactionsForDay.filter(transaction => {
+      const key = `${transaction.type}-${transaction.description}-${transaction.amount}`;
+      if (uniqueKeys.has(key)) {
+        return false;
+      }
+      uniqueKeys.add(key);
+      return true;
+    });
+    
+    return uniqueTransactions;
   };
 
   const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });

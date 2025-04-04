@@ -1,7 +1,8 @@
+
 import { format } from 'date-fns';
 
 // Deduplicate transactions to avoid showing duplicates in UI
-export const getUniqueTransactionsByMonth = (transactions: any[]) => {
+export const getUniqueTransactionsByMonth = (transactions: any[], keyPrefix: string = '') => {
   // Group transactions by month, type, description and amount
   const groupedTransactions: Record<string, any[]> = {};
   
@@ -11,7 +12,7 @@ export const getUniqueTransactionsByMonth = (transactions: any[]) => {
     const transactionDate = new Date(transaction.date);
     // Create a composite key for deduplication: month-type-description-amount-category
     const month = format(transactionDate, 'yyyy-MM');
-    const key = `${month}-${transaction.type}-${transaction.description}-${transaction.amount}-${transaction.category || 'unknown'}`;
+    const key = `${keyPrefix}-${month}-${transaction.type}-${transaction.description}-${transaction.amount}-${transaction.category || 'unknown'}`;
     
     // Check if this is a recurring transaction
     const isRecurring = transaction.id?.includes('-recurring-') || 
@@ -20,24 +21,26 @@ export const getUniqueTransactionsByMonth = (transactions: any[]) => {
                         transaction.description?.includes('(Diário)') ||
                         transaction.description?.includes('(Semanal)');
     
-    // Skip if it's a generated future recurring transaction
-    if (isRecurring && transaction.id?.includes('-')) {
-      // Only keep original transactions (those without special IDs)
-      return;
-    }
-    
+    // Only add if not already in the group with the same key
     if (!groupedTransactions[key]) {
       groupedTransactions[key] = [];
     }
     
     // Only add if not already in the group (exact same transaction)
-    const exists = groupedTransactions[key].some(t => t.id === transaction.id);
+    const exists = groupedTransactions[key].some(t => 
+      t.id === transaction.id || 
+      (t.description === transaction.description && 
+       t.amount === transaction.amount && 
+       t.type === transaction.type &&
+       format(new Date(t.date), 'yyyy-MM-dd') === format(new Date(transaction.date), 'yyyy-MM-dd'))
+    );
+    
     if (!exists) {
       groupedTransactions[key].push(transaction);
     }
   });
   
-  // For each group, keep just one transaction (preferably the original one)
+  // For each group, prioritize non-recurring transactions
   const uniqueTransactions: any[] = [];
   
   Object.values(groupedTransactions).forEach(group => {
