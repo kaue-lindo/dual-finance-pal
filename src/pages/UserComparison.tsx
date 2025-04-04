@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '@/context/FinanceContext';
@@ -93,7 +94,7 @@ const UserComparison = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="userOne" className="text-white">Usuário 1:</Label>
-                <Select onValueChange={setUserOne} defaultValue={userOne}>
+                <Select value={userOne} onValueChange={(value: string) => setUserOne(value)}>
                   <SelectTrigger className="bg-finance-dark-card text-white">
                     <SelectValue placeholder="Selecione o Usuário 1" />
                   </SelectTrigger>
@@ -107,7 +108,7 @@ const UserComparison = () => {
 
               <div>
                 <Label htmlFor="userTwo" className="text-white">Usuário 2:</Label>
-                <Select onValueChange={setUserTwo} defaultValue={userTwo}>
+                <Select value={userTwo} onValueChange={(value: string) => setUserTwo(value)}>
                   <SelectTrigger className="bg-finance-dark-card text-white">
                     <SelectValue placeholder="Selecione o Usuário 2" />
                   </SelectTrigger>
@@ -122,7 +123,7 @@ const UserComparison = () => {
 
             <div className="mt-4">
               <Label htmlFor="chartType" className="text-white">Tipo de Gráfico:</Label>
-              <Select onValueChange={setChartType} defaultValue={chartType}>
+              <Select value={chartType} onValueChange={(value: 'category' | 'monthly') => setChartType(value)}>
                 <SelectTrigger className="bg-finance-dark-card text-white">
                   <SelectValue placeholder="Selecione o Tipo de Gráfico" />
                 </SelectTrigger>
