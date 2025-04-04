@@ -23,7 +23,8 @@ const Dashboard = () => {
     fetchTransactions, 
     getFutureTransactions, 
     finances,
-    getTotalInvestments
+    getTotalInvestments,
+    getUniqueTransactionsByMonth
   } = useFinance();
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -95,10 +96,14 @@ const Dashboard = () => {
       endDate = new Date(lastDayOfCurrentMonth);
     }
     
-    return futureTransactions.filter(t => {
+    const filteredByDate = futureTransactions.filter(t => {
       const transactionDate = new Date(t.date);
       return transactionDate >= startDate && transactionDate <= endDate;
     });
+
+    // Usar a função getUniqueTransactionsByMonth para eliminar duplicatas
+    const currentMonthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
+    return getUniqueTransactionsByMonth(filteredByDate, currentMonthKey);
   };
   
   const filteredTransactions = filterTransactionsByPeriod();
@@ -139,10 +144,14 @@ const Dashboard = () => {
     const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
     const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
     
-    return futureTransactions.filter(t => {
+    const filteredByDay = futureTransactions.filter(t => {
       const date = new Date(t.date);
       return date >= startOfDay && date <= endOfDay;
     });
+
+    // Aplicar a deduplicação para transações do dia
+    const dayKey = `${year}-${month}-${day}`;
+    return getUniqueTransactionsByMonth(filteredByDay, dayKey);
   };
   
   const checkIsToday = (day: number) => {
@@ -152,14 +161,12 @@ const Dashboard = () => {
            year === today.getFullYear();
   };
 
-  // Novo: Função para mostrar as transações de um dia específico
   const showDayTransactions = (day: number) => {
     const date = new Date(year, month, day);
     setSelectedDay(date);
     setDialogOpen(true);
   };
   
-  // Novo: Filtra as transações do dia selecionado
   const getSelectedDayTransactions = () => {
     if (!selectedDay) return [];
     
@@ -169,13 +176,16 @@ const Dashboard = () => {
     const endOfDay = new Date(selectedDay);
     endOfDay.setHours(23, 59, 59, 999);
     
-    return futureTransactions.filter(t => {
+    const filteredByDay = futureTransactions.filter(t => {
       const date = new Date(t.date);
       return date >= startOfDay && date <= endOfDay;
     });
+
+    // Aplicar a deduplicação para as transações do dia selecionado
+    const dayKey = `${selectedDay.getFullYear()}-${selectedDay.getMonth()}-${selectedDay.getDate()}`;
+    return getUniqueTransactionsByMonth(filteredByDay, dayKey);
   };
 
-  // Formatação do nome do mês atual do calendário
   const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
   const capitalizedMonthName = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 

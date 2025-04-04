@@ -14,6 +14,7 @@ import {
   Calendar, 
   Trash2
 } from 'lucide-react';
+import { useFinance } from '@/context/FinanceContext';
 
 interface TransactionsListProps {
   transactions: FutureTransaction[];
@@ -32,7 +33,13 @@ const TransactionsList = ({
   emptyMessage = "Nenhuma transação encontrada",
   limit
 }: TransactionsListProps) => {
-  const displayTransactions = limit ? transactions.slice(0, limit) : transactions;
+  const { getUniqueTransactionsByMonth } = useFinance();
+  
+  // Aplicar a deduplicação de transações
+  const currentMonthKey = `${new Date().getFullYear()}-${new Date().getMonth()}`;
+  const uniqueTransactions = getUniqueTransactionsByMonth(transactions, currentMonthKey);
+  
+  const displayTransactions = limit ? uniqueTransactions.slice(0, limit) : uniqueTransactions;
   
   const getTransactionIcon = (type: string) => {
     switch (type) {

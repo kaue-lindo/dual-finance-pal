@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { User } from '../constants';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,15 +51,20 @@ export const useUserProfile = (
       
       // Store in users collection for future logins
       const savedUsers = localStorage.getItem('financeUsers');
-      const storedUsers = savedUsers ? JSON.parse(savedUsers) : {};
-      
-      storedUsers[currentUser.id] = updatedUser;
-      localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
+      if (savedUsers) {
+        const storedUsers = JSON.parse(savedUsers);
+        
+        storedUsers[currentUser.id] = updatedUser;
+        localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
+      }
       
       // Update selected profile in localStorage
       localStorage.setItem('selectedFinanceProfile', currentUser.id);
       
       toast.success('Perfil atualizado com sucesso');
+      
+      // Retornar o usuário atualizado para uso na aplicação
+      return updatedUser;
     } catch (error) {
       console.error('Error in updateUserProfile:', error);
       toast.error('Erro ao atualizar perfil');

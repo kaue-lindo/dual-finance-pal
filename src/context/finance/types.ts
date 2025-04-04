@@ -1,4 +1,3 @@
-
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
@@ -63,40 +62,41 @@ export type FutureTransaction = {
   parent_investment_id?: string;
 };
 
-export type FinanceContextType = {
+export interface FinanceContextType {
   currentUser: User | null;
   users: User[];
   finances: Record<string, UserFinances>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: any }>;
-  logout: () => void;
-  addExpense: (expense: Omit<Expense, 'id'>) => void;
+  logout: () => Promise<void>;
+  addExpense: (expense: Expense) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
-  addIncome: (income: Omit<Income, 'id'>) => Promise<void>;
+  addIncome: (income: Income) => Promise<void>;
   deleteIncome: (id: string) => Promise<void>;
-  addInvestment: (investment: Omit<Investment, 'id'>) => void;
-  deleteInvestment: (id: string) => void;
+  addInvestment: (investment: Investment) => Promise<void>;
+  deleteInvestment: (id: string) => Promise<void>;
   calculateBalance: () => number;
   getMonthlyExpenseTotal: () => number;
   getFutureTransactions: () => FutureTransaction[];
-  simulateExpense: (expense: Omit<Expense, 'id'>) => number;
+  simulateExpense: (expense: Expense) => Promise<number>;
   fetchTransactions: () => Promise<void>;
   fetchTransactionsByUserId: (userId: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  getIncomeCategories: () => { value: IncomeCategory; label: string }[];
-  getExpenseCategories: () => { value: string; label: string }[];
+  getIncomeCategories: () => string[];
+  getExpenseCategories: () => string[];
   getTotalInvestments: () => number;
   getTotalInvestmentsWithReturns: () => number;
-  getProjectedInvestmentReturn: (months?: number) => number;
-  getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
+  getProjectedInvestmentReturn: (months: number) => number;
+  getCategoryExpenses: () => Record<string, number>;
   getRealIncome: () => number;
-  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => void;
+  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => Promise<void>;
   getUserBalance: (userId: string) => number;
   getUserFinances: (userId: string) => UserFinances;
   supabaseUser: any;
   selectedProfile: string | null;
-  selectProfile: (userId: string) => void;
+  selectProfile: (userId: string) => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
-};
+  getUniqueTransactionsByMonth: (transactions: any[], month: string) => any[];
+}
