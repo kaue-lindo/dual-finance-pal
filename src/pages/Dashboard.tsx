@@ -6,13 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Menu, MoreVertical, LineChart } from 'lucide-react';
 import { formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
 import TransactionsList from '@/components/TransactionsList';
-import { useFinance } from '@/context/FinanceContext';
+import { useFinance } from '@/context/finance/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
 import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -106,17 +107,8 @@ const Dashboard = () => {
   const calculateIncomeAndExpense = () => {
     const transactions = filterTransactionsByPeriod();
     
-    // Create a map to track unique transactions for deduplication
-    const uniqueTransactions = new Map();
-    
-    transactions.forEach(transaction => {
-      const key = `${transaction.type}-${transaction.description}-${transaction.amount}-${format(new Date(transaction.date), 'yyyy-MM-dd')}`;
-      
-      // If this is a recurring transaction but we've already seen a similar one, skip it
-      if (!uniqueTransactions.has(key)) {
-        uniqueTransactions.set(key, transaction);
-      }
-    });
+    // Use the utility function to deduplicate transactions
+    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, 'dashboard');
     
     // Calculate totals from unique transactions
     let totalIncome = 0;
@@ -154,24 +146,14 @@ const Dashboard = () => {
     const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
     const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
     
-    // Filter unique transactions for this day
+    // Filter transactions for this day
     const transactionsForDay = futureTransactions.filter(t => {
       const date = new Date(t.date);
       return date >= startOfDay && date <= endOfDay;
     });
     
-    // Deduplicate transactions
-    const uniqueKeys = new Set();
-    const uniqueTransactions = transactionsForDay.filter(transaction => {
-      const key = `${transaction.type}-${transaction.description}-${transaction.amount}`;
-      if (uniqueKeys.has(key)) {
-        return false;
-      }
-      uniqueKeys.add(key);
-      return true;
-    });
-    
-    return uniqueTransactions;
+    // Apply deduplication using the utility function
+    return getUniqueTransactionsByMonth(transactionsForDay, `day-${day}`);
   };
   
   const checkIsToday = (day: number) => {
@@ -196,24 +178,14 @@ const Dashboard = () => {
     const endOfSelectedDay = new Date(selectedDay);
     endOfSelectedDay.setHours(23, 59, 59, 999);
     
-    // Filter unique transactions for the selected day
+    // Filter transactions for the selected day
     const transactionsForDay = futureTransactions.filter(t => {
       const date = new Date(t.date);
       return date >= startOfSelectedDay && date <= endOfSelectedDay;
     });
     
-    // Deduplicate transactions
-    const uniqueKeys = new Set();
-    const uniqueTransactions = transactionsForDay.filter(transaction => {
-      const key = `${transaction.type}-${transaction.description}-${transaction.amount}`;
-      if (uniqueKeys.has(key)) {
-        return false;
-      }
-      uniqueKeys.add(key);
-      return true;
-    });
-    
-    return uniqueTransactions;
+    // Apply deduplication using the utility function
+    return getUniqueTransactionsByMonth(transactionsForDay, 'selected-day');
   };
 
   const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
