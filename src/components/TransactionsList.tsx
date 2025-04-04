@@ -22,18 +22,20 @@ interface TransactionsListProps {
   limit?: number;
   showBalance?: boolean;
   onTransactionClick?: (transaction: Transaction) => void;
+  emptyMessage?: string; // Added emptyMessage prop
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({
   transactions,
   limit,
   showBalance = false,
-  onTransactionClick
+  onTransactionClick,
+  emptyMessage = "Nenhuma transação encontrada" // Default message
 }) => {
   if (!transactions || transactions.length === 0) {
     return (
       <div className="text-center py-6">
-        <p className="text-gray-400">Nenhuma transação encontrada</p>
+        <p className="text-gray-400">{emptyMessage}</p>
       </div>
     );
   }

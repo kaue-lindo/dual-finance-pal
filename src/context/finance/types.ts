@@ -1,4 +1,3 @@
-
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
@@ -61,6 +60,7 @@ export type FutureTransaction = {
   category: string;
   sourceCategory?: string;
   parent_investment_id?: string;
+  parentId?: string; // Added to track the original transaction's ID
 };
 
 export interface FinanceContextType {

@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Income, Expense, Investment, IncomeCategory } from '../../types';
+import { Income, Expense, Investment, IncomeCategory, RecurringType } from '../../types';
 import { calculateBalanceExcludingInvestmentReturns } from '../../utils/calculations';
 
 interface FinanceData {
@@ -80,7 +80,7 @@ export const useTransactionFetch = (
         if (item.type === 'income') {
           const recurring = item.recurring ? 
             (item.recurring_type ? {
-              type: (item.recurring_type || 'monthly'),
+              type: (item.recurring_type || 'monthly') as RecurringType,
               days: item.recurring_days || []
             } : true) : undefined;
           
@@ -101,7 +101,7 @@ export const useTransactionFetch = (
             date: new Date(item.date),
             sourceCategory: item.source_category as IncomeCategory | undefined,
             recurring: item.recurring ? {
-              type: (item.recurring_type || 'monthly'),
+              type: (item.recurring_type || 'monthly') as RecurringType,
               days: item.recurring_days || []
             } : undefined,
             installment: item.installment_total ? {
