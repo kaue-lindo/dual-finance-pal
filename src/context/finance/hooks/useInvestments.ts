@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment } from '../types';
@@ -206,7 +205,6 @@ export const useInvestments = (
     if (!currentUser) return 0;
     const userFinances = finances[currentUser.id] || { investments: [] };
     
-    // Filter unique investments by ID to prevent duplication
     const uniqueInvestments = userFinances.investments.filter((investment, index, self) => 
       index === self.findIndex(i => i.id === investment.id)
     );
@@ -223,7 +221,6 @@ export const useInvestments = (
     const investments = userFinances.investments || [];
     if (investments.length === 0) return 0;
     
-    // Filter unique investments by ID to prevent duplication
     const uniqueInvestments = investments.filter((investment, index, self) => 
       index === self.findIndex(i => i.id === investment.id)
     );
@@ -249,24 +246,14 @@ export const useInvestments = (
     return parseFloat(totalReturn.toFixed(2));
   };
 
-  const getTotalInvestmentsWithReturns = (): number => {
+  const getTotalInvestmentsWithReturns = (months: number = 3): number => {
     if (!currentUser) return 0;
     
-    const userFinances = finances[currentUser.id] || { investments: [] };
+    const principalAmount = getTotalInvestments();
     
-    // Filter unique investments by ID to prevent duplication
-    const uniqueInvestments = userFinances.investments.filter((investment, index, self) => 
-      index === self.findIndex(i => i.id === investment.id)
-    );
+    const projectedReturns = getProjectedInvestmentReturn(months);
     
-    const initialInvestments = uniqueInvestments.reduce(
-      (sum, investment) => sum + investment.amount, 
-      0
-    );
-    
-    const projectedReturns = getProjectedInvestmentReturn(3);
-    
-    return initialInvestments + projectedReturns;
+    return principalAmount + projectedReturns;
   };
 
   return {

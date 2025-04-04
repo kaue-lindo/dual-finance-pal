@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -35,6 +34,7 @@ import { formatCurrency } from '@/lib/utils';
 import BottomNav from '@/components/ui/bottom-nav';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
 
 const CashFlow = () => {
   const navigate = useNavigate();
@@ -53,10 +53,10 @@ const CashFlow = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const userFinances = currentUser ? finances[currentUser.id] : undefined;
+
   const futureTransactions = getFutureTransactions();
   
   useEffect(() => {
-    // Simulate loading
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 500);
@@ -68,15 +68,12 @@ const CashFlow = () => {
     return null;
   }
   
-  // Preparar dados para o gráfico
   const prepareChartData = () => {
-    // Determinar intervalo de datas para o gráfico
     const today = new Date();
     const currentYear = today.getFullYear();
     const startDate = new Date(currentYear, 0, 1); // Janeiro do ano atual
     const endDate = new Date(currentYear + 1, 0, 1); // Janeiro do próximo ano
     
-    // Criar array de meses para o intervalo
     const months = [];
     let currentDate = new Date(startDate);
     
@@ -85,12 +82,10 @@ const CashFlow = () => {
       currentDate = addMonths(currentDate, 1);
     }
     
-    // Calcular saldos para cada mês
     return months.map(month => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       
-      // Track processed transaction IDs to prevent duplicates
       const processedIncomeIds = new Set<string>();
       const processedExpenseIds = new Set<string>();
       const processedInvestmentIds = new Set<string>();
@@ -99,40 +94,37 @@ const CashFlow = () => {
       let expense = 0;
       let investmentValue = 0;
       
-      // Somar transações para o mês - ensuring no duplicates
-      futureTransactions.forEach(transaction => {
-        const transactionDate = new Date(transaction.date);
-        
-        // Skip if not in this month
-        if (!isSameMonth(transactionDate, month)) return;
+      const monthTransactions = futureTransactions.filter(transaction => 
+        isSameMonth(new Date(transaction.date), month)
+      );
+      
+      const uniqueMonthTransactions = getUniqueTransactionsByMonth(monthTransactions);
+      
+      uniqueMonthTransactions.forEach(transaction => {
+        const transactionId = transaction.id || `${transaction.description}-${transaction.amount}`;
         
         if (transaction.type === 'income') {
-          // Only count if we haven't processed this ID yet
-          if (!processedIncomeIds.has(transaction.id)) {
-            processedIncomeIds.add(transaction.id);
+          if (!processedIncomeIds.has(transactionId)) {
+            processedIncomeIds.add(transactionId);
             
-            // Exclude investment returns from regular income
             if (transaction.category !== 'investment-return' && 
                 transaction.category !== 'investment_returns') {
               income += transaction.amount;
             }
           }
         } else if (transaction.type === 'expense') {
-          // Only count if we haven't processed this ID yet
-          if (!processedExpenseIds.has(transaction.id)) {
-            processedExpenseIds.add(transaction.id);
+          if (!processedExpenseIds.has(transactionId)) {
+            processedExpenseIds.add(transactionId);
             expense += transaction.amount;
           }
         } else if (transaction.type === 'investment') {
-          // Only count if we haven't processed this ID yet
-          if (!processedInvestmentIds.has(transaction.id)) {
-            processedInvestmentIds.add(transaction.id);
+          if (!processedInvestmentIds.has(transactionId)) {
+            processedInvestmentIds.add(transactionId);
             investmentValue += transaction.amount;
           }
         }
       });
       
-      // Se for mês atual ou futuro, adicionar projeção de investimentos
       let investmentProjection = 0;
       if (isAfter(month, today) || isSameMonth(month, today)) {
         const monthsFromNow = Math.max(0, 
@@ -145,10 +137,8 @@ const CashFlow = () => {
         }
       }
       
-      // Calcular saldo para o mês
       const balance = income - expense;
       
-      // Use getTotalInvestmentsWithReturns for current month, otherwise calculate based on transactions
       let totalInvestmentValue;
       if (isSameMonth(month, today)) {
         totalInvestmentValue = getTotalInvestmentsWithReturns();
@@ -338,7 +328,7 @@ const CashFlow = () => {
           </Button>
         </div>
         
-        <Card className="bg-finance-dark-card p-3 mb-4 overflow-x-auto">
+        <Card className="bg-finance-dark-card p-4 mb-4 overflow-x-auto">
           {renderChart()}
         </Card>
         
