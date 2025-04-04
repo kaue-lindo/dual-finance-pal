@@ -1,401 +1,736 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, PieChart, BarChart3, ArrowUp, ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Users, BarChart2, PieChart, TrendingUp, TrendingDown } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/lib/utils';
 import BottomNav from '@/components/ui/bottom-nav';
-import { ResponsiveContainer, PieChart as RePieChart, Pie, Legend, Cell, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Bar } from 'recharts';
-import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#fb929e', '#5a98d2'];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  Cell,
+  PieChart as RechartsPieChart,
+  Pie
+} from 'recharts';
 
 const UserComparison = () => {
+  const { currentUser, users, getUserFinances, getUserBalance, getCategoryExpenses } = useFinance();
   const navigate = useNavigate();
-  const { 
-    currentUser, 
-    users, 
-    getUserBalance,
-    getCategoryExpenses,
-    getUserFinances,
-    getRealIncome,
-    getMonthlyExpenseTotal,
-    getTotalInvestments,
-    selectProfile
-  } = useFinance();
-  
-  const [user1, setUser1] = useState<string | null>(null);
-  const [user2, setUser2] = useState<string | null>(null);
-  const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
-  
-  useEffect(() => {
-    if (currentUser) {
-      setUser1(currentUser.id);
-    }
-  }, [currentUser]);
-  
-  const handleCompare = () => {
-    if (user1 && user2) {
-      // Switch to selected user profile for viewing
-      selectProfile(user1);
-    }
-  };
-  
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('overview');
+
   if (!currentUser) {
     navigate('/login');
     return null;
   }
+
+  // Cores personalizadas para cada tipo de dado
+  const COLORS = {
+    balance: '#10B981', // Verde para saldo
+    expenses: '#EF4444', // Vermelho para despesas
+    income: '#3B82F6',  // Azul para entradas
+    investments: '#8B5CF6' // Roxo para investimentos
+  };
   
-  const user1Balance = user1 ? getUserBalance(user1) : 0;
-  const user2Balance = user2 ? getUserBalance(user2) : 0;
+  // Cores para os gráficos de pizza
+  const PIE_COLORS = ['#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#EF4444', '#6366F1', '#14B8A6', '#F97316', '#8D4F00'];
+
+  // Filtrar usuários para não incluir o usuário atual
+  const otherUsers = users.filter(user => user.id !== currentUser.id);
+
+  // Obter dados do usuário atual
+  const currentUserFinances = getUserFinances(currentUser.id);
+  const currentUserBalance = getUserBalance(currentUser.id);
+  const currentUserExpensesByCategory = getCategoryExpenses(currentUser.id); 
+  const currentUserTotalIncome = currentUserFinances.incomes.reduce((sum, income) => sum + income.amount, 0);
+  const currentUserTotalExpenses = currentUserFinances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const currentUserTotalInvestments = currentUserFinances.investments.reduce((sum, inv) => sum + inv.amount, 0);
   
-  const user1Expenses = user1 ? getCategoryExpenses(user1) : [];
-  const user2Expenses = user2 ? getCategoryExpenses(user2) : [];
+  // Obter dados do usuário selecionado para comparação
+  const selectedUserFinances = selectedUserId ? getUserFinances(selectedUserId) : null;
+  const selectedUserBalance = selectedUserId ? getUserBalance(selectedUserId) : 0;
+  const selectedUserExpensesByCategory = selectedUserId ? getCategoryExpenses(selectedUserId) : []; 
+  const selectedUserTotalIncome = selectedUserFinances?.incomes.reduce((sum, income) => sum + income.amount, 0) || 0;
+  const selectedUserTotalExpenses = selectedUserFinances?.expenses.reduce((sum, expense) => sum + expense.amount, 0) || 0;
+  const selectedUserTotalInvestments = selectedUserFinances?.investments.reduce((sum, inv) => sum + inv.amount, 0) || 0;
   
-  const user1Name = user1 ? users.find(u => u.id === user1)?.name || 'Usuário 1' : 'Usuário 1';
-  const user2Name = user2 ? users.find(u => u.id === user2)?.name || 'Usuário 2' : 'Usuário 2';
+  // Calcular rendimentos totais para ambos os usuários
+  const currentUserReturns = currentUserFinances.incomes
+    .filter(income => income.category === 'investment_returns')
+    .reduce((sum, income) => sum + income.amount, 0);
   
-  // Preparar dados para os gráficos de pizza
-  const prepareExpensesData = (expenses: { category: string; amount: number }[]) => {
-    if (!expenses || expenses.length === 0) return [];
+  const selectedUserReturns = selectedUserFinances?.incomes
+    .filter(income => income.category === 'investment_returns')
+    .reduce((sum, income) => sum + income.amount, 0) || 0;
+  
+  // Preparar dados para comparação de saldo
+  const balanceComparisonData = [
+    {
+      name: 'Saldo',
+      [currentUser.name || 'Você']: currentUserBalance,
+      ...(selectedUserId && { [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserBalance })
+    }
+  ];
+  
+  // Preparar dados para comparação de entradas e saídas
+  const incomeExpenseComparisonData = [
+    {
+      name: 'Entradas',
+      type: 'income',
+      [currentUser.name || 'Você']: currentUserTotalIncome,
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserTotalIncome 
+      })
+    },
+    {
+      name: 'Saídas',
+      type: 'expenses',
+      [currentUser.name || 'Você']: currentUserTotalExpenses,
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserTotalExpenses
+      })
+    },
+    {
+      name: 'Investimentos',
+      type: 'investments',
+      [currentUser.name || 'Você']: currentUserTotalInvestments,
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserTotalInvestments
+      })
+    },
+    {
+      name: 'Rendimentos',
+      type: 'income',
+      [currentUser.name || 'Você']: currentUserReturns,
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserReturns
+      })
+    },
+    {
+      name: 'Saldo',
+      type: 'balance',
+      [currentUser.name || 'Você']: currentUserBalance,
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserBalance
+      })
+    }
+  ];
+  
+  // Calcular percentuais de economia
+  const calculateSavingsRate = (finances) => {
+    const totalIncome = finances.incomes.reduce((sum, income) => sum + income.amount, 0);
+    const totalExpense = finances.expenses.reduce((sum, expense) => sum + expense.amount, 0);
     
-    return expenses.map(expense => ({
-      name: formatCategoryName(expense.category),
-      value: expense.amount,
-      color: getCategoryColor(expense.category)
+    if (totalIncome === 0) return 0;
+    return ((totalIncome - totalExpense) / totalIncome) * 100;
+  };
+  
+  const currentUserSavingsRate = calculateSavingsRate(currentUserFinances);
+  const selectedUserSavingsRate = selectedUserFinances ? calculateSavingsRate(selectedUserFinances) : 0;
+  
+  // Dados para o gráfico de economia
+  const savingsRateData = [
+    {
+      name: 'Taxa de Economia (%)',
+      [currentUser.name || 'Você']: parseFloat(currentUserSavingsRate.toFixed(2)),
+      ...(selectedUserId && { 
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: parseFloat(selectedUserSavingsRate.toFixed(2))
+      })
+    }
+  ];
+  
+  // Preparar dados para comparação de categorias de despesas
+  const prepareExpenseCategoryData = () => {
+    if (!selectedUserId || !selectedUserFinances) return [];
+    
+    // Combinar categorias de ambos os usuários
+    const allCategories = new Set([
+      ...currentUserExpensesByCategory.map(item => item.category),
+      ...selectedUserExpensesByCategory.map(item => item.category)
+    ]);
+    
+    // Criar dados para o gráfico radar
+    return Array.from(allCategories).map(category => {
+      const currentUserAmount = currentUserExpensesByCategory.find(item => item.category === category)?.amount || 0;
+      const selectedUserAmount = selectedUserExpensesByCategory.find(item => item.category === category)?.amount || 0;
+      
+      return {
+        category,
+        [currentUser.name || 'Você']: currentUserAmount,
+        [users.find(u => u.id === selectedUserId)?.name || 'Outro']: selectedUserAmount
+      };
+    });
+  };
+  
+  // Preparar dados para o gráfico de pizza para o usuário atual
+  const prepareCurrentUserPieData = () => {
+    if (currentUserExpensesByCategory.length === 0) return [];
+    
+    return currentUserExpensesByCategory.map(item => ({
+      name: translateCategory(item.category),
+      value: item.amount
     }));
   };
   
-  // Preparar dados para o gráfico de barras comparativas
-  const prepareComparisonData = () => {
-    if (!user1 || !user2) return [];
+  // Preparar dados para o gráfico de pizza para o usuário selecionado
+  const prepareSelectedUserPieData = () => {
+    if (!selectedUserId || selectedUserExpensesByCategory.length === 0) return [];
     
-    const user1Finances = getUserFinances(user1);
-    const user2Finances = getUserFinances(user2);
-    
-    const user1Income = user1Finances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
-    const user2Income = user2Finances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
-    
-    const user1Expense = user1Finances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const user2Expense = user2Finances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    
-    const user1Investment = user1Finances.investments.reduce((sum, inv) => sum + inv.amount, 0);
-    const user2Investment = user2Finances.investments.reduce((sum, inv) => sum + inv.amount, 0);
-    
-    return [
-      {
-        name: 'Entradas',
-        [user1Name]: user1Income,
-        [user2Name]: user2Income,
-      },
-      {
-        name: 'Saídas',
-        [user1Name]: user1Expense,
-        [user2Name]: user2Expense,
-      },
-      {
-        name: 'Investimentos',
-        [user1Name]: user1Investment,
-        [user2Name]: user2Investment,
-      },
-      {
-        name: 'Saldo',
-        [user1Name]: user1Balance,
-        [user2Name]: user2Balance,
-      }
-    ];
+    return selectedUserExpensesByCategory.map(item => ({
+      name: translateCategory(item.category),
+      value: item.amount
+    }));
   };
   
-  // Remover categorias comuns - correção para o gráfico exibir claramente
-  const getCommonCategoryExpenses = () => {
-    if (!user1 || !user2) return [];
+  // Função para traduzir categorias para português
+  const translateCategory = (category: string) => {
+    const translations = {
+      'food': 'Alimentação',
+      'housing': 'Moradia',
+      'transportation': 'Transporte',
+      'health': 'Saúde',
+      'education': 'Educação',
+      'entertainment': 'Entretenimento',
+      'clothing': 'Vestuário',
+      'utilities': 'Contas',
+      'other': 'Outros',
+      'electronics': 'Eletrônicos',
+      'appliances': 'Eletrodomésticos',
+      'furniture': 'Móveis',
+      'bills': 'Contas',
+      'shopping': 'Compras'
+    };
     
-    const user1Categories = user1Expenses.map(e => e.category);
-    const user2Categories = user2Expenses.map(e => e.category);
-    
-    // Encontrar categorias que existem em ambos os usuários
-    const commonCategories = user1Categories.filter(cat => user2Categories.includes(cat));
-    
-    const result = commonCategories.map(category => {
-      const user1Amount = user1Expenses.find(e => e.category === category)?.amount || 0;
-      const user2Amount = user2Expenses.find(e => e.category === category)?.amount || 0;
-      
-      return {
-        category: formatCategoryName(category),
-        [user1Name]: user1Amount,
-        [user2Name]: user2Amount,
-      };
-    });
-    
-    // Ordenar por maior diferença de valores para melhor visualização
-    return result.sort((a, b) => {
-      const diffA = Math.abs(a[user1Name] - a[user2Name]);
-      const diffB = Math.abs(b[user1Name] - b[user2Name]);
-      return diffB - diffA;
-    });
+    return translations[category] || category;
   };
   
-  // Dados para os gráficos
-  const user1ExpensesData = prepareExpensesData(user1Expenses);
-  const user2ExpensesData = prepareExpensesData(user2Expenses);
-  const comparisonData = prepareComparisonData();
-  const commonCategoryData = getCommonCategoryExpenses();
+  const expenseCategoryData = prepareExpenseCategoryData();
+  const currentUserPieData = prepareCurrentUserPieData();
+  const selectedUserPieData = prepareSelectedUserPieData();
   
+  // Obter nomes para legendas
+  const currentUserName = currentUser.name || 'Você';
+  const selectedUserName = selectedUserId ? (users.find(u => u.id === selectedUserId)?.name || 'Outro') : '';
+
+  // Função para determinar a cor com base no tipo de dado
+  const getBarColor = (type) => {
+    return COLORS[type] || COLORS.balance;
+  };
+  
+  // Renderizar gráfico de pizza personalizado
+  const renderCustomizedLabel = (props) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+    
+    if (percent < 0.05) return null;
+    
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        className="text-xs font-medium"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-finance-dark pb-20">
+      {/* Header */}
       <div className="finance-card rounded-b-xl">
-        <div className="flex justify-between items-center p-4">
-          <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/settings')}>
-            <ArrowLeft className="w-6 h-6 text-white" />
+        <div className="flex justify-between items-center mb-4 p-4">
+          <Button variant="ghost" size="icon" className="navbar-icon" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft size={24} className="text-white" />
           </Button>
-          <h1 className="text-xl font-bold text-white">Comparação</h1>
+          <h1 className="text-xl font-bold text-white">Comparação de Usuários</h1>
           <div className="w-10"></div>
         </div>
       </div>
-      
-      <div className="p-4 space-y-6">
-        <Card className="p-4 bg-finance-dark-card">
-          <h2 className="text-lg font-semibold text-white mb-3">Selecione Usuários para Comparar</h2>
-          
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-400 mb-1 block">Usuário 1</label>
-              <Select value={user1 || ''} onValueChange={setUser1}>
-                <SelectTrigger className="bg-finance-dark-lighter border-gray-700 text-white">
-                  <SelectValue placeholder="Selecione um usuário" />
-                </SelectTrigger>
-                <SelectContent className="bg-finance-dark-lighter border-gray-700 text-white">
-                  {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="text-sm text-gray-400 mb-1 block">Usuário 2</label>
-              <Select value={user2 || ''} onValueChange={setUser2}>
-                <SelectTrigger className="bg-finance-dark-lighter border-gray-700 text-white">
-                  <SelectValue placeholder="Selecione um usuário" />
-                </SelectTrigger>
-                <SelectContent className="bg-finance-dark-lighter border-gray-700 text-white">
-                  {users.filter(user => user.id !== user1).map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button className="w-full" onClick={handleCompare} disabled={!user1 || !user2}>
-              <Users className="mr-2 h-4 w-4" />
-              Comparar Usuários
-            </Button>
+
+      <div className="mt-6 px-4">
+        <Card className="finance-card p-4 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="text-finance-blue" size={20} />
+            <h2 className="text-lg font-bold text-white">Selecione um usuário para comparar</h2>
           </div>
+          
+          <Select
+            value={selectedUserId}
+            onValueChange={setSelectedUserId}
+          >
+            <SelectTrigger className="w-full bg-finance-dark-card border-finance-dark-lighter text-white">
+              <SelectValue placeholder="Selecione um usuário" />
+            </SelectTrigger>
+            <SelectContent className="bg-finance-dark-card border-finance-dark-lighter text-white">
+              {otherUsers.map(user => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name || user.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Card>
         
-        {user1 && user2 && (
-          <>
-            <Card className="p-4 bg-finance-dark-card">
-              <div className="flex justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Resumo Comparativo</h2>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setChartType('pie')}
-                    className={chartType === 'pie' ? 'bg-finance-blue text-white' : 'bg-transparent'}
-                  >
-                    <PieChart className="h-4 w-4 mr-1" />
-                    Pizza
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setChartType('bar')}
-                    className={chartType === 'bar' ? 'bg-finance-blue text-white' : 'bg-transparent'}
-                  >
-                    <BarChart3 className="h-4 w-4 mr-1" />
-                    Barras
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm">{user1Name}</p>
-                  <p className="text-xl font-bold text-white">{formatCurrency(user1Balance)}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm">{user2Name}</p>
-                  <p className="text-xl font-bold text-white">{formatCurrency(user2Balance)}</p>
-                </div>
-              </div>
-              
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={comparisonData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                    <XAxis dataKey="name" tick={{ fill: '#ccc' }} />
-                    <YAxis tickFormatter={(value) => formatCurrency(value, true)} tick={{ fill: '#ccc' }} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Legend />
-                    <Bar dataKey={user1Name} fill="#3b82f6" />
-                    <Bar dataKey={user2Name} fill="#8b5cf6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+        {selectedUserId && (
+          <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3 bg-finance-dark-card">
+              <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+              <TabsTrigger value="income-expense">Entradas/Saídas</TabsTrigger>
+              <TabsTrigger value="categories">Categorias</TabsTrigger>
+            </TabsList>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-4 bg-finance-dark-card">
-                <h2 className="text-lg font-semibold text-white mb-3">Despesas por Categoria - {user1Name}</h2>
-                {user1ExpensesData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      {chartType === 'pie' ? (
-                        <RePieChart>
-                          <Pie
-                            data={user1ExpensesData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
-                          >
-                            {user1ExpensesData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Legend formatter={(value) => <span style={{ color: '#ccc' }}>{value}</span>} />
-                        </RePieChart>
-                      ) : (
-                        <BarChart data={user1ExpensesData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                          <XAxis dataKey="name" tick={{ fill: '#ccc' }} />
-                          <YAxis tickFormatter={(value) => formatCurrency(value, true)} tick={{ fill: '#ccc' }} />
-                          <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                          <Bar dataKey="value" fill="#3b82f6">
-                            {user1ExpensesData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      )}
-                    </ResponsiveContainer>
+            <TabsContent value="overview">
+              <Card className="finance-card mt-4 p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart2 className="text-finance-blue" size={20} />
+                  <h2 className="text-lg font-bold text-white">Comparação de Saldo</h2>
+                </div>
+                
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={balanceComparisonData}
+                      margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+                      <XAxis dataKey="name" stroke="#888" />
+                      <YAxis stroke="#888" tickFormatter={(value) => formatCurrency(value)} />
+                      <Tooltip 
+                        formatter={(value) => [formatCurrency(Number(value)), '']}
+                        contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                      />
+                      <Legend />
+                      <Bar dataKey={currentUserName} fill={COLORS.balance} />
+                      <Bar dataKey={selectedUserName} fill="#6366F1" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <p className="text-gray-400">Seu saldo</p>
+                    <p className={`text-xl font-bold ${currentUserBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {formatCurrency(currentUserBalance)}
+                    </p>
                   </div>
-                ) : (
-                  <div className="text-center py-10 text-gray-400">
-                    Sem despesas para mostrar
-                  </div>
-                )}
-              </Card>
-              
-              <Card className="p-4 bg-finance-dark-card">
-                <h2 className="text-lg font-semibold text-white mb-3">Despesas por Categoria - {user2Name}</h2>
-                {user2ExpensesData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      {chartType === 'pie' ? (
-                        <RePieChart>
-                          <Pie
-                            data={user2ExpensesData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
-                          >
-                            {user2ExpensesData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Legend formatter={(value) => <span style={{ color: '#ccc' }}>{value}</span>} />
-                        </RePieChart>
-                      ) : (
-                        <BarChart data={user2ExpensesData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                          <XAxis dataKey="name" tick={{ fill: '#ccc' }} />
-                          <YAxis tickFormatter={(value) => formatCurrency(value, true)} tick={{ fill: '#ccc' }} />
-                          <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                          <Bar dataKey="value" fill="#8b5cf6">
-                            {user2ExpensesData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      )}
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="text-center py-10 text-gray-400">
-                    Sem despesas para mostrar
-                  </div>
-                )}
-              </Card>
-            </div>
-            
-            {/* Optei por remover o gráfico de comparação de categorias comuns que estava com problemas */}
-            
-            <Card className="p-4 bg-finance-dark-card">
-              <h2 className="text-lg font-semibold text-white mb-3">Fluxo Financeiro Mensal</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <h3 className="text-sm text-gray-400 mb-2">{user1Name}</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <ArrowUp className="text-green-500 h-4 w-4 mr-1" />
-                        <span className="text-sm text-gray-300">Entradas</span>
-                      </div>
-                      <span className="text-green-500 font-medium">{formatCurrency(
-                        getUserFinances(user1).incomes.reduce((sum, inc) => sum + inc.amount, 0)
-                      )}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <ArrowDown className="text-red-500 h-4 w-4 mr-1" />
-                        <span className="text-sm text-gray-300">Saídas</span>
-                      </div>
-                      <span className="text-red-500 font-medium">{formatCurrency(
-                        getUserFinances(user1).expenses.reduce((sum, exp) => sum + exp.amount, 0)
-                      )}</span>
-                    </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <p className="text-gray-400">Saldo de {selectedUserName}</p>
+                    <p className={`text-xl font-bold ${selectedUserBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {formatCurrency(selectedUserBalance)}
+                    </p>
                   </div>
                 </div>
                 
-                <div>
-                  <h3 className="text-sm text-gray-400 mb-2">{user2Name}</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <ArrowUp className="text-green-500 h-4 w-4 mr-1" />
-                        <span className="text-sm text-gray-300">Entradas</span>
-                      </div>
-                      <span className="text-green-500 font-medium">{formatCurrency(
-                        getUserFinances(user2).incomes.reduce((sum, inc) => sum + inc.amount, 0)
-                      )}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <ArrowDown className="text-red-500 h-4 w-4 mr-1" />
-                        <span className="text-sm text-gray-300">Saídas</span>
-                      </div>
-                      <span className="text-red-500 font-medium">{formatCurrency(
-                        getUserFinances(user2).expenses.reduce((sum, exp) => sum + exp.amount, 0)
-                      )}</span>
-                    </div>
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="text-finance-blue" size={20} />
+                    <h2 className="text-lg font-bold text-white">Taxa de Economia</h2>
+                  </div>
+                  
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={savingsRateData}
+                        margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+                        <XAxis dataKey="name" stroke="#888" />
+                        <YAxis stroke="#888" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                        <Tooltip 
+                          formatter={(value) => [`${Number(value).toFixed(2)}%`, '']}
+                          contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                        />
+                        <Legend />
+                        <Bar dataKey={currentUserName} fill={COLORS.balance} />
+                        <Bar dataKey={selectedUserName} fill="#6366F1" />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
-              </div>
-            </Card>
-          </>
+                
+                <div className="mt-4">
+                  <h3 className="text-white font-medium mb-2">Taxa de Economia</h3>
+                  <div className="space-y-2">
+                    <div className="bg-finance-dark-card p-4 rounded-lg">
+                      <p className="text-gray-400">Sua taxa de economia</p>
+                      <p className="text-xl font-bold text-white">{currentUserSavingsRate.toFixed(2)}%</p>
+                    </div>
+                    
+                    {selectedUserId && (
+                      <div className="bg-finance-dark-card p-4 rounded-lg">
+                        <p className="text-gray-400">Taxa de economia de {selectedUserName}</p>
+                        <p className="text-xl font-bold text-white">{selectedUserSavingsRate.toFixed(2)}%</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="income-expense">
+              <Card className="finance-card mt-4 p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="text-finance-blue" size={20} />
+                  <h2 className="text-lg font-bold text-white">Comparação de Entradas e Saídas</h2>
+                </div>
+                
+                <div className="h-64">
+                  {incomeExpenseComparisonData.some(item => 
+                    (typeof item[currentUserName] === 'number' && item[currentUserName] > 0) || 
+                    (selectedUserId && typeof item[selectedUserName] === 'number' && item[selectedUserName] > 0)
+                  ) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={incomeExpenseComparisonData}
+                        margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+                        <XAxis dataKey="name" stroke="#888" />
+                        <YAxis stroke="#888" tickFormatter={(value) => formatCurrency(value)} />
+                        <Tooltip 
+                          formatter={(value) => [formatCurrency(Number(value)), '']}
+                          contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                        />
+                        <Legend />
+                        <Bar dataKey={currentUserName}>
+                          {incomeExpenseComparisonData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getBarColor(entry.type)} />
+                          ))}
+                        </Bar>
+                        <Bar dataKey={selectedUserName}>
+                          {incomeExpenseComparisonData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getBarColor(entry.type)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                      <div className="text-gray-400 mb-2">
+                        <BarChart2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-lg font-medium">Nenhuma transação encontrada</p>
+                        <p className="text-sm mt-2">Adicione transações para visualizar a comparação</p>
+                      </div>
+                      <Button 
+                        onClick={() => navigate('/add-transaction')} 
+                        className="mt-4 bg-finance-blue hover:bg-finance-blue/90"
+                      >
+                        Adicionar Transação
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-blue-500" />
+                      <p className="text-gray-400">Suas entradas</p>
+                    </div>
+                    <p className="text-xl font-bold text-blue-500">
+                      {formatCurrency(currentUserTotalIncome)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-blue-500" />
+                      <p className="text-gray-400">Entradas de {selectedUserName}</p>
+                    </div>
+                    <p className="text-xl font-bold text-blue-500">
+                      {formatCurrency(selectedUserTotalIncome)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown size={16} className="text-red-500" />
+                      <p className="text-gray-400">Suas saídas</p>
+                    </div>
+                    <p className="text-xl font-bold text-red-500">
+                      {formatCurrency(currentUserTotalExpenses)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown size={16} className="text-red-500" />
+                      <p className="text-gray-400">Saídas de {selectedUserName}</p>
+                    </div>
+                    <p className="text-xl font-bold text-red-500">
+                      {formatCurrency(selectedUserTotalExpenses)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-purple-500" />
+                      <p className="text-gray-400">Seus investimentos</p>
+                    </div>
+                    <p className="text-xl font-bold text-purple-500">
+                      {formatCurrency(currentUserTotalInvestments)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-purple-500" />
+                      <p className="text-gray-400">Investimentos de {selectedUserName}</p>
+                    </div>
+                    <p className="text-xl font-bold text-purple-500">
+                      {formatCurrency(selectedUserTotalInvestments)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-green-500" />
+                      <p className="text-gray-400">Seu rendimento</p>
+                    </div>
+                    <p className="text-xl font-bold text-green-500">
+                      {formatCurrency(currentUserReturns)}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-finance-dark-card p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-green-500" />
+                      <p className="text-gray-400">Rendimento de {selectedUserName}</p>
+                    </div>
+                    <p className="text-xl font-bold text-green-500">
+                      {formatCurrency(selectedUserReturns)}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="categories">
+              <Card className="finance-card mt-4 p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <PieChart className="text-finance-blue" size={20} />
+                  <h2 className="text-lg font-bold text-white">Comparação por Categorias</h2>
+                </div>
+                
+                <div className="h-80">
+                  {expenseCategoryData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={expenseCategoryData}>
+                        <PolarGrid stroke="#444" />
+                        <PolarAngleAxis dataKey="category" stroke="#888" tick={{ fill: "#fff" }} />
+                        <PolarRadiusAxis stroke="#888" tickFormatter={(value) => formatCurrency(value)} />
+                        <Radar 
+                          name={currentUserName} 
+                          dataKey={currentUserName} 
+                          stroke={COLORS.expenses} 
+                          fill={COLORS.expenses}
+                          fillOpacity={0.6} 
+                        />
+                        <Radar 
+                          name={selectedUserName} 
+                          dataKey={selectedUserName} 
+                          stroke="#6366F1" 
+                          fill="#6366F1" 
+                          fillOpacity={0.6} 
+                        />
+                        <Legend />
+                        <Tooltip 
+                          formatter={(value) => [formatCurrency(Number(value)), '']}
+                          contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                      <div className="text-gray-400 mb-2">
+                        <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-lg font-medium">Nenhuma categoria de despesa encontrada</p>
+                        <p className="text-sm mt-2">Adicione despesas com categorias para visualizar a comparação</p>
+                      </div>
+                      <Button 
+                        onClick={() => navigate('/add-transaction')} 
+                        className="mt-4 bg-finance-blue hover:bg-finance-blue/90"
+                      >
+                        Adicionar Despesa
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Gráficos de pizza para cada usuário */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Gráfico de pizza para o usuário atual */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-medium">Suas categorias de despesas</h3>
+                    <div className="h-80 w-full">
+                      {currentUserPieData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie
+                              data={currentUserPieData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={renderCustomizedLabel}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              animationDuration={500}
+                            >
+                              {currentUserPieData.map((entry, index) => (
+                                <Cell key={`cell-current-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value) => [formatCurrency(Number(value)), '']}
+                              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                            />
+                            <Legend 
+                              verticalAlign="bottom" 
+                              height={36} 
+                              formatter={(value) => <span className="text-white">{value}</span>}
+                            />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                          <div className="text-gray-400 mb-2">
+                            <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-lg font-medium">Nenhuma despesa encontrada</p>
+                            <p className="text-sm mt-2">Adicione despesas para visualizar o gráfico</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Gráfico de pizza para o usuário selecionado */}
+                  {selectedUserId && (
+                    <div className="space-y-3">
+                      <h3 className="text-white font-medium">Categorias de despesas de {selectedUserName}</h3>
+                      <div className="h-80 w-full">
+                        {selectedUserPieData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                              <Pie
+                                data={selectedUserPieData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={renderCustomizedLabel}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                animationDuration={500}
+                              >
+                                {selectedUserPieData.map((entry, index) => (
+                                  <Cell key={`cell-selected-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value) => [formatCurrency(Number(value)), '']}
+                                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                              />
+                              <Legend 
+                                verticalAlign="bottom" 
+                                height={36} 
+                                formatter={(value) => <span className="text-white">{value}</span>}
+                              />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                            <div className="text-gray-400 mb-2">
+                              <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-lg font-medium">Nenhuma despesa encontrada</p>
+                              <p className="text-sm mt-2">Este usuário não tem despesas registradas</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-6">
+                  <h3 className="text-white font-medium mb-3">Principais categorias de despesas:</h3>
+                  <div className="space-y-3">
+                    {expenseCategoryData
+                      .sort((a, b) => {
+                        const aTotal = Number(a[currentUserName]) + Number(a[selectedUserName]);
+                        const bTotal = Number(b[currentUserName]) + Number(b[selectedUserName]);
+                        return bTotal - aTotal;
+                      })
+                      .slice(0, 5)
+                      .map((item, index) => (
+                        <div key={index} className="bg-finance-dark-card p-4 rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-white font-medium">{translateCategory(item.category)}</p>
+                            <div className="flex gap-4">
+                              <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                                <span className="text-red-500">{formatCurrency(Number(item[currentUserName]))}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-indigo-400 mr-2"></div>
+                                <span className="text-indigo-400">{formatCurrency(Number(item[selectedUserName]))}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Barra de progresso comparativa */}
+                          <div className="w-full bg-finance-dark-lighter h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-red-500 h-full" 
+                              style={{ 
+                                width: `${(Number(item[currentUserName]) / (Number(item[currentUserName]) + Number(item[selectedUserName]))) * 100}%`,
+                                float: 'left'
+                              }}
+                            ></div>
+                            <div 
+                              className="bg-indigo-400 h-full" 
+                              style={{ 
+                                width: `${(Number(item[selectedUserName]) / (Number(item[currentUserName]) + Number(item[selectedUserName]))) * 100}%`,
+                                float: 'left'
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
       

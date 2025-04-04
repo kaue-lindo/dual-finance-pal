@@ -4,32 +4,20 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Menu, MoreVertical, LineChart } from 'lucide-react';
-import { formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
+import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Menu, MoreVertical } from 'lucide-react';
+import { formatDate, formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
 import TransactionsList from '@/components/TransactionsList';
 import { useFinance } from '@/context/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
-import { format, isToday } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { 
-    currentUser, 
-    fetchTransactions, 
-    getFutureTransactions, 
-    finances,
-    getTotalInvestments
-  } = useFinance();
-  
+  const { currentUser, fetchTransactions, getFutureTransactions, finances } = useFinance();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activePeriod, setActivePeriod] = useState<'day' | 'week' | 'month'>('day');
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   
   useEffect(() => {
     if (currentUser) {
@@ -44,9 +32,8 @@ const Dashboard = () => {
   }
   
   const userFinances = finances[currentUser.id] || { incomes: [], expenses: [], balance: 0 };
-  const totalInvestments = getTotalInvestments();
   
-  const formattedDate = format(currentMonth, 'MMMM, yyyy', { locale: ptBR });
+  const formattedDate = formatDate(new Date(), 'MMMM, yyyy');
   const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
   
   const goToPreviousMonth = () => {
@@ -145,38 +132,15 @@ const Dashboard = () => {
     });
   };
   
-  const checkIsToday = (day: number) => {
+  const isToday = (day: number) => {
     const today = new Date();
     return day === today.getDate() && 
            month === today.getMonth() && 
            year === today.getFullYear();
   };
 
-  // Novo: Função para mostrar as transações de um dia específico
-  const showDayTransactions = (day: number) => {
-    const date = new Date(year, month, day);
-    setSelectedDay(date);
-    setDialogOpen(true);
-  };
-  
-  // Novo: Filtra as transações do dia selecionado
-  const getSelectedDayTransactions = () => {
-    if (!selectedDay) return [];
-    
-    const startOfDay = new Date(selectedDay);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(selectedDay);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    return futureTransactions.filter(t => {
-      const date = new Date(t.date);
-      return date >= startOfDay && date <= endOfDay;
-    });
-  };
-
   // Formatação do nome do mês atual do calendário
-  const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
+  const currentMonthName = formatDate(currentMonth, 'MMMM yyyy');
   const capitalizedMonthName = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
   return (
@@ -256,7 +220,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-3 gap-3 mt-4">
+        <div className="grid grid-cols-2 gap-3 mt-4">
           <Card className="bg-finance-dark-lighter border-none">
             <div className="p-3">
               <div className="flex items-center gap-2 mb-1">
@@ -274,16 +238,6 @@ const Dashboard = () => {
                 <p className="text-gray-400 text-sm">Saídas</p>
               </div>
               <p className="text-xl font-bold text-red-500">{formatCurrency(totalExpense)}</p>
-            </div>
-          </Card>
-          
-          <Card className="bg-finance-dark-lighter border-none">
-            <div className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <LineChart size={16} className="text-blue-500" />
-                <p className="text-gray-400 text-sm">Investimentos</p>
-              </div>
-              <p className="text-xl font-bold text-blue-500">{formatCurrency(totalInvestments)}</p>
             </div>
           </Card>
         </div>
@@ -313,21 +267,30 @@ const Dashboard = () => {
               const transactions = getTransactionsForDay(day);
               const hasIncome = transactions.some(t => t.type === 'income');
               const hasExpense = transactions.some(t => t.type === 'expense');
-              const todayIndicator = checkIsToday(day);
+              const today = isToday(day);
               
               return (
                 <div
                   key={`day-${day}`}
                   className={cn(
                     "h-10 rounded-full flex flex-col items-center justify-center cursor-pointer relative",
-                    todayIndicator && "bg-finance-blue text-white font-bold",
-                    !todayIndicator && "hover:bg-finance-dark-lighter"
+                    today && "bg-finance-blue text-white font-bold",
+                    !today && "hover:bg-finance-dark-lighter"
                   )}
-                  onClick={() => showDayTransactions(day)}
+                  onClick={() => {
+                    const currentDate = new Date();
+                    const isCurrentMonth = currentDate.getMonth() === month && currentDate.getFullYear() === year;
+                    
+                    if (isCurrentMonth) {
+                      currentDate.setDate(day);
+                      setCurrentMonth(new Date(currentDate));
+                      setActivePeriod('day');
+                    }
+                  }}
                 >
                   <span className={cn(
                     "text-sm",
-                    todayIndicator ? "text-white" : "text-gray-300"
+                    today ? "text-white" : "text-gray-300"
                   )}>
                     {day}
                   </span>
@@ -364,25 +327,6 @@ const Dashboard = () => {
           />
         </div>
       </div>
-      
-      {/* Novo: Modal para mostrar as transações de um dia */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-finance-dark-card text-white border-gray-700 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white text-xl">
-              {selectedDay && format(selectedDay, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <h3 className="text-lg font-medium mb-3">Transações do dia</h3>
-            <TransactionsList 
-              transactions={getSelectedDayTransactions()} 
-              emptyMessage="Nenhuma transação neste dia"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
       
       <BottomNav />
     </div>

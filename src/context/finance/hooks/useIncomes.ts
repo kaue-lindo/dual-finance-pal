@@ -48,11 +48,6 @@ export const useIncomes = (
         supabaseData.recurring = true; // Campo booleano no Supabase
         supabaseData.recurring_type = income.recurring.type;
         supabaseData.recurring_days = income.recurring.days || [];
-        
-        // Adicionar o texto que indica recorrência na descrição
-        const recurrenceType = income.recurring.type === 'daily' ? 'Diário' : 
-                              income.recurring.type === 'weekly' ? 'Semanal' : 'Mensal';
-        supabaseData.description = `${supabaseData.description} (${recurrenceType})`;
       } else if (income.recurring === true) {
         // Se for apenas um booleano true
         supabaseData.recurring = true;
@@ -61,9 +56,6 @@ export const useIncomes = (
         // Para recorrência mensal simples, usar o dia da data selecionada
         const selectedDay = income.date.getDate();
         supabaseData.recurring_days = [selectedDay];
-        
-        // Adicionar o texto que indica recorrência na descrição
-        supabaseData.description = `${supabaseData.description} (Mensal)`;
       } else {
         // Se for false ou undefined
         supabaseData.recurring = false;
