@@ -25,14 +25,15 @@ export const useUserProfile = (
         avatarUrl: userData.avatarUrl || currentUser.avatarUrl
       };
       
-      // Update user profile in Supabase - add logging to debug
-      console.log('Updating user profile with:', {
+      // Update user profile in Supabase with improved logging
+      console.log('Updating user profile with data:', {
         user_id: currentUser.id,
         auth_id: sessionData.session.user.id,
         name: updatedUser.name,
         avatar_url: updatedUser.avatarUrl
       });
       
+      // Fix: Using upsert with proper conflict handling and proper column names
       const { error, data } = await supabase
         .from('user_profiles')
         .upsert({
@@ -61,11 +62,10 @@ export const useUserProfile = (
         localStorage.setItem('financeCurrentUser', JSON.stringify(updatedUser));
       }
       
-      // Store in users collection for future logins
+      // Update stored users collection
       const savedUsers = localStorage.getItem('financeUsers');
       if (savedUsers) {
         const storedUsers = JSON.parse(savedUsers);
-        
         storedUsers[currentUser.id] = updatedUser;
         localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
       }
@@ -75,7 +75,6 @@ export const useUserProfile = (
       
       toast.success('Perfil atualizado com sucesso');
       
-      // Return the updated user for use in the application
       return updatedUser;
     } catch (error) {
       console.error('Error in updateUserProfile:', error);

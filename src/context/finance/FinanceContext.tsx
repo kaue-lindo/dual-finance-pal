@@ -63,6 +63,50 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [users]);
 
+  // Function to get total investments for a specific user
+  const getTotalInvestmentsForUser = (userId?: string) => {
+    const targetUserId = userId || (currentUser ? currentUser.id : '');
+    if (!targetUserId) return 0;
+    
+    const userFinances = finances[targetUserId];
+    if (!userFinances || !userFinances.investments) return 0;
+    
+    return userFinances.investments.reduce((total, investment) => total + investment.amount, 0);
+  };
+
+  // Function to get total investments with returns for a specific user
+  const getTotalInvestmentsWithReturnsForUser = (userId?: string) => {
+    const targetUserId = userId || (currentUser ? currentUser.id : '');
+    if (!targetUserId) return 0;
+    
+    const baseInvestments = getTotalInvestmentsForUser(targetUserId);
+    const returns = investments.getProjectedInvestmentReturn(3, targetUserId);
+    
+    return baseInvestments + returns;
+  };
+
+  // Function to get category expenses for a specific user
+  const getCategoryExpensesForUser = (userId?: string) => {
+    const targetUserId = userId || (currentUser ? currentUser.id : '');
+    if (!targetUserId) return [];
+    
+    const userFinances = finances[targetUserId];
+    if (!userFinances || !userFinances.expenses) return [];
+    
+    const categoryMap = new Map();
+    
+    userFinances.expenses.forEach(expense => {
+      const category = expense.category || 'others';
+      const currentAmount = categoryMap.get(category) || 0;
+      categoryMap.set(category, currentAmount + expense.amount);
+    });
+    
+    return Array.from(categoryMap, ([category, amount]) => ({
+      category,
+      amount
+    }));
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -88,10 +132,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteTransaction: transactions.deleteTransaction,
         getIncomeCategories: incomes.getIncomeCategories,
         getExpenseCategories: expenses.getExpenseCategories,
-        getTotalInvestments: investments.getTotalInvestments,
-        getTotalInvestmentsWithReturns: investments.getTotalInvestmentsWithReturns,
+        getTotalInvestments: getTotalInvestmentsForUser,
+        getTotalInvestmentsWithReturns: getTotalInvestmentsWithReturnsForUser,
         getProjectedInvestmentReturn: investments.getProjectedInvestmentReturn,
-        getCategoryExpenses: expenses.getCategoryExpenses,
+        getCategoryExpenses: getCategoryExpensesForUser,
         getRealIncome: incomes.getRealIncome,
         updateUserProfile: userProfile.updateUserProfile,
         getUserBalance: expenses.getUserBalance,

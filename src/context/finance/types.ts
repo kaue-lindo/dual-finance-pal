@@ -1,3 +1,4 @@
+
 import { User } from './constants';
 
 export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
@@ -86,9 +87,9 @@ export interface FinanceContextType {
   deleteTransaction: (id: string) => Promise<void>;
   getIncomeCategories: () => { value: string; label: string }[];
   getExpenseCategories: () => { value: string; label: string }[];
-  getTotalInvestments: () => number;
-  getTotalInvestmentsWithReturns: () => number;
-  getProjectedInvestmentReturn: (months: number) => number;
+  getTotalInvestments: (userId?: string) => number;
+  getTotalInvestmentsWithReturns: (userId?: string) => number;
+  getProjectedInvestmentReturn: (months: number, userId?: string) => number;
   getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
   getRealIncome: () => number;
   updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => Promise<User>;
