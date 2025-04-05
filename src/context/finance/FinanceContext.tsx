@@ -8,7 +8,7 @@ import { useIncomes } from './hooks/useIncomes';
 import { useInvestments } from './hooks/useInvestments';
 import { useTransactions } from './hooks/useTransactions';
 import { useUserProfile } from './hooks/useUserProfile';
-import { getUniqueTransactionsByMonth } from './utils/calculations';
+import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
