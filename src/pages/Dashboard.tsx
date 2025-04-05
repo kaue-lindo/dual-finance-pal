@@ -13,7 +13,7 @@ import QuickActions from '@/components/QuickActions';
 import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
+import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -106,23 +106,8 @@ const Dashboard = () => {
   
   const calculateIncomeAndExpense = () => {
     const transactions = filterTransactionsByPeriod();
-    
-    // Usar nossa função melhorada para desduplicar transações com um prefixo específico
-    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, `dashboard-${activePeriod}`);
-    
-    // Calculate totals from unique transactions
-    let totalIncome = 0;
-    let totalExpense = 0;
-    
-    uniqueTransactions.forEach(transaction => {
-      if (transaction.type === 'income') {
-        totalIncome += transaction.amount;
-      } else if (transaction.type === 'expense') {
-        totalExpense += transaction.amount;
-      }
-    });
-    
-    return { totalIncome, totalExpense };
+    // Use our improved function to calculate correct totals
+    return calculatePeriodTotals(transactions);
   };
   
   const { totalIncome, totalExpense } = calculateIncomeAndExpense();

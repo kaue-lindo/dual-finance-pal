@@ -63,3 +63,32 @@ export const getUniqueTransactionsByMonth = (transactions: any[], keyPrefix: str
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 };
+
+// Helper function to calculate correct expense/income totals for a period
+export const calculatePeriodTotals = (transactions: any[]) => {
+  // First ensure we have no duplicates
+  const uniqueTransactions = getUniqueTransactionsByMonth(transactions, 'calc-totals');
+  
+  let totalIncome = 0;
+  let totalExpense = 0;
+  let totalInvestment = 0;
+  
+  uniqueTransactions.forEach(transaction => {
+    const amount = parseFloat(transaction.amount?.toString() || '0');
+    
+    if (transaction.type === 'income') {
+      totalIncome += amount;
+    } else if (transaction.type === 'expense') {
+      totalExpense += amount;
+    } else if (transaction.type === 'investment') {
+      totalInvestment += amount;
+    }
+  });
+  
+  return {
+    totalIncome,
+    totalExpense,
+    totalInvestment,
+    balance: totalIncome - totalExpense - totalInvestment
+  };
+};
