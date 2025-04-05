@@ -25,21 +25,33 @@ export const useUserProfile = (
         avatarUrl: userData.avatarUrl || currentUser.avatarUrl
       };
       
-      // Update user profile in Supabase
-      const { error } = await supabase
+      // Update user profile in Supabase - add logging to debug
+      console.log('Updating user profile with:', {
+        user_id: currentUser.id,
+        auth_id: sessionData.session.user.id,
+        name: updatedUser.name,
+        avatar_url: updatedUser.avatarUrl
+      });
+      
+      const { error, data } = await supabase
         .from('user_profiles')
         .upsert({
           user_id: currentUser.id,
           auth_id: sessionData.session.user.id,
           name: updatedUser.name,
           avatar_url: updatedUser.avatarUrl
-        });
+        }, {
+          onConflict: 'user_id'
+        })
+        .select();
       
       if (error) {
         console.error('Error updating profile in Supabase:', error);
         toast.error('Erro ao atualizar perfil no banco de dados');
         return currentUser;
       }
+      
+      console.log('Profile updated successfully in Supabase:', data);
       
       // Update current user state
       setCurrentUser(updatedUser);
