@@ -15,19 +15,23 @@ export const getUniqueTransactionsByMonth = (transactions: any[], keyPrefix: str
     const month = format(transactionDate, 'yyyy-MM');
     const key = `${keyPrefix}-${month}-${transaction.type}-${transaction.description}-${transaction.amount}-${transaction.category || 'unknown'}`;
     
-    // Check if this transaction or a similar one already exists in our map
+    // Check if this transaction is a recurring one (recorrente/installment)
+    const isRecurring = transaction.id?.includes('-recurring-') || 
+                        transaction.id?.includes('-installment-');
+                        
+    // If we have an original transaction with the same properties, prefer it over recurring ones
     if (!uniqueTransactionsMap.has(key)) {
       uniqueTransactionsMap.set(key, transaction);
     } else {
-      // If we already have a transaction with this key, prefer the original one over recurring
+      // If we already have a transaction with this key, check if it's recurring
       const existingTransaction = uniqueTransactionsMap.get(key);
       const isExistingRecurring = existingTransaction.id?.includes('-recurring-') || 
                                 existingTransaction.id?.includes('-installment-');
-      const isNewRecurring = transaction.id?.includes('-recurring-') || 
-                           transaction.id?.includes('-installment-');
       
       // If the existing one is recurring but the new one isn't, replace it
-      if (isExistingRecurring && !isNewRecurring) {
+      // OR if both are recurring but this one has a more "original-looking" ID, prefer it
+      if ((isExistingRecurring && !isRecurring) || 
+          (isExistingRecurring && isRecurring && transaction.id < existingTransaction.id)) {
         uniqueTransactionsMap.set(key, transaction);
       }
     }

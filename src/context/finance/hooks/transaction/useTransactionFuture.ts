@@ -29,7 +29,6 @@ export const useTransactionFuture = (
     // Sort transactions by date
     const sortedTransactions = futureTransactions.sort((a, b) => a.date.getTime() - b.date.getTime());
     
-    // We're not deduplicating here because we want ALL transactions for filtering later
     return sortedTransactions;
   };
 

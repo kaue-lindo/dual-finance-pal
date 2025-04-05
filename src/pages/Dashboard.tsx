@@ -107,8 +107,8 @@ const Dashboard = () => {
   const calculateIncomeAndExpense = () => {
     const transactions = filterTransactionsByPeriod();
     
-    // Use the utility function to deduplicate transactions
-    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, 'dashboard');
+    // Usar nossa função melhorada para desduplicar transações com um prefixo específico
+    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, `dashboard-${activePeriod}`);
     
     // Calculate totals from unique transactions
     let totalIncome = 0;
@@ -152,8 +152,8 @@ const Dashboard = () => {
       return date >= startOfDay && date <= endOfDay;
     });
     
-    // Apply deduplication using the utility function
-    return getUniqueTransactionsByMonth(transactionsForDay, `day-${day}`);
+    // Apply deduplication using the utility function with a unique prefix for this day
+    return getUniqueTransactionsByMonth(transactionsForDay, `day-${day}-${month}-${year}`);
   };
   
   const checkIsToday = (day: number) => {
@@ -184,8 +184,9 @@ const Dashboard = () => {
       return date >= startOfSelectedDay && date <= endOfSelectedDay;
     });
     
-    // Apply deduplication using the utility function
-    return getUniqueTransactionsByMonth(transactionsForDay, 'selected-day');
+    // Apply deduplication using the utility function with a unique prefix for the selected day
+    const formattedDay = format(selectedDay, 'yyyy-MM-dd');
+    return getUniqueTransactionsByMonth(transactionsForDay, `selected-day-${formattedDay}`);
   };
 
   const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });

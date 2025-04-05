@@ -22,7 +22,7 @@ interface TransactionsListProps {
   limit?: number;
   showBalance?: boolean;
   onTransactionClick?: (transaction: Transaction) => void;
-  emptyMessage?: string; // Added emptyMessage prop
+  emptyMessage?: string;
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({
@@ -30,7 +30,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   limit,
   showBalance = false,
   onTransactionClick,
-  emptyMessage = "Nenhuma transação encontrada" // Default message
+  emptyMessage = "Nenhuma transação encontrada"
 }) => {
   if (!transactions || transactions.length === 0) {
     return (
@@ -46,8 +46,11 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   // Sort transactions by date (most recent first)
   const sortedTransactions = [...validTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
   
+  // Generate a unique list ID for this particular instance
+  const listId = Math.random().toString(36).substring(2, 9);
+  
   // Apply deduplication to prevent showing duplicate transactions
-  const uniqueTransactions = getUniqueTransactionsByMonth(sortedTransactions);
+  const uniqueTransactions = getUniqueTransactionsByMonth(sortedTransactions, `list-${listId}`);
   
   // Apply limit if specified
   const displayTransactions = limit ? uniqueTransactions.slice(0, limit) : uniqueTransactions;
