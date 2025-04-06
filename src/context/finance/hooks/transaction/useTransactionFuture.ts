@@ -1,4 +1,3 @@
-
 import { FutureTransaction, Expense, Income, Investment } from '../../types';
 import { processRecurringExpenses, processRecurringIncomes, processInstallments } from '../../utils/recurring';
 import { calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../../utils/projections';

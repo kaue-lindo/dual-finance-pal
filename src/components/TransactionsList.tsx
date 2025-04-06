@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,7 +12,7 @@ interface Transaction {
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense' | 'investment';
+  type: 'income' | 'expense' | 'investment' | 'investment_value';
   category?: string;
 }
 
@@ -68,13 +67,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
               <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
                 transaction.type === 'income' 
                   ? 'bg-green-500/20' 
-                  : transaction.type === 'investment' 
+                  : transaction.type === 'investment' || transaction.type === 'investment_value'
                     ? 'bg-blue-500/20' 
                     : 'bg-red-500/20'
               }`}>
                 {transaction.type === 'income' ? (
                   <ArrowUp className="h-5 w-5 text-green-500" />
-                ) : transaction.type === 'investment' ? (
+                ) : transaction.type === 'investment' || transaction.type === 'investment_value' ? (
                   <TrendingUp className="h-5 w-5 text-blue-500" />
                 ) : (
                   <ArrowDown className="h-5 w-5 text-red-500" />
@@ -97,13 +96,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
             <span className={`font-bold ${
               transaction.type === 'income' 
                 ? 'text-green-500' 
-                : transaction.type === 'investment' 
+                : transaction.type === 'investment' || transaction.type === 'investment_value'
                   ? 'text-blue-500' 
                   : 'text-red-500'
             }`}>
               {transaction.type === 'income' 
                 ? '+' 
-                : transaction.type === 'investment' 
+                : transaction.type === 'investment' || transaction.type === 'investment_value'
                   ? '•' 
                   : '-'
               }

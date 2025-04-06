@@ -57,7 +57,7 @@ export type FutureTransaction = {
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense' | 'investment';
+  type: 'income' | 'expense' | 'investment' | 'investment_value'; // Updated to include 'investment_value'
   category: string;
   sourceCategory?: string;
   parent_investment_id?: string;

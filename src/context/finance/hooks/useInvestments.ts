@@ -244,6 +244,7 @@ export const useInvestments = (
     }, 0);
   };
 
+  // Fixed function to avoid excessive instantiation
   const getProjectedInvestmentReturn = (months: number): number => {
     if (!currentUser) return 0;
     
