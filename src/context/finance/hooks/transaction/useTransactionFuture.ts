@@ -1,3 +1,4 @@
+
 import { FutureTransaction, Expense, Income, Investment } from '../../types';
 import { processRecurringExpenses, processRecurringIncomes, processInstallments } from '../../utils/recurring';
 import { calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../../utils/projections';
@@ -119,15 +120,17 @@ export const useTransactionFuture = (
   const processInvestments = (investments: Investment[], futureTransactions: FutureTransaction[], monthsToLookAhead: number) => {
     const today = new Date();
     
-    // Keep track of accumulated investment returns for each investment
-    const accumulatedReturns: Record<string, number> = {};
+    // Track investment values over time (principal + accumulated returns)
+    const investmentValues: Record<string, { value: number, reportedMonths: Set<string> }> = {};
     
     investments.forEach(investment => {
-      const months = monthsToLookAhead;
       const investmentDate = new Date(investment.startDate);
       
-      // Initialize accumulated returns for this investment
-      accumulatedReturns[investment.id] = 0;
+      // Initialize tracking for this investment
+      investmentValues[investment.id] = {
+        value: investment.amount,
+        reportedMonths: new Set<string>()
+      };
       
       // Skip adding initial investment if it's in the past
       if (investmentDate >= today || isSameMonth(investmentDate, today)) {
@@ -143,8 +146,8 @@ export const useTransactionFuture = (
         });
       }
       
-      // Calculate and add projected returns for future months
-      for (let i = 1; i <= months; i++) {
+      // Calculate and add investment values for future months
+      for (let i = 1; i <= monthsToLookAhead; i++) {
         const futureDate = new Date(today);
         futureDate.setMonth(futureDate.getMonth() + i);
         
@@ -164,8 +167,8 @@ export const useTransactionFuture = (
         // Only process if investment has been active for at least a month
         if (monthsActive <= 0) continue;
         
-        // Calculate future value based on compound interest
-        const futureValue = calculateInvestmentGrowthForMonth(
+        // Calculate total value with interest (principal + returns)
+        const totalValue = calculateInvestmentGrowthForMonth(
           investment.amount,
           investment.rate,
           isPeriodMonthly,
@@ -173,23 +176,21 @@ export const useTransactionFuture = (
           isCompound
         );
         
-        // Monthly return is the difference from last month
-        const prevMonthReturn = accumulatedReturns[investment.id];
-        const totalReturn = futureValue - investment.amount;
-        const monthlyReturn = totalReturn - prevMonthReturn;
+        // Get the month key for tracking
+        const monthKey = `${futureDate.getFullYear()}-${futureDate.getMonth()}`;
         
-        // Update accumulated returns
-        accumulatedReturns[investment.id] = totalReturn;
-        
-        // Add projected return as a transaction
-        if (monthlyReturn > 0) {
+        // Only add one entry per month for each investment
+        if (!investmentValues[investment.id].reportedMonths.has(monthKey)) {
+          investmentValues[investment.id].reportedMonths.add(monthKey);
+          
+          // Add the updated investment value as a transaction
           futureTransactions.push({
-            id: `${investment.id}-growth-${i}`,
+            id: `${investment.id}-value-${i}`,
             date: futureDate,
-            description: `${investment.description} (Rendimento Mensal)`,
-            amount: monthlyReturn,
-            type: 'income',
-            category: 'investment_returns',
+            description: `${investment.description} (Valor Atualizado)`,
+            amount: totalValue,
+            type: 'investment_value',
+            category: 'investment_value',
             sourceCategory: 'investment',
             parentId: investment.id
           });

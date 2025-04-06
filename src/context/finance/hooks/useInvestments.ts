@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -70,7 +71,7 @@ export const useInvestments = (
         };
       });
       
-      await saveProjectedReturns(newInvestment);
+      await saveInvestmentValues(newInvestment);
       
       toast.success('Investimento adicionado com sucesso!');
     } catch (error) {
@@ -79,7 +80,7 @@ export const useInvestments = (
     }
   };
 
-  const saveProjectedReturns = async (investment: Investment) => {
+  const saveInvestmentValues = async (investment: Investment) => {
     if (!currentUser) return;
     
     try {
@@ -92,16 +93,20 @@ export const useInvestments = (
       const months = 12;
       const today = new Date();
       
-      let accumulatedAmount = investment.amount;
-      
       for (let i = 1; i <= months; i++) {
         const futureDate = new Date(investment.startDate);
         futureDate.setMonth(futureDate.getMonth() + i);
         
+        // Skip if this future date is before the investment start date
+        if (futureDate < investment.startDate) {
+          continue;
+        }
+        
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompound = investment.isCompound !== false;
         
-        const newAmount = calculateInvestmentGrowthForMonth(
+        // Calculate total value with interest
+        const totalValue = calculateInvestmentGrowthForMonth(
           investment.amount, 
           investment.rate, 
           isPeriodMonthly, 
@@ -109,29 +114,23 @@ export const useInvestments = (
           isCompound
         );
         
-        const monthlyReturn = newAmount - accumulatedAmount;
-        accumulatedAmount = newAmount;
-        
-        if (monthlyReturn > 0) {
-          await supabase
-            .from('finances')
-            .insert({
-              user_id: currentUser.id,
-              auth_id: sessionData.session.user.id,
-              type: 'investment_update',
-              description: `${investment.description} (Rendimento Acumulado)`,
-              amount: monthlyReturn,
-              category: 'investment_returns',
-              date: futureDate.toISOString(),
-              recurring_type: 'investment-reinvest',
-              recurring: true,
-              source_category: 'investment',
-              parent_investment_id: investment.id
-            });
-        }
+        await supabase
+          .from('finances')
+          .insert({
+            user_id: currentUser.id,
+            auth_id: sessionData.session.user.id,
+            type: 'investment_value',
+            description: `${investment.description} (Valor Atualizado)`,
+            amount: totalValue,
+            category: 'investment_value',
+            date: futureDate.toISOString(),
+            recurring_type: 'investment-value',
+            source_category: 'investment',
+            parent_investment_id: investment.id
+          });
       }
     } catch (error) {
-      console.error('Error saving projected returns:', error);
+      console.error('Error saving investment values:', error);
     }
   };
 
@@ -166,13 +165,14 @@ export const useInvestments = (
         return;
       }
       
+      // Also delete all associated investment values
       await supabase
         .from('finances')
         .delete()
         .eq('user_id', currentUser.id)
         .eq('auth_id', sessionData.session.user.id)
-        .eq('recurring_type', 'investment-return')
-        .ilike('description', `${investment.description}%`);
+        .eq('source_category', 'investment')
+        .eq('parent_investment_id', id);
       
       toast.success('Investimento removido com sucesso');
       
@@ -220,6 +220,7 @@ export const useInvestments = (
     return userFinances.investments.reduce((total: number, investment: Investment) => {
       const startDate = new Date(investment.startDate);
       
+      // Skip investments that haven't started yet
       if (startDate > today) {
         return total + investment.amount;
       }
@@ -230,7 +231,8 @@ export const useInvestments = (
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;
       
-      const futureValue = calculateInvestmentGrowthForMonth(
+      // Calculate total value including returns
+      const totalValue = calculateInvestmentGrowthForMonth(
         investment.amount,
         investment.rate,
         isPeriodMonthly,
@@ -238,7 +240,7 @@ export const useInvestments = (
         isCompound
       );
       
-      return total + futureValue;
+      return total + totalValue;
     }, 0);
   };
 
@@ -255,21 +257,35 @@ export const useInvestments = (
       const projectedDate = new Date();
       projectedDate.setMonth(today.getMonth() + months);
       
+      // Skip investments that haven't started by the projected date
       if (startDate > projectedDate) {
         return;
+      }
+      
+      // Calculate how many months the investment will have been active
+      let monthsActive = 0;
+      if (startDate <= today) {
+        // For investments already started, count from today plus projection months
+        monthsActive = months;
+      } else {
+        // For future investments, count from start date to projected date
+        monthsActive = (projectedDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                      (projectedDate.getMonth() - startDate.getMonth());
       }
       
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;
       
+      // Calculate future value
       const futureValue = calculateInvestmentGrowthForMonth(
         investment.amount,
         investment.rate,
         isPeriodMonthly,
-        months,
+        monthsActive,
         isCompound
       );
       
+      // Add just the returns (not the principal)
       const returnAmount = futureValue - investment.amount;
       totalReturn += returnAmount;
     });
