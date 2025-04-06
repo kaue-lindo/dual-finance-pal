@@ -43,6 +43,8 @@ export type Investment = {
   period: 'monthly' | 'annual';
   startDate: Date;
   isCompound?: boolean; // Added to distinguish between simple and compound interest
+  isFinalized?: boolean; // Flag to indicate if investment has been finalized
+  finalizedDate?: Date; // Date when investment was finalized
 };
 
 export type UserFinances = {
@@ -78,6 +80,7 @@ export interface FinanceContextType {
   deleteIncome: (id: string) => Promise<void>;
   addInvestment: (investment: Omit<Investment, 'id'>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
+  finalizeInvestment: (id: string) => Promise<void>; // Add function to finalize investment
   calculateBalance: () => number;
   getMonthlyExpenseTotal: () => number;
   getFutureTransactions: () => FutureTransaction[];

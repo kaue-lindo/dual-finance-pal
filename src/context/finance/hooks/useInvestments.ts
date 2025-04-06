@@ -46,7 +46,8 @@ export const useInvestments = (
         rate: investment.rate,
         period: investment.period,
         startDate: new Date(data.date),
-        isCompound: data.is_compound
+        isCompound: data.is_compound,
+        isFinalized: false
       };
       
       setFinances(prev => {
@@ -57,16 +58,11 @@ export const useInvestments = (
           balance: 0
         };
         
-        const incomeTotal = userFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
-        const expenseTotal = userFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-        const newBalance = incomeTotal - expenseTotal - investment.amount;
-        
         return {
           ...prev,
           [currentUser.id]: {
             ...userFinances,
-            investments: [...userFinances.investments, newInvestment],
-            balance: newBalance,
+            investments: [...userFinances.investments, newInvestment]
           },
         };
       });
@@ -99,6 +95,11 @@ export const useInvestments = (
         
         // Skip if this future date is before the investment start date
         if (futureDate < investment.startDate) {
+          continue;
+        }
+        
+        // Skip if investment is finalized and this date is after finalization
+        if (investment.isFinalized && investment.finalizedDate && futureDate > investment.finalizedDate) {
           continue;
         }
         
@@ -182,16 +183,11 @@ export const useInvestments = (
         
         const newInvestments = currentFinances.investments.filter(inv => inv.id !== id);
         
-        const incomeTotal = currentFinances.incomes.reduce((sum, inc) => sum + inc.amount, 0);
-        const expenseTotal = currentFinances.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-        const investmentAmount = investment.amount;
-        
         return {
           ...prev,
           [currentUser.id]: {
             ...currentFinances,
-            investments: newInvestments,
-            balance: incomeTotal - expenseTotal + investmentAmount,
+            investments: newInvestments
           },
         };
       });
@@ -201,13 +197,141 @@ export const useInvestments = (
     }
   };
 
+  // New function to finalize an investment and add its total value to balance
+  const finalizeInvestment = async (id: string) => {
+    if (!currentUser) return;
+    
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
+      const userFinances = finances[currentUser.id];
+      const investment = userFinances?.investments.find(inv => inv.id === id);
+      
+      if (!investment) {
+        toast.error('Investimento não encontrado');
+        return;
+      }
+
+      // Calculate current investment value including returns
+      const today = new Date();
+      const startDate = new Date(investment.startDate);
+      const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
+                        (today.getMonth() - startDate.getMonth());
+      
+      const isPeriodMonthly = investment.period === 'monthly';
+      const isCompound = investment.isCompound !== false;
+      
+      const finalValue = calculateInvestmentGrowthForMonth(
+        investment.amount, 
+        investment.rate, 
+        isPeriodMonthly, 
+        Math.max(0, monthsDiff), 
+        isCompound
+      );
+      
+      // Mark investment as finalized in Supabase
+      const { error: updateError } = await supabase
+        .from('finances')
+        .update({
+          recurring_type: 'finalized'
+        })
+        .eq('id', id)
+        .eq('auth_id', sessionData.session.user.id);
+      
+      if (updateError) {
+        console.error('Error finalizing investment in Supabase:', updateError);
+        toast.error('Erro ao finalizar investimento');
+        return;
+      }
+      
+      // Add the finalized investment value as income
+      const { error: incomeError } = await supabase
+        .from('finances')
+        .insert({
+          user_id: currentUser.id,
+          auth_id: sessionData.session.user.id,
+          type: 'income',
+          description: `Resgate do investimento: ${investment.description}`,
+          amount: finalValue,
+          category: 'investment_returns',
+          date: today.toISOString(),
+          source_category: 'investment',
+          parent_investment_id: investment.id
+        });
+      
+      if (incomeError) {
+        console.error('Error adding investment income:', incomeError);
+        toast.error('Erro ao adicionar rendimento do investimento');
+        return;
+      }
+      
+      toast.success('Investimento finalizado com sucesso');
+      
+      // Update local state
+      setFinances(prev => {
+        const currentFinances = prev[currentUser.id];
+        if (!currentFinances) return prev;
+        
+        const updatedInvestments = currentFinances.investments.map(inv => {
+          if (inv.id === id) {
+            return {
+              ...inv, 
+              isFinalized: true, 
+              finalizedDate: today
+            };
+          }
+          return inv;
+        });
+        
+        const newIncome = {
+          id: `${id}-finalized-${Date.now()}`,
+          description: `Resgate do investimento: ${investment.description}`,
+          amount: finalValue,
+          date: today,
+          category: 'investment_returns' as IncomeCategory
+        };
+        
+        return {
+          ...prev,
+          [currentUser.id]: {
+            ...currentFinances,
+            investments: updatedInvestments,
+            incomes: [...currentFinances.incomes, newIncome],
+            balance: currentFinances.balance + finalValue
+          },
+        };
+      });
+      
+      // Refresh transactions to update the UI
+      await fetchTransactions();
+      
+    } catch (error) {
+      console.error('Error in finalizeInvestment:', error);
+      toast.error('Erro ao finalizar investimento');
+    }
+  };
+
+  const fetchTransactions = async () => {
+    // This will be implemented when we connect to the FinanceContext
+    // Just a placeholder to avoid TypeScript errors
+  };
+
   const getTotalInvestments = (): number => {
     if (!currentUser) return 0;
     
     const userFinances = finances[currentUser.id] || { investments: [] };
     
     return userFinances.investments.reduce((total: number, investment: Investment) => {
-      return total + investment.amount;
+      // Only count non-finalized investments
+      if (!investment.isFinalized) {
+        return total + investment.amount;
+      }
+      return total;
     }, 0);
   };
 
@@ -218,6 +342,9 @@ export const useInvestments = (
     const today = new Date();
     
     return userFinances.investments.reduce((total: number, investment: Investment) => {
+      // Skip finalized investments
+      if (investment.isFinalized) return total;
+      
       const startDate = new Date(investment.startDate);
       
       // Skip investments that haven't started yet
@@ -253,6 +380,9 @@ export const useInvestments = (
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
+      // Skip finalized investments
+      if (investment.isFinalized) return;
+      
       const startDate = new Date(investment.startDate);
       
       const projectedDate = new Date();
@@ -297,6 +427,7 @@ export const useInvestments = (
   return {
     addInvestment,
     deleteInvestment,
+    finalizeInvestment,
     getTotalInvestments,
     getTotalInvestmentsWithReturns,
     getProjectedInvestmentReturn

@@ -1,3 +1,4 @@
+
 import { FutureTransaction, Expense, Income, Investment } from '../../types';
 import { processRecurringExpenses, processRecurringIncomes, processInstallments } from '../../utils/recurring';
 import { calculateInvestmentGrowthForMonth, calculateInvestmentReturnForMonth } from '../../utils/projections';
@@ -123,6 +124,9 @@ export const useTransactionFuture = (
     const investmentValues: Record<string, { value: number, reportedMonths: Set<string> }> = {};
     
     investments.forEach(investment => {
+      // Skip finalized investments
+      if (investment.isFinalized) return;
+      
       const investmentDate = new Date(investment.startDate);
       
       // Initialize tracking for this investment
@@ -152,6 +156,11 @@ export const useTransactionFuture = (
         
         // Skip if investment hasn't started by this future date
         if (investmentDate > futureDate) {
+          continue;
+        }
+        
+        // Skip if investment is finalized and this date is after finalization
+        if (investment.isFinalized && investment.finalizedDate && futureDate > investment.finalizedDate) {
           continue;
         }
         
@@ -191,7 +200,8 @@ export const useTransactionFuture = (
             type: 'investment_value',
             category: 'investment_value',
             sourceCategory: 'investment',
-            parentId: investment.id
+            parentId: investment.id,
+            parent_investment_id: investment.id
           });
         }
       }

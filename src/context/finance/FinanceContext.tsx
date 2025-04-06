@@ -35,6 +35,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const transactions = useTransactions(currentUser, finances, setFinances);
   const userProfile = useUserProfile(currentUser, setCurrentUser);
 
+  // Pass the fetchTransactions to investments for use in finalizeInvestment
+  // This is needed to update the transactions after finalizing an investment
+  if (investments.fetchTransactions === undefined) {
+    Object.defineProperty(investments, 'fetchTransactions', {
+      value: transactions.fetchTransactions
+    });
+  }
+
   // Fetch transactions when user changes or auth state changes
   useEffect(() => {
     if (currentUser && !loading && isAuthenticated) {
@@ -71,7 +79,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const userFinances = finances[targetUserId];
     if (!userFinances || !userFinances.investments) return 0;
     
-    return userFinances.investments.reduce((total, investment) => total + investment.amount, 0);
+    return userFinances.investments.reduce((total, investment) => {
+      // Only count non-finalized investments
+      if (!investment.isFinalized) {
+        return total + investment.amount;
+      }
+      return total;
+    }, 0);
   };
 
   // Function to get total investments with returns for a specific user
@@ -85,6 +99,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const today = new Date();
     
     return userFinances.investments.reduce((total, investment) => {
+      // Skip finalized investments
+      if (investment.isFinalized) return total;
+      
       const startDate = new Date(investment.startDate);
       
       // Skip investments that haven't started yet
@@ -146,6 +163,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteIncome: incomes.deleteIncome,
         addInvestment: investments.addInvestment,
         deleteInvestment: investments.deleteInvestment,
+        finalizeInvestment: investments.finalizeInvestment,
         calculateBalance: expenses.calculateBalance,
         getMonthlyExpenseTotal: expenses.getMonthlyExpenseTotal,
         getFutureTransactions: transactions.getFutureTransactions,
