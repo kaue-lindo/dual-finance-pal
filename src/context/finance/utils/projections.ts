@@ -2,6 +2,19 @@
 // Function to calculate investment return for a specific month
 export const calculateInvestmentReturnForMonth = (investments: any[], month: number): number => {
   return investments.reduce((total, investment) => {
+    const investmentStartDate = new Date(investment.startDate);
+    const today = new Date();
+    
+    // Calculate months since investment start
+    const monthsSinceStart = 
+      (today.getFullYear() - investmentStartDate.getFullYear()) * 12 + 
+      (today.getMonth() - investmentStartDate.getMonth());
+    
+    // Only include investments that have already started
+    if (monthsSinceStart < 0) {
+      return total;
+    }
+    
     const isPeriodMonthly = investment.period === 'monthly';
     const isCompound = investment.isCompound !== false;
     
@@ -50,6 +63,15 @@ export const calculateInvestmentReturn = (
 ): number => {
   const isPeriodMonthly = investment.period === 'monthly';
   const isCompound = investment.isCompound !== false;
+  
+  // Get current date and investment start date
+  const today = new Date();
+  const startDate = new Date(investment.startDate);
+  
+  // Check if investment has already started
+  if (startDate > today) {
+    return 0; // Investment hasn't started yet, no returns
+  }
   
   const futureValue = calculateInvestmentGrowthForMonth(
     investment.amount,

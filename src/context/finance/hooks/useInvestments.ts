@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -216,12 +215,17 @@ export const useInvestments = (
     if (!currentUser) return 0;
     
     const userFinances = finances[currentUser.id] || { investments: [] };
+    const today = new Date();
     
     return userFinances.investments.reduce((total: number, investment: Investment) => {
-      const currentDate = new Date();
       const startDate = new Date(investment.startDate);
-      const monthsDiff = (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                         (currentDate.getMonth() - startDate.getMonth());
+      
+      if (startDate > today) {
+        return total + investment.amount;
+      }
+      
+      const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
+                         (today.getMonth() - startDate.getMonth());
       
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;
@@ -238,18 +242,26 @@ export const useInvestments = (
     }, 0);
   };
 
-  // Improved projection calculation for more accurate results
   const getProjectedInvestmentReturn = (months: number): number => {
     if (!currentUser) return 0;
     
     const userFinances = finances[currentUser.id] || { investments: [] };
+    const today = new Date();
     let totalReturn = 0;
     
     userFinances.investments.forEach(investment => {
+      const startDate = new Date(investment.startDate);
+      
+      const projectedDate = new Date();
+      projectedDate.setMonth(today.getMonth() + months);
+      
+      if (startDate > projectedDate) {
+        return;
+      }
+      
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;
       
-      // Use the correct calculation based on the investment's characteristics
       const futureValue = calculateInvestmentGrowthForMonth(
         investment.amount,
         investment.rate,
@@ -258,7 +270,6 @@ export const useInvestments = (
         isCompound
       );
       
-      // The return is the difference between future value and initial investment
       const returnAmount = futureValue - investment.amount;
       totalReturn += returnAmount;
     });

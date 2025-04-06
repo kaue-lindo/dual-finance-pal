@@ -117,42 +117,59 @@ export const useTransactionFuture = (
 
   // Helper function to process investments
   const processInvestments = (investments: Investment[], futureTransactions: FutureTransaction[], monthsToLookAhead: number) => {
+    const today = new Date();
+    
     // Keep track of accumulated investment returns for each investment
     const accumulatedReturns: Record<string, number> = {};
     
     investments.forEach(investment => {
       const months = monthsToLookAhead;
-      
       const investmentDate = new Date(investment.startDate);
       
       // Initialize accumulated returns for this investment
       accumulatedReturns[investment.id] = 0;
       
-      // Add the initial investment
-      futureTransactions.push({
-        id: `${investment.id}-initial`,
-        date: investmentDate,
-        description: `${investment.description} (Investimento Inicial)`,
-        amount: investment.amount,
-        type: 'investment',
-        category: 'investment',
-        parentId: investment.id
-      });
+      // Skip adding initial investment if it's in the past
+      if (investmentDate >= today || isSameMonth(investmentDate, today)) {
+        // Add the initial investment
+        futureTransactions.push({
+          id: `${investment.id}-initial`,
+          date: investmentDate,
+          description: `${investment.description} (Investimento Inicial)`,
+          amount: investment.amount,
+          type: 'investment',
+          category: 'investment',
+          parentId: investment.id
+        });
+      }
       
       // Calculate and add projected returns for future months
       for (let i = 1; i <= months; i++) {
-        const futureDate = new Date(investmentDate);
+        const futureDate = new Date(today);
         futureDate.setMonth(futureDate.getMonth() + i);
+        
+        // Skip if investment hasn't started by this future date
+        if (investmentDate > futureDate) {
+          continue;
+        }
         
         const isPeriodMonthly = investment.period === 'monthly';
         const isCompound = investment.isCompound !== false;
+        
+        // Calculate how many months the investment will have been active by the future date
+        const monthsActive = 
+          (futureDate.getFullYear() - investmentDate.getFullYear()) * 12 + 
+          (futureDate.getMonth() - investmentDate.getMonth());
+        
+        // Only process if investment has been active for at least a month
+        if (monthsActive <= 0) continue;
         
         // Calculate future value based on compound interest
         const futureValue = calculateInvestmentGrowthForMonth(
           investment.amount,
           investment.rate,
           isPeriodMonthly,
-          i,
+          monthsActive,
           isCompound
         );
         
@@ -180,6 +197,12 @@ export const useTransactionFuture = (
       }
     });
   };
+  
+  // Helper function to check if two dates are in the same month
+  function isSameMonth(date1: Date, date2: Date) {
+    return date1.getFullYear() === date2.getFullYear() && 
+           date1.getMonth() === date2.getMonth();
+  }
 
   return {
     getFutureTransactions

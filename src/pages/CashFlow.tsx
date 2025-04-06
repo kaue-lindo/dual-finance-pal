@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -28,7 +29,7 @@ import {
   Bar
 } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
-import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, subYears, addYears } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, subYears, addYears, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
 import BottomNav from '@/components/ui/bottom-nav';
@@ -97,15 +98,13 @@ const CashFlow = () => {
       const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueMonthTransactions);
       
       let investmentProjection = 0;
-      if (isAfter(month, today) || isSameMonth(month, today)) {
-        const monthsFromNow = Math.max(0, 
-          (month.getFullYear() - today.getFullYear()) * 12 + 
-          month.getMonth() - today.getMonth()
-        );
-        
-        if (showProjection) {
-          investmentProjection = getProjectedInvestmentReturn(monthsFromNow);
-        }
+      const monthsFromNow = Math.max(0, 
+        (month.getFullYear() - today.getFullYear()) * 12 + 
+        month.getMonth() - today.getMonth()
+      );
+      
+      if (showProjection && (isAfter(month, today) || isSameMonth(month, today))) {
+        investmentProjection = getProjectedInvestmentReturn(monthsFromNow);
       }
       
       const balance = totalIncome - totalExpense;
@@ -114,8 +113,15 @@ const CashFlow = () => {
       if (isSameMonth(month, today)) {
         totalInvestmentValue = getTotalInvestmentsWithReturns();
       } else {
+        // For future months, we add the projected returns to the base investment
         const baseInvestment = getTotalInvestments();
-        totalInvestmentValue = baseInvestment + investmentProjection;
+        
+        if (isAfter(month, today)) {
+          totalInvestmentValue = baseInvestment + investmentProjection;
+        } else {
+          // For past months, just show the base investment since we don't have historical data
+          totalInvestmentValue = baseInvestment;
+        }
       }
       
       return {
@@ -337,7 +343,8 @@ const CashFlow = () => {
           </p>
           <div className="text-sm text-gray-400 mt-1 break-words">
             <p>Investido: {formatCurrency(getTotalInvestments())}</p>
-            <p>Retorno projetado: {formatCurrency(getProjectedInvestmentReturn(3))}</p>
+            <p>Retorno projetado (3 meses): {formatCurrency(getProjectedInvestmentReturn(3))}</p>
+            <p>Retorno projetado (12 meses): {formatCurrency(getProjectedInvestmentReturn(12))}</p>
           </div>
         </Card>
       </div>
