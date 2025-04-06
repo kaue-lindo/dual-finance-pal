@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -172,6 +173,14 @@ const Dashboard = () => {
     // Apply deduplication using the utility function with a unique prefix for the selected day
     const formattedDay = format(selectedDay, 'yyyy-MM-dd');
     return getUniqueTransactionsByMonth(transactionsForDay, `selected-day-${formattedDay}`);
+  };
+
+  // Calculate totals for the selected day
+  const getSelectedDayTotals = () => {
+    if (!selectedDay) return { totalIncome: 0, totalExpense: 0 };
+    
+    const transactions = getSelectedDayTransactions();
+    return calculatePeriodTotals(transactions);
   };
 
   const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
@@ -371,7 +380,41 @@ const Dashboard = () => {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="py-4">
+          {selectedDay && (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <Card className="bg-finance-dark-lighter border-none">
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp size={16} className="text-green-500" />
+                    <p className="text-gray-400 text-xs">Entradas</p>
+                  </div>
+                  <p className="text-lg font-bold text-green-500">{formatCurrency(getSelectedDayTotals().totalIncome)}</p>
+                </div>
+              </Card>
+              
+              <Card className="bg-finance-dark-lighter border-none">
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingDown size={16} className="text-red-500" />
+                    <p className="text-gray-400 text-xs">Saídas</p>
+                  </div>
+                  <p className="text-lg font-bold text-red-500">{formatCurrency(getSelectedDayTotals().totalExpense)}</p>
+                </div>
+              </Card>
+              
+              <Card className="bg-finance-dark-lighter border-none">
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wallet size={16} className="text-gray-300" />
+                    <p className="text-gray-400 text-xs">Saldo</p>
+                  </div>
+                  <p className="text-lg font-bold text-gray-300">{formatCurrency(getSelectedDayTotals().totalIncome - getSelectedDayTotals().totalExpense)}</p>
+                </div>
+              </Card>
+            </div>
+          )}
+          
+          <div className="py-2">
             <h3 className="text-lg font-medium mb-3">Transações do dia</h3>
             <TransactionsList 
               transactions={getSelectedDayTransactions()} 
