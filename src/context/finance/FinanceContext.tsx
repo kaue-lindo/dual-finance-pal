@@ -80,7 +80,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!targetUserId) return 0;
     
     const baseInvestments = getTotalInvestmentsForUser(targetUserId);
-    const returns = investments.getProjectedInvestmentReturn(3, targetUserId);
+    const returns = investments.getProjectedInvestmentReturn(3);
     
     return baseInvestments + returns;
   };

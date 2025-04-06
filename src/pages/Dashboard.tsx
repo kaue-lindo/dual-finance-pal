@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import { useFinance } from '@/context/finance/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
-import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay } from 'date-fns';
+import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
@@ -91,9 +90,8 @@ const Dashboard = () => {
       endDate = endOfDay(endDate);
     } else {
       // For month view, use the entire month we're viewing
-      startDate = firstDayOfCurrentMonth;
-      endDate = lastDayOfCurrentMonth;
-      endDate = endOfDay(endDate);
+      startDate = startOfMonth(displayDate);
+      endDate = endOfMonth(displayDate);
     }
     
     // Filter transactions that fall within the date range
@@ -107,8 +105,16 @@ const Dashboard = () => {
   
   const calculateIncomeAndExpense = () => {
     const transactions = filterTransactionsByPeriod();
-    // Use our improved function to calculate correct totals
-    return calculatePeriodTotals(transactions);
+    
+    // Use a unique prefix based on the current period to ensure proper deduplication
+    const periodPrefix = activePeriod === 'day' ? 'day-calc' : 
+                         activePeriod === 'week' ? 'week-calc' : 'month-calc';
+    
+    // Deduplicate transactions first
+    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, periodPrefix);
+    
+    // Calculate totals using our utility function
+    return calculatePeriodTotals(uniqueTransactions);
   };
   
   const { totalIncome, totalExpense } = calculateIncomeAndExpense();

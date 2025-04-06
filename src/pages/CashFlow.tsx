@@ -34,7 +34,7 @@ import { formatCurrency } from '@/lib/utils';
 import BottomNav from '@/components/ui/bottom-nav';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
+import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
 
 const CashFlow = () => {
   const navigate = useNavigate();
@@ -86,44 +86,15 @@ const CashFlow = () => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       
-      const processedIncomeIds = new Set<string>();
-      const processedExpenseIds = new Set<string>();
-      const processedInvestmentIds = new Set<string>();
-      
-      let income = 0;
-      let expense = 0;
-      let investmentValue = 0;
+      const monthPrefix = `chart-${format(month, 'yyyy-MM')}`;
       
       const monthTransactions = futureTransactions.filter(transaction => 
         isSameMonth(new Date(transaction.date), month)
       );
       
-      const uniqueMonthTransactions = getUniqueTransactionsByMonth(monthTransactions);
+      const uniqueMonthTransactions = getUniqueTransactionsByMonth(monthTransactions, monthPrefix);
       
-      uniqueMonthTransactions.forEach(transaction => {
-        const transactionId = transaction.id || `${transaction.description}-${transaction.amount}`;
-        
-        if (transaction.type === 'income') {
-          if (!processedIncomeIds.has(transactionId)) {
-            processedIncomeIds.add(transactionId);
-            
-            if (transaction.category !== 'investment-return' && 
-                transaction.category !== 'investment_returns') {
-              income += transaction.amount;
-            }
-          }
-        } else if (transaction.type === 'expense') {
-          if (!processedExpenseIds.has(transactionId)) {
-            processedExpenseIds.add(transactionId);
-            expense += transaction.amount;
-          }
-        } else if (transaction.type === 'investment') {
-          if (!processedInvestmentIds.has(transactionId)) {
-            processedInvestmentIds.add(transactionId);
-            investmentValue += transaction.amount;
-          }
-        }
-      });
+      const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueMonthTransactions);
       
       let investmentProjection = 0;
       if (isAfter(month, today) || isSameMonth(month, today)) {
@@ -137,20 +108,20 @@ const CashFlow = () => {
         }
       }
       
-      const balance = income - expense;
+      const balance = totalIncome - totalExpense;
       
       let totalInvestmentValue;
       if (isSameMonth(month, today)) {
         totalInvestmentValue = getTotalInvestmentsWithReturns();
       } else {
-        const baseInvestment = investmentValue;
+        const baseInvestment = getTotalInvestments();
         totalInvestmentValue = baseInvestment + investmentProjection;
       }
       
       return {
         month: format(month, 'MMM yyyy', { locale: ptBR }),
-        income,
-        expense,
+        income: totalIncome,
+        expense: totalExpense,
         balance,
         investment: totalInvestmentValue,
         date: month
