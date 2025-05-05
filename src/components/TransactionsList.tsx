@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card';
 import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
 import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
 import { TransactionType } from '@/context/finance/types';
+import { useConfig } from '@/context/ConfigContext';
+import { formatCurrencyValue, getCurrencyLocale } from '@/utils/currencyUtils';
 
 interface Transaction {
   id: string;
@@ -33,6 +35,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   onTransactionClick,
   emptyMessage = "Nenhuma transação encontrada"
 }) => {
+  const { currency } = useConfig();
+  
   if (!transactions || transactions.length === 0) {
     return (
       <div className="text-center py-6">
@@ -55,6 +59,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   
   // Apply limit if specified
   const displayTransactions = limit ? uniqueTransactions.slice(0, limit) : uniqueTransactions;
+  
+  // Get the proper locale for the current currency
+  const locale = getCurrencyLocale(currency);
 
   return (
     <div className="space-y-3">
@@ -85,7 +92,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
                 <p className="text-white font-medium">{transaction.description}</p>
                 <div className="flex text-xs space-x-2">
                   <span className="text-gray-400">
-                    {format(transaction.date, 'dd MMM yyyy', { locale: ptBR })}
+                    {format(transaction.date, 'dd MMM yyyy', { locale })}
                   </span>
                   {transaction.category && (
                     <span style={{ color: getCategoryColor(transaction.category) }}>
@@ -108,7 +115,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
                   ? '•' 
                   : '-'
               }
-              {formatCurrency(transaction.amount)}
+              {formatCurrencyValue(transaction.amount, currency)}
             </span>
           </div>
         </Card>

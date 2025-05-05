@@ -1,162 +1,65 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { FinanceProvider, useFinance } from "@/context/finance/FinanceContext";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import AddIncome from "./pages/AddIncome";
-import Expenses from "./pages/Expenses";
-import Investments from "./pages/Investments";
-import Simulator from "./pages/Simulator";
-import NotFound from "./pages/NotFound";
-import AllTransactions from './pages/AllTransactions';
-import Settings from './pages/Settings';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { FinanceProvider } from './context/FinanceContext';
+import { ConfigProvider } from './context/ConfigContext';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import AddTransaction from './pages/AddTransaction';
+import Expenses from './pages/Expenses';
 import Transactions from './pages/Transactions';
+import AllTransactions from './pages/AllTransactions';
+import FutureTransactions from './pages/FutureTransactions';
+import Investments from './pages/Investments';
+import Settings from './pages/Settings';
 import CashFlow from './pages/CashFlow';
+import AddIncome from './pages/AddIncome';
+import FutureTransactionsGraph from './pages/FutureTransactionsGraph';
 import InvestmentReturns from './pages/InvestmentReturns';
 import UserComparison from './pages/UserComparison';
-import AddTransaction from './pages/AddTransaction';
 import SimulationPage from './pages/SimulationPage';
-import { useEffect } from "react";
+import Simulator from './pages/Simulator';
+import NotFound from './pages/NotFound';
+import './App.css';
 
-const queryClient = new QueryClient();
-
-// Protected Route component that uses useFinance hook
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, selectedProfile, loading } = useFinance();
-  
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen bg-finance-dark">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-finance-blue"></div>
-    </div>;
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  if (!selectedProfile) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
-// App Routes component with useFinance hook, but now properly wrapped
-const AppRoutes = () => {
-  const { isAuthenticated, selectedProfile } = useFinance();
-  
-  // Redirect to dashboard if already authenticated and profile selected
+function App() {
   useEffect(() => {
-    if (isAuthenticated && selectedProfile && window.location.pathname === '/login') {
-      window.location.href = '/dashboard';
-    }
-  }, [isAuthenticated, selectedProfile]);
-  
-  return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Login />} />
-      
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/transactions" element={
-        <ProtectedRoute>
-          <Transactions />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/add-income" element={
-        <ProtectedRoute>
-          <AddIncome />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/add-transaction" element={
-        <ProtectedRoute>
-          <AddTransaction />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/expenses" element={
-        <ProtectedRoute>
-          <Expenses />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/investments" element={
-        <ProtectedRoute>
-          <Investments />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/simulator" element={
-        <ProtectedRoute>
-          <Simulator />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/simulation-page" element={
-        <ProtectedRoute>
-          <SimulationPage />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/all-transactions" element={
-        <ProtectedRoute>
-          <AllTransactions />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/cashflow" element={
-        <ProtectedRoute>
-          <CashFlow />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/investment-returns" element={
-        <ProtectedRoute>
-          <InvestmentReturns />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/user-comparison" element={
-        <ProtectedRoute>
-          <UserComparison />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-};
+    document.body.classList.add('bg-finance-dark');
+    return () => {
+      document.body.classList.remove('bg-finance-dark');
+    };
+  }, []);
 
-// Main App component where we arrange providers
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
+  return (
+    <Router>
+      <ConfigProvider>
         <FinanceProvider>
-          <Toaster />
-          <Sonner />
-          <AppRoutes />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/add-transaction" element={<AddTransaction />} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/all-transactions" element={<AllTransactions />} />
+            <Route path="/future-transactions" element={<FutureTransactions />} />
+            <Route path="/future-transactions-graph" element={<FutureTransactionsGraph />} />
+            <Route path="/investments" element={<Investments />} />
+            <Route path="/investment-returns" element={<InvestmentReturns />} />
+            <Route path="/user-comparison" element={<UserComparison />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/cash-flow" element={<CashFlow />} />
+            <Route path="/add-income" element={<AddIncome />} />
+            <Route path="/simulation" element={<SimulationPage />} />
+            <Route path="/simulator" element={<Simulator />} />
+            <Route path="/" element={<Navigate replace to="/dashboard" />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster position="top-center" />
         </FinanceProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </ConfigProvider>
+    </Router>
+  );
+}
 
 export default App;

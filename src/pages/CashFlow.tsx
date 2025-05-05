@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   ArrowLeft, 
   TrendingUp, 
@@ -29,13 +30,28 @@ import {
   Bar
 } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
-import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, subYears, addYears, isSameDay } from 'date-fns';
+import { useConfig } from '@/context/ConfigContext';
+import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, 
+  subYears, addYears, isSameDay, addDays, addWeeks, addYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
+import { formatCurrencyValue, getCurrencyLocale } from '@/utils/currencyUtils';
 import BottomNav from '@/components/ui/bottom-nav';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const CashFlow = () => {
   const navigate = useNavigate();
@@ -48,13 +64,21 @@ const CashFlow = () => {
     getTotalInvestmentsWithReturns
   } = useFinance();
   
+  const {
+    currency,
+    projectionTimeUnit,
+    setProjectionTimeUnit,
+    projectionTimeAmount,
+    setProjectionTimeAmount
+  } = useConfig();
+  
   const [chartPeriod, setChartPeriod] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
   const [showProjection, setShowProjection] = useState(true);
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area');
   const [isLoading, setIsLoading] = useState(true);
+  const [customTimeAmount, setCustomTimeAmount] = useState(projectionTimeAmount.toString());
   
   const userFinances = currentUser ? finances[currentUser.id] : undefined;
-
   const futureTransactions = getFutureTransactions();
   
   useEffect(() => {
@@ -64,73 +88,146 @@ const CashFlow = () => {
     return () => clearTimeout(timer);
   }, []);
   
+  useEffect(() => {
+    setCustomTimeAmount(projectionTimeAmount.toString());
+  }, [projectionTimeAmount]);
+  
   if (!currentUser) {
     navigate('/login');
     return null;
   }
   
+  const handleTimeAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomTimeAmount(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      setProjectionTimeAmount(numValue);
+    }
+  };
+  
+  const getDateByUnit = (date: Date, amount: number, unit: 'days' | 'weeks' | 'months' | 'years'): Date => {
+    const newDate = new Date(date);
+    switch (unit) {
+      case 'days':
+        return addDays(newDate, amount);
+      case 'weeks':
+        return addWeeks(newDate, amount);
+      case 'months':
+        return addMonths(newDate, amount);
+      case 'years':
+        return addYears(newDate, amount);
+      default:
+        return newDate;
+    }
+  };
+  
+  const getFormattedDate = (date: Date, unit: 'days' | 'weeks' | 'months' | 'years'): string => {
+    switch (unit) {
+      case 'days':
+        return format(date, 'dd MMM', { locale: getCurrencyLocale(currency) });
+      case 'weeks':
+        return format(date, "'S'w MMM", { locale: getCurrencyLocale(currency) });
+      case 'months':
+        return format(date, 'MMM yyyy', { locale: getCurrencyLocale(currency) });
+      case 'years':
+        return format(date, 'yyyy', { locale: getCurrencyLocale(currency) });
+      default:
+        return format(date, 'MMM yyyy', { locale: getCurrencyLocale(currency) });
+    }
+  };
+  
   const prepareChartData = () => {
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const startDate = new Date(currentYear, 0, 1); // Janeiro do ano atual
-    const endDate = new Date(currentYear + 1, 0, 1); // Janeiro do próximo ano
     
-    const months = [];
-    let currentDate = new Date(startDate);
+    // Calculate the dates based on the projection time unit
+    const datesToShow = [];
+    const totalPeriods = projectionTimeAmount * 2; // Show past and future periods
     
-    while (currentDate <= endDate) {
-      months.push(new Date(currentDate));
-      currentDate = addMonths(currentDate, 1);
+    // Start from past periods
+    for (let i = -totalPeriods/2; i <= totalPeriods/2; i++) {
+      const dateForPeriod = getDateByUnit(today, i, projectionTimeUnit);
+      datesToShow.push(dateForPeriod);
     }
     
-    return months.map(month => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
+    return datesToShow.map(date => {
+      const periodStart = date;
       
-      const monthPrefix = `chart-${format(month, 'yyyy-MM')}`;
+      // Get transactions for this period
+      const periodPrefix = `chart-${format(date, 'yyyy-MM-dd')}`;
       
-      const monthTransactions = futureTransactions.filter(transaction => 
-        isSameMonth(new Date(transaction.date), month)
-      );
+      // Filter transactions for this period based on the unit
+      const periodTransactions = futureTransactions.filter(transaction => {
+        const transactionDate = new Date(transaction.date);
+        
+        switch (projectionTimeUnit) {
+          case 'days':
+            return isSameDay(transactionDate, date);
+          case 'weeks':
+            const weekStart = startOfMonth(date);
+            const weekEnd = endOfMonth(date);
+            return isAfter(transactionDate, weekStart) && isBefore(transactionDate, weekEnd);
+          case 'months':
+            return isSameMonth(transactionDate, date);
+          case 'years':
+            return transactionDate.getFullYear() === date.getFullYear();
+          default:
+            return isSameMonth(transactionDate, date);
+        }
+      });
       
-      const uniqueMonthTransactions = getUniqueTransactionsByMonth(monthTransactions, monthPrefix);
+      const uniquePeriodTransactions = getUniqueTransactionsByMonth(periodTransactions, periodPrefix);
       
-      const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueMonthTransactions);
+      const { totalIncome, totalExpense } = calculatePeriodTotals(uniquePeriodTransactions);
       
       let investmentProjection = 0;
-      const monthsFromNow = Math.max(0, 
-        (month.getFullYear() - today.getFullYear()) * 12 + 
-        month.getMonth() - today.getMonth()
-      );
+      let timeFromNow = 0;
       
-      if (showProjection && (isAfter(month, today) || isSameMonth(month, today))) {
-        investmentProjection = getProjectedInvestmentReturn(monthsFromNow);
+      // Calculate months equivalent from now for the investment projection
+      switch (projectionTimeUnit) {
+        case 'days':
+          timeFromNow = Math.round((date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000) / 30);
+          break;
+        case 'weeks':
+          timeFromNow = Math.round((date.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000) / 4);
+          break;
+        case 'months':
+          timeFromNow = (date.getFullYear() - today.getFullYear()) * 12 + date.getMonth() - today.getMonth();
+          break;
+        case 'years':
+          timeFromNow = (date.getFullYear() - today.getFullYear()) * 12;
+          break;
+      }
+      
+      if (showProjection && timeFromNow >= 0) {
+        investmentProjection = getProjectedInvestmentReturn(timeFromNow);
       }
       
       const balance = totalIncome - totalExpense;
       
       let totalInvestmentValue;
-      if (isSameMonth(month, today)) {
+      if (isSameMonth(date, today)) {
         totalInvestmentValue = getTotalInvestmentsWithReturns();
       } else {
-        // For future months, we add the projected returns to the base investment
+        // For future dates, we add the projected returns to the base investment
         const baseInvestment = getTotalInvestments();
         
-        if (isAfter(month, today)) {
+        if (isAfter(date, today)) {
           totalInvestmentValue = baseInvestment + investmentProjection;
         } else {
-          // For past months, just show the base investment since we don't have historical data
+          // For past dates, just show the base investment since we don't have historical data
           totalInvestmentValue = baseInvestment;
         }
       }
       
       return {
-        month: format(month, 'MMM yyyy', { locale: ptBR }),
+        period: getFormattedDate(date, projectionTimeUnit),
         income: totalIncome,
         expense: totalExpense,
         balance,
         investment: totalInvestmentValue,
-        date: month
+        date: date,
+        isFuture: isAfter(date, today)
       };
     });
   };
@@ -152,17 +249,17 @@ const CashFlow = () => {
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#333" />
             <XAxis 
-              dataKey="month" 
+              dataKey="period" 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value)} 
+              tickFormatter={(value) => formatCurrencyValue(value, currency, { notation: 'compact' })} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
             <Tooltip 
-              formatter={(value) => formatCurrency(Number(value))}
+              formatter={(value) => formatCurrencyValue(Number(value), currency)}
               contentStyle={{ backgroundColor: '#222', border: 'none', borderRadius: '4px' }}
               labelStyle={{ color: '#fff' }}
             />
@@ -181,17 +278,17 @@ const CashFlow = () => {
           <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#333" />
             <XAxis 
-              dataKey="month" 
+              dataKey="period" 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value)} 
+              tickFormatter={(value) => formatCurrencyValue(value, currency, { notation: 'compact' })} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
             <Tooltip 
-              formatter={(value) => formatCurrency(Number(value))}
+              formatter={(value) => formatCurrencyValue(Number(value), currency)}
               contentStyle={{ backgroundColor: '#222', border: 'none', borderRadius: '4px' }}
               labelStyle={{ color: '#fff' }}
             />
@@ -210,17 +307,17 @@ const CashFlow = () => {
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#333" />
             <XAxis 
-              dataKey="month" 
+              dataKey="period" 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value)} 
+              tickFormatter={(value) => formatCurrencyValue(value, currency, { notation: 'compact' })} 
               tick={{ fill: '#aaa' }} 
               axisLine={{ stroke: '#333' }} 
             />
             <Tooltip 
-              formatter={(value) => formatCurrency(Number(value))}
+              formatter={(value) => formatCurrencyValue(Number(value), currency)}
               contentStyle={{ backgroundColor: '#222', border: 'none', borderRadius: '4px' }}
               labelStyle={{ color: '#fff' }}
             />
@@ -291,18 +388,67 @@ const CashFlow = () => {
             </div>
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowProjection(!showProjection)}
-            className={cn(
-              "border-gray-600",
-              showProjection && "bg-finance-blue text-white"
-            )}
-          >
-            <Calendar className="h-4 w-4 mr-1" />
-            Projeção
-          </Button>
+          <div className="flex gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "border-gray-600"
+                  )}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Projeção: {projectionTimeAmount} {
+                    projectionTimeUnit === 'days' ? 'dias' :
+                    projectionTimeUnit === 'weeks' ? 'semanas' :
+                    projectionTimeUnit === 'months' ? 'meses' : 'anos'
+                  }
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="bg-finance-dark-card border-finance-dark-lighter w-80">
+                <div className="space-y-4 p-2">
+                  <h4 className="text-sm font-medium text-white">Período de projeção</h4>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={customTimeAmount}
+                      onChange={handleTimeAmountChange}
+                      className="finance-input"
+                    />
+                    <Select 
+                      value={projectionTimeUnit} 
+                      onValueChange={(value) => setProjectionTimeUnit(value as 'days' | 'weeks' | 'months' | 'years')}
+                    >
+                      <SelectTrigger className="finance-input">
+                        <SelectValue placeholder="Unidade" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-finance-dark-card border-finance-dark-lighter">
+                        <SelectItem value="days">Dias</SelectItem>
+                        <SelectItem value="weeks">Semanas</SelectItem>
+                        <SelectItem value="months">Meses</SelectItem>
+                        <SelectItem value="years">Anos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowProjection(!showProjection)}
+                      className={cn(
+                        "border-gray-600",
+                        showProjection && "bg-finance-blue text-white"
+                      )}
+                    >
+                      Mostrar Projeção
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
         
         <Card className="bg-finance-dark-card p-4 mb-4 overflow-x-auto">
@@ -315,10 +461,11 @@ const CashFlow = () => {
               <ArrowUp className="text-green-500" size={20} />
               <h3 className="text-gray-300">Entradas</h3>
             </div>
-            <p className="text-xl font-bold text-white break-words">{formatCurrency(
-              chartData.reduce((sum, month) => sum + month.income, 0)
+            <p className="text-xl font-bold text-white break-words">{formatCurrencyValue(
+              chartData.reduce((sum, period) => sum + period.income, 0),
+              currency
             )}</p>
-            <p className="text-xs text-gray-400 mt-1">Jan - Jan/Próximo</p>
+            <p className="text-xs text-gray-400 mt-1">Total do período</p>
           </Card>
           
           <Card className="bg-finance-dark-card p-4">
@@ -326,10 +473,11 @@ const CashFlow = () => {
               <ArrowDown className="text-red-500" size={20} />
               <h3 className="text-gray-300">Saídas</h3>
             </div>
-            <p className="text-xl font-bold text-white break-words">{formatCurrency(
-              chartData.reduce((sum, month) => sum + month.expense, 0)
+            <p className="text-xl font-bold text-white break-words">{formatCurrencyValue(
+              chartData.reduce((sum, period) => sum + period.expense, 0),
+              currency
             )}</p>
-            <p className="text-xs text-gray-400 mt-1">Jan - Jan/Próximo</p>
+            <p className="text-xs text-gray-400 mt-1">Total do período</p>
           </Card>
         </div>
         
@@ -339,12 +487,12 @@ const CashFlow = () => {
             <h3 className="text-gray-300">Investimentos (com retornos)</h3>
           </div>
           <p className="text-xl font-bold text-white break-words">
-            {formatCurrency(getTotalInvestmentsWithReturns())}
+            {formatCurrencyValue(getTotalInvestmentsWithReturns(), currency)}
           </p>
           <div className="text-sm text-gray-400 mt-1 break-words">
-            <p>Investido: {formatCurrency(getTotalInvestments())}</p>
-            <p>Retorno projetado (3 meses): {formatCurrency(getProjectedInvestmentReturn(3))}</p>
-            <p>Retorno projetado (12 meses): {formatCurrency(getProjectedInvestmentReturn(12))}</p>
+            <p>Investido: {formatCurrencyValue(getTotalInvestments(), currency)}</p>
+            <p>Retorno projetado (3 meses): {formatCurrencyValue(getProjectedInvestmentReturn(3), currency)}</p>
+            <p>Retorno projetado (12 meses): {formatCurrencyValue(getProjectedInvestmentReturn(12), currency)}</p>
           </div>
         </Card>
       </div>

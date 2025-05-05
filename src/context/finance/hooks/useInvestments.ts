@@ -10,6 +10,14 @@ export const useInvestments = (
   finances: Record<string, any>,
   setFinances: React.Dispatch<React.SetStateAction<Record<string, any>>>
 ) => {
+  // Store a reference to the fetchTransactions function
+  let fetchTransactionsRef: () => Promise<void> = async () => {};
+
+  // Function to set the fetchTransactions reference
+  const setFetchTransactions = (fn: () => Promise<void>) => {
+    fetchTransactionsRef = fn;
+  };
+
   const addInvestment = async (investment: Omit<Investment, 'id'>): Promise<void> => {
     if (!currentUser) return;
     
@@ -307,9 +315,9 @@ export const useInvestments = (
         };
       });
       
-      // Make sure this is defined in the props or context
-      if (typeof fetchTransactions === 'function') {
-        await fetchTransactions();
+      // Call fetchTransactions if available
+      if (fetchTransactionsRef) {
+        await fetchTransactionsRef();
       }
       
     } catch (error) {
@@ -319,10 +327,11 @@ export const useInvestments = (
   };
 
   // Fixed function to avoid excessive instantiation
-  const getProjectedInvestmentReturn = (months: number): number => {
-    if (!currentUser) return 0;
+  const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
+    const targetUserId = userId || (currentUser ? currentUser.id : '');
+    if (!targetUserId) return 0;
     
-    const userFinances = finances[currentUser.id] || { investments: [] };
+    const userFinances = finances[targetUserId] || { investments: [] };
     const today = new Date();
     let totalReturn = 0;
     
@@ -371,10 +380,11 @@ export const useInvestments = (
     return totalReturn;
   };
 
-  const getTotalInvestments = (): number => {
-    if (!currentUser) return 0;
+  const getTotalInvestments = (userId?: string): number => {
+    const targetUserId = userId || (currentUser ? currentUser.id : '');
+    if (!targetUserId) return 0;
     
-    const userFinances = finances[currentUser.id] || { investments: [] };
+    const userFinances = finances[targetUserId] || { investments: [] };
     
     return userFinances.investments.reduce((total: number, investment: Investment) => {
       // Only count non-finalized investments
@@ -385,10 +395,11 @@ export const useInvestments = (
     }, 0);
   };
 
-  const getTotalInvestmentsWithReturns = (): number => {
-    if (!currentUser) return 0;
+  const getTotalInvestmentsWithReturns = (userId?: string): number => {
+    const targetUserId = userId || (currentUser ? currentUser.id : '');
+    if (!targetUserId) return 0;
     
-    const userFinances = finances[currentUser.id] || { investments: [] };
+    const userFinances = finances[targetUserId] || { investments: [] };
     const today = new Date();
     
     return userFinances.investments.reduce((total: number, investment: Investment) => {
@@ -427,6 +438,7 @@ export const useInvestments = (
     finalizeInvestment,
     getTotalInvestments,
     getTotalInvestmentsWithReturns,
-    getProjectedInvestmentReturn
+    getProjectedInvestmentReturn,
+    setFetchTransactions
   };
 };

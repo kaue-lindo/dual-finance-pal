@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { FinanceContextType, UserFinances, FutureTransaction } from './types';
+import { FinanceContextType, UserFinances, FutureTransaction, TransactionType } from './types';
 import { defaultFinances } from './constants';
 import { useAuth } from './hooks/useAuth';
 import { useExpenses } from './hooks/useExpenses';
@@ -9,6 +9,7 @@ import { useInvestments } from './hooks/useInvestments';
 import { useTransactions } from './hooks/useTransactions';
 import { useUserProfile } from './hooks/useUserProfile';
 import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
+import { useConfig } from '@/context/ConfigContext';
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
@@ -29,19 +30,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     isAuthenticated
   } = useAuth();
   
+  const config = useConfig();
+  
   const expenses = useExpenses(currentUser, finances, setFinances);
   const incomes = useIncomes(currentUser, finances, setFinances);
   const investments = useInvestments(currentUser, finances, setFinances);
   const transactions = useTransactions(currentUser, finances, setFinances);
   const userProfile = useUserProfile(currentUser, setCurrentUser);
 
-  // Create a fetchTransactions reference for investments to use
-  const fetchTransactionsForInvestments = transactions.fetchTransactions;
-
-  // Pass the fetchTransactionsForInvestments to investments
-  Object.defineProperty(investments, 'fetchTransactions', {
-    value: fetchTransactionsForInvestments
-  });
+  // Connect the fetchTransactions function to useInvestments
+  useEffect(() => {
+    if (investments && transactions.fetchTransactions) {
+      investments.setFetchTransactions(transactions.fetchTransactions);
+    }
+  }, [investments, transactions]);
 
   // Fetch transactions when user changes or auth state changes
   useEffect(() => {
@@ -73,56 +75,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Function to get total investments for a specific user
   const getTotalInvestmentsForUser = (userId?: string) => {
-    const targetUserId = userId || (currentUser ? currentUser.id : '');
-    if (!targetUserId) return 0;
-    
-    const userFinances = finances[targetUserId];
-    if (!userFinances || !userFinances.investments) return 0;
-    
-    return userFinances.investments.reduce((total, investment) => {
-      // Only count non-finalized investments
-      if (!investment.isFinalized) {
-        return total + investment.amount;
-      }
-      return total;
-    }, 0);
+    return investments.getTotalInvestments(userId);
   };
 
   // Function to get total investments with returns for a specific user
   const getTotalInvestmentsWithReturnsForUser = (userId?: string) => {
-    const targetUserId = userId || (currentUser ? currentUser.id : '');
-    if (!targetUserId) return 0;
-    
-    const userFinances = finances[targetUserId];
-    if (!userFinances || !userFinances.investments) return 0;
-    
-    const today = new Date();
-    
-    return userFinances.investments.reduce((total, investment) => {
-      // Skip finalized investments
-      if (investment.isFinalized) return total;
-      
-      const startDate = new Date(investment.startDate);
-      
-      // Skip investments that haven't started yet
-      if (startDate > today) {
-        return total + investment.amount; // Just return the principal
-      }
-      
-      const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                       (today.getMonth() - startDate.getMonth());
-      
-      const isPeriodMonthly = investment.period === 'monthly';
-      const isCompound = investment.isCompound !== false;
-      
-      // Use the investment utility to calculate the current value
-      const futureValue = investment.amount * Math.pow(
-        1 + (isPeriodMonthly ? investment.rate / 100 : investment.rate / 1200), 
-        Math.max(0, monthsDiff)
-      );
-      
-      return total + futureValue;
-    }, 0);
+    return investments.getTotalInvestmentsWithReturns(userId);
+  };
+
+  // Function to get projected investment return for specific period and user
+  const getProjectedInvestmentReturnForUser = (months: number, userId?: string) => {
+    return investments.getProjectedInvestmentReturn(months, userId);
   };
 
   // Function to get category expenses for a specific user
@@ -175,7 +138,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getExpenseCategories: expenses.getExpenseCategories,
         getTotalInvestments: getTotalInvestmentsForUser,
         getTotalInvestmentsWithReturns: getTotalInvestmentsWithReturnsForUser,
-        getProjectedInvestmentReturn: investments.getProjectedInvestmentReturn,
+        getProjectedInvestmentReturn: getProjectedInvestmentReturnForUser,
         getCategoryExpenses: getCategoryExpensesForUser,
         getRealIncome: incomes.getRealIncome,
         updateUserProfile: userProfile.updateUserProfile,

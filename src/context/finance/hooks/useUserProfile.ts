@@ -65,9 +65,25 @@ export const useUserProfile = (
       // Update stored users collection
       const savedUsers = localStorage.getItem('financeUsers');
       if (savedUsers) {
-        const storedUsers = JSON.parse(savedUsers);
-        storedUsers[currentUser.id] = updatedUser;
-        localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
+        try {
+          const storedUsers = JSON.parse(savedUsers);
+          if (typeof storedUsers === 'object') {
+            // Check if it's an array (old format) or object (new format)
+            if (Array.isArray(storedUsers)) {
+              // Old format: array of users
+              const updatedUsers = storedUsers.map(user => 
+                user.id === currentUser.id ? updatedUser : user
+              );
+              localStorage.setItem('financeUsers', JSON.stringify(updatedUsers));
+            } else {
+              // New format: object with user IDs as keys
+              storedUsers[currentUser.id] = updatedUser;
+              localStorage.setItem('financeUsers', JSON.stringify(storedUsers));
+            }
+          }
+        } catch (e) {
+          console.error('Error updating users in localStorage:', e);
+        }
       }
       
       // Update selected profile in localStorage
