@@ -54,12 +54,14 @@ export type UserFinances = {
   balance: number;
 };
 
+export type TransactionType = 'income' | 'expense' | 'investment' | 'investment_value';
+
 export type FutureTransaction = {
   id: string;
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense' | 'investment' | 'investment_value'; // Updated to include 'investment_value'
+  type: TransactionType;
   category: string;
   sourceCategory?: string;
   parent_investment_id?: string;

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Investment, FutureTransaction } from '../types';
+import { Investment, FutureTransaction, IncomeCategory } from '../types';
 import { calculateInvestmentReturn, calculateInvestmentGrowthForMonth } from '../utils/projections';
 
 export const useInvestments = (
@@ -307,8 +307,10 @@ export const useInvestments = (
         };
       });
       
-      // Refresh transactions to update the UI
-      await fetchTransactions();
+      // Make sure this is defined in the props or context
+      if (typeof fetchTransactions === 'function') {
+        await fetchTransactions();
+      }
       
     } catch (error) {
       console.error('Error in finalizeInvestment:', error);
@@ -316,9 +318,57 @@ export const useInvestments = (
     }
   };
 
-  const fetchTransactions = async () => {
-    // This will be implemented when we connect to the FinanceContext
-    // Just a placeholder to avoid TypeScript errors
+  // Fixed function to avoid excessive instantiation
+  const getProjectedInvestmentReturn = (months: number): number => {
+    if (!currentUser) return 0;
+    
+    const userFinances = finances[currentUser.id] || { investments: [] };
+    const today = new Date();
+    let totalReturn = 0;
+    
+    userFinances.investments.forEach((investment: Investment) => {
+      // Skip finalized investments
+      if (investment.isFinalized) return;
+      
+      const startDate = new Date(investment.startDate);
+      
+      const projectedDate = new Date();
+      projectedDate.setMonth(today.getMonth() + months);
+      
+      // Skip investments that haven't started by the projected date
+      if (startDate > projectedDate) {
+        return;
+      }
+      
+      // Calculate how many months the investment will have been active
+      let monthsActive = 0;
+      if (startDate <= today) {
+        // For investments already started, count from today plus projection months
+        monthsActive = months;
+      } else {
+        // For future investments, count from start date to projected date
+        monthsActive = (projectedDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                      (projectedDate.getMonth() - startDate.getMonth());
+      }
+      
+      const isPeriodMonthly = investment.period === 'monthly';
+      const isCompound = investment.isCompound !== false;
+      
+      // Calculate future value
+      const futureValue = calculateInvestmentGrowthForMonth(
+        investment.amount,
+        investment.rate,
+        isPeriodMonthly,
+        monthsActive,
+        isCompound
+      );
+      
+      // Add just the returns (not the principal)
+      const returnAmount = futureValue - investment.amount;
+      totalReturn += returnAmount;
+    });
+    
+    return totalReturn;
   };
 
   const getTotalInvestments = (): number => {
@@ -369,59 +419,6 @@ export const useInvestments = (
       
       return total + totalValue;
     }, 0);
-  };
-
-  // Fixed function to avoid excessive instantiation
-  const getProjectedInvestmentReturn = (months: number): number => {
-    if (!currentUser) return 0;
-    
-    const userFinances = finances[currentUser.id] || { investments: [] };
-    const today = new Date();
-    let totalReturn = 0;
-    
-    userFinances.investments.forEach(investment => {
-      // Skip finalized investments
-      if (investment.isFinalized) return;
-      
-      const startDate = new Date(investment.startDate);
-      
-      const projectedDate = new Date();
-      projectedDate.setMonth(today.getMonth() + months);
-      
-      // Skip investments that haven't started by the projected date
-      if (startDate > projectedDate) {
-        return;
-      }
-      
-      // Calculate how many months the investment will have been active
-      let monthsActive = 0;
-      if (startDate <= today) {
-        // For investments already started, count from today plus projection months
-        monthsActive = months;
-      } else {
-        // For future investments, count from start date to projected date
-        monthsActive = (projectedDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                      (projectedDate.getMonth() - startDate.getMonth());
-      }
-      
-      const isPeriodMonthly = investment.period === 'monthly';
-      const isCompound = investment.isCompound !== false;
-      
-      // Calculate future value
-      const futureValue = calculateInvestmentGrowthForMonth(
-        investment.amount,
-        investment.rate,
-        isPeriodMonthly,
-        monthsActive,
-        isCompound
-      );
-      
-      // Add just the returns (not the principal)
-      const returnAmount = futureValue - investment.amount;
-      totalReturn += returnAmount;
-    });
-    
-    return totalReturn;
   };
 
   return {

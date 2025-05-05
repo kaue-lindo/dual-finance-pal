@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -6,13 +7,14 @@ import { formatCurrency } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { getCategoryColor, formatCategoryName } from '@/utils/chartUtils';
 import { getUniqueTransactionsByMonth } from '@/utils/transaction-utils';
+import { TransactionType } from '@/context/finance/types';
 
 interface Transaction {
   id: string;
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense' | 'investment' | 'investment_value';
+  type: TransactionType;
   category?: string;
 }
 

@@ -35,13 +35,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const transactions = useTransactions(currentUser, finances, setFinances);
   const userProfile = useUserProfile(currentUser, setCurrentUser);
 
-  // Pass the fetchTransactions to investments for use in finalizeInvestment
-  // This is needed to update the transactions after finalizing an investment
-  if (investments.fetchTransactions === undefined) {
-    Object.defineProperty(investments, 'fetchTransactions', {
-      value: transactions.fetchTransactions
-    });
-  }
+  // Create a fetchTransactions reference for investments to use
+  const fetchTransactionsForInvestments = transactions.fetchTransactions;
+
+  // Pass the fetchTransactionsForInvestments to investments
+  Object.defineProperty(investments, 'fetchTransactions', {
+    value: fetchTransactionsForInvestments
+  });
 
   // Fetch transactions when user changes or auth state changes
   useEffect(() => {

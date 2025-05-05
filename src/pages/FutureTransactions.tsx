@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -14,13 +15,14 @@ import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getCategoryColor } from '@/utils/chartUtils';
 import BottomNav from '@/components/ui/bottom-nav';
+import { TransactionType, FutureTransaction as FutureTransactionType } from '@/context/finance/types';
 
-type TransactionType = {
+type Transaction = {
   id: string;
   date: Date;
   description: string;
   amount: number;
-  type: 'income' | 'expense' | 'investment';
+  type: TransactionType;
   category: string;
   sourceCategory?: string;
 };
@@ -34,7 +36,7 @@ const FutureTransactions = () => {
     fetchTransactions
   } = useFinance();
   const navigate = useNavigate();
-  const [transactions, setTransactions] = useState<TransactionType[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,7 +85,7 @@ const FutureTransactions = () => {
       .filter(t => {
         if (activeTab === 'income' && t.type !== 'income') return false;
         if (activeTab === 'expense' && t.type !== 'expense') return false;
-        if (activeTab === 'investment' && t.type !== 'investment') return false;
+        if (activeTab === 'investment' && t.type !== 'investment' && t.type !== 'investment_value') return false;
 
         if (categoryFilter && t.category !== categoryFilter) return false;
 
@@ -192,13 +194,13 @@ const FutureTransactions = () => {
                     <div className={`w-8 h-8 rounded-full ${
                       transaction.type === 'income' 
                         ? 'bg-green-500/20' 
-                        : transaction.type === 'investment' 
+                        : transaction.type === 'investment' || transaction.type === 'investment_value'
                           ? 'bg-blue-500/20' 
                           : 'bg-red-500/20'
                     } flex items-center justify-center`}>
                       {transaction.type === 'income' ? 
                         <DollarSign size={18} className="text-green-400" /> : 
-                        transaction.type === 'investment' ?
+                        transaction.type === 'investment' || transaction.type === 'investment_value' ?
                         <BarChart size={18} className="text-blue-400" /> :
                         <ShoppingCart size={18} style={{ color: getCategoryColor(transaction.category) }} />
                       }
@@ -225,11 +227,11 @@ const FutureTransactions = () => {
                       <p className={
                         transaction.type === 'income' 
                           ? 'text-green-400' 
-                          : transaction.type === 'investment' 
+                          : transaction.type === 'investment' || transaction.type === 'investment_value'
                             ? 'text-blue-400' 
                             : 'text-red-400'
                       }>
-                        {transaction.type === 'income' ? '+' : transaction.type === 'investment' ? '•' : '-'}
+                        {transaction.type === 'income' ? '+' : transaction.type === 'investment' || transaction.type === 'investment_value' ? '•' : '-'}
                         {formatCurrency(transaction.amount)}
                       </p>
                     </div>
