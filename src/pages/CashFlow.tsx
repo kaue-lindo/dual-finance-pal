@@ -32,7 +32,7 @@ import {
 import { useFinance } from '@/context/FinanceContext';
 import { useConfig } from '@/context/ConfigContext';
 import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, 
-  subYears, addYears, isSameDay, addDays, addWeeks, addYears } from 'date-fns';
+  subYears, addYears, isSameDay, addDays, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
 import { formatCurrencyValue, getCurrencyLocale } from '@/utils/currencyUtils';
