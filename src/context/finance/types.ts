@@ -97,7 +97,12 @@ export interface FinanceContextType {
   getProjectedInvestmentReturn: (months: number, userId?: string) => number;
   getCategoryExpenses: (userId?: string) => { category: string; amount: number }[];
   getRealIncome: () => number;
-  updateUserProfile: (userData: { name?: string; avatarUrl?: string }) => Promise<User>;
+  updateUserProfile: (userData: { 
+    name?: string; 
+    avatarUrl?: string; 
+    phone?: string;
+    photo?: string;
+  }) => Promise<User>;
   getUserBalance: (userId: string) => number;
   getUserFinances: (userId: string) => UserFinances;
   supabaseUser: any;

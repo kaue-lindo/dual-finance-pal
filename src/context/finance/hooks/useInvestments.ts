@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -326,7 +327,7 @@ export const useInvestments = (
   };
 
   // Fix the problematic getProjectedInvestmentReturn function
-  const getProjectedInvestmentReturn = (months: number, userId?: string) => {
+  const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
     const targetUserId = userId || (currentUser ? currentUser.id : '');
     if (!targetUserId) return 0;
     
@@ -334,7 +335,7 @@ export const useInvestments = (
     if (!userFinances || !userFinances.investments) return 0;
     
     // Calculate the total projected return for all investments
-    return userFinances.investments.reduce((total, investment) => {
+    return userFinances.investments.reduce((total: number, investment: Investment) => {
       if (investment.isFinalized) {
         return total; // Skip finalized investments
       }

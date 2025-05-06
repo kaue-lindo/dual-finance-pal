@@ -7,6 +7,7 @@ export interface User {
   avatarUrl?: string;
   phone?: string;
   photo?: string;
+  profileImage?: string; // Added missing field
 }
 
 // Income categories mapping

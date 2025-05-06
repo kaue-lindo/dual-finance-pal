@@ -7,7 +7,12 @@ export const useUserProfile = (
   currentUser: User | null,
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>
 ) => {
-  const updateUserProfile = async (userData: { name?: string, avatarUrl?: string, phone?: string, photo?: string }) => {
+  const updateUserProfile = async (userData: { 
+    name?: string, 
+    avatarUrl?: string, 
+    phone?: string, 
+    photo?: string 
+  }) => {
     if (!currentUser) return currentUser as User;
     
     try {
