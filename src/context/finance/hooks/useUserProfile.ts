@@ -7,7 +7,7 @@ export const useUserProfile = (
   currentUser: User | null,
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>
 ) => {
-  const updateUserProfile = async (userData: { name?: string, avatarUrl?: string }) => {
+  const updateUserProfile = async (userData: { name?: string, avatarUrl?: string, phone?: string, photo?: string }) => {
     if (!currentUser) return currentUser as User;
     
     try {
@@ -22,7 +22,9 @@ export const useUserProfile = (
       const updatedUser = {
         ...currentUser,
         name: userData.name || currentUser.name,
-        avatarUrl: userData.avatarUrl || currentUser.avatarUrl
+        avatarUrl: userData.avatarUrl || currentUser.avatarUrl,
+        phone: userData.phone || currentUser.phone,
+        photo: userData.photo || currentUser.photo
       };
       
       // Update user profile in Supabase with improved logging
@@ -30,7 +32,9 @@ export const useUserProfile = (
         user_id: currentUser.id,
         auth_id: sessionData.session.user.id,
         name: updatedUser.name,
-        avatar_url: updatedUser.avatarUrl
+        avatar_url: updatedUser.avatarUrl,
+        phone: updatedUser.phone,
+        photo: updatedUser.photo
       });
       
       // Fix: Using upsert with proper conflict handling and proper column names
@@ -40,7 +44,9 @@ export const useUserProfile = (
           user_id: currentUser.id,
           auth_id: sessionData.session.user.id,
           name: updatedUser.name,
-          avatar_url: updatedUser.avatarUrl
+          avatar_url: updatedUser.avatarUrl,
+          phone: updatedUser.phone,
+          photo: updatedUser.photo
         }, {
           onConflict: 'user_id'
         })

@@ -27,11 +27,7 @@ const Settings = () => {
     currency, 
     setCurrency, 
     companyInfo, 
-    updateCompanyInfo,
-    projectionTimeUnit,
-    setProjectionTimeUnit,
-    projectionTimeAmount,
-    setProjectionTimeAmount
+    updateCompanyInfo 
   } = useConfig();
   
   const [name, setName] = useState('');
@@ -44,10 +40,6 @@ const Settings = () => {
   const [companyName, setCompanyName] = useState(companyInfo.name);
   const [companyEmail, setCompanyEmail] = useState(companyInfo.contactEmail);
   const [companyDescription, setCompanyDescription] = useState(companyInfo.description);
-  
-  // Time settings
-  const [timeAmount, setTimeAmount] = useState(projectionTimeAmount.toString());
-  const [timeUnit, setTimeUnit] = useState(projectionTimeUnit);
   
   useEffect(() => {
     if (currentUser) {
@@ -64,7 +56,6 @@ const Settings = () => {
     try {
       await updateUserProfile({
         name,
-        email,
         phone,
         photo
       });
@@ -88,14 +79,6 @@ const Settings = () => {
   
   const handleSaveAppSettings = () => {
     setCurrency(selectedCurrency);
-    
-    const amount = parseInt(timeAmount);
-    if (!isNaN(amount) && amount > 0) {
-      setProjectionTimeAmount(amount);
-    }
-    
-    setProjectionTimeUnit(timeUnit);
-    
     toast.success('Configurações salvas com sucesso!');
   };
   
@@ -159,8 +142,10 @@ const Settings = () => {
                       className="finance-input"
                       placeholder="exemplo@email.com"
                       type="email"
+                      disabled
                     />
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">Email não pode ser alterado</p>
                 </div>
                 
                 <div>
@@ -228,7 +213,7 @@ const Settings = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-gray-300 mb-1">Descrição</label>
+                  <label className="block text-gray-300 mb-1">Sobre a Dual Finance</label>
                   <div className="flex">
                     <Textarea 
                       value={companyDescription} 
@@ -237,6 +222,21 @@ const Settings = () => {
                       placeholder="Descreva sua empresa"
                     />
                   </div>
+                </div>
+                
+                <div className="bg-finance-dark-lighter rounded-md p-3">
+                  <h3 className="text-sm font-medium text-white mb-2">Sobre nós</h3>
+                  <p className="text-xs text-gray-300 mb-2">
+                    A Dual Finance é uma plataforma inovadora de gestão financeira fundada em 2024. 
+                    Nossa missão é tornar o controle financeiro acessível e eficiente para todos.
+                  </p>
+                  <p className="text-xs text-gray-300 mb-2">
+                    Oferecemos ferramentas intuitivas para rastreamento de despesas, gestão de receitas 
+                    e análise de investimentos, ajudando nossos usuários a tomar decisões financeiras inteligentes.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-4">
+                    © 2024 Dual Finance. Todos os direitos reservados.
+                  </p>
                 </div>
                 
                 <Button 
@@ -271,31 +271,16 @@ const Settings = () => {
                   </Select>
                 </div>
                 
-                <div>
-                  <label className="block text-gray-300 mb-1">Período de Projeção Padrão</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input 
-                      type="number"
-                      min="1"
-                      value={timeAmount} 
-                      onChange={(e) => setTimeAmount(e.target.value)} 
-                      className="finance-input"
-                      placeholder="12"
-                    />
-                    <Select 
-                      value={timeUnit} 
-                      onValueChange={(value) => setTimeUnit(value as 'days' | 'weeks' | 'months' | 'years')}
-                    >
-                      <SelectTrigger className="finance-input">
-                        <SelectValue placeholder="Unidade" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-finance-dark-card border-finance-dark-lighter">
-                        <SelectItem value="days">Dias</SelectItem>
-                        <SelectItem value="weeks">Semanas</SelectItem>
-                        <SelectItem value="months">Meses</SelectItem>
-                        <SelectItem value="years">Anos</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="bg-finance-dark-lighter rounded-md p-3">
+                  <h3 className="text-sm font-medium text-white mb-2">Precisa de ajuda?</h3>
+                  <p className="text-xs text-gray-300 mb-2">
+                    Entre em contato com nosso suporte para dúvidas ou problemas com o aplicativo.
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-gray-300">
+                    <Mail className="w-3 h-3" /> suporte@dualfinance.com
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-300 mt-1">
+                    <Globe className="w-3 h-3" /> www.dualfinance.com
                   </div>
                 </div>
                 

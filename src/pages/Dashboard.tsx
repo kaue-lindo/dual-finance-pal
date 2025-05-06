@@ -116,9 +116,44 @@ const Dashboard = () => {
     // Calculate totals using our utility function
     return calculatePeriodTotals(uniqueTransactions);
   };
-  
+
   const { totalIncome, totalExpense } = calculateIncomeAndExpense();
   const balance = totalIncome - totalExpense;
+
+  // Calculate cumulative balance from previous periods
+  const calculateCumulativeBalance = () => {
+    // Get all transactions up to the displayed period
+    const today = new Date();
+    const displayDate = new Date(currentMonth); // The date we're displaying
+    
+    let endDate: Date;
+    
+    if (activePeriod === 'day') {
+      endDate = endOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
+    } else if (activePeriod === 'week') {
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
+      endDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate() + 6);
+      endDate = endOfDay(endDate);
+    } else {
+      endDate = endOfMonth(displayDate);
+    }
+    
+    // Filter all transactions up to the end date
+    const allTransactions = futureTransactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate <= endDate;
+    });
+    
+    // Use a unique prefix for this calculation
+    const uniqueTransactions = getUniqueTransactionsByMonth(allTransactions, 'cumulative-calc');
+    
+    // Calculate totals
+    const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueTransactions);
+    
+    return totalIncome - totalExpense;
+  };
+
+  const cumulativeBalance = calculateCumulativeBalance();
   
   const currentDay = new Date().getDate();
   const month = currentMonth.getMonth();
@@ -212,7 +247,7 @@ const Dashboard = () => {
         
         <div className="text-center mb-6">
           <p className="text-sm text-gray-400 mb-1">Saldo Total</p>
-          <p className="text-3xl font-bold text-white">{formatCurrency(userFinances.balance)}</p>
+          <p className="text-3xl font-bold text-white">{formatCurrency(cumulativeBalance)}</p>
         </div>
         
         <div className="flex justify-between items-center mb-4">

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -326,58 +325,42 @@ export const useInvestments = (
     }
   };
 
-  // Fixed function to avoid excessive instantiation
-  const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
+  // Fix the problematic getProjectedInvestmentReturn function
+  const getProjectedInvestmentReturn = (months: number, userId?: string) => {
     const targetUserId = userId || (currentUser ? currentUser.id : '');
     if (!targetUserId) return 0;
     
-    const userFinances = finances[targetUserId] || { investments: [] };
-    const today = new Date();
-    let totalReturn = 0;
+    const userFinances = finances[targetUserId];
+    if (!userFinances || !userFinances.investments) return 0;
     
-    userFinances.investments.forEach((investment: Investment) => {
-      // Skip finalized investments
-      if (investment.isFinalized) return;
-      
-      const startDate = new Date(investment.startDate);
-      
-      const projectedDate = new Date();
-      projectedDate.setMonth(today.getMonth() + months);
-      
-      // Skip investments that haven't started by the projected date
-      if (startDate > projectedDate) {
-        return;
+    // Calculate the total projected return for all investments
+    return userFinances.investments.reduce((total, investment) => {
+      if (investment.isFinalized) {
+        return total; // Skip finalized investments
       }
       
-      // Calculate how many months the investment will have been active
-      let monthsActive = 0;
-      if (startDate <= today) {
-        // For investments already started, count from today plus projection months
-        monthsActive = months;
+      const rate = investment.rate / 100; // Convert percentage to decimal
+      const principal = investment.amount;
+      
+      let monthlyRate = rate;
+      if (investment.period === 'annual') {
+        // Convert annual rate to monthly rate
+        monthlyRate = Math.pow(1 + rate, 1/12) - 1;
+      }
+      
+      let returnAmount = 0;
+      
+      // Calculate based on compound or simple interest
+      if (investment.isCompound) {
+        // Compound interest formula: P(1 + r)^t - P
+        returnAmount = principal * Math.pow(1 + monthlyRate, months) - principal;
       } else {
-        // For future investments, count from start date to projected date
-        monthsActive = (projectedDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                      (projectedDate.getMonth() - startDate.getMonth());
+        // Simple interest formula: P * r * t
+        returnAmount = principal * monthlyRate * months;
       }
       
-      const isPeriodMonthly = investment.period === 'monthly';
-      const isCompound = investment.isCompound !== false;
-      
-      // Calculate future value
-      const futureValue = calculateInvestmentGrowthForMonth(
-        investment.amount,
-        investment.rate,
-        isPeriodMonthly,
-        monthsActive,
-        isCompound
-      );
-      
-      // Add just the returns (not the principal)
-      const returnAmount = futureValue - investment.amount;
-      totalReturn += returnAmount;
-    });
-    
-    return totalReturn;
+      return total + returnAmount;
+    }, 0);
   };
 
   const getTotalInvestments = (userId?: string): number => {

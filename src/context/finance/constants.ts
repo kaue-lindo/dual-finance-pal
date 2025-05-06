@@ -1,13 +1,13 @@
-
 import { IncomeCategory } from './types';
 
-export type User = {
+export interface User {
   id: string;
   name: string;
-  profileImage?: string;
+  email: string;
   avatarUrl?: string;
-  email?: string;
-};
+  phone?: string;
+  photo?: string;
+}
 
 // Income categories mapping
 export const incomeCategories = [

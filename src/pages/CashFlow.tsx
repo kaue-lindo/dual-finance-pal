@@ -31,6 +31,7 @@ import {
 } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useConfig } from '@/context/ConfigContext';
+import { useProjection } from '@/hooks/use-projection';
 import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, 
   subYears, addYears, isSameDay, addDays, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -64,19 +65,21 @@ const CashFlow = () => {
     getTotalInvestmentsWithReturns
   } = useFinance();
   
+  const { currency } = useConfig();
+  
   const {
-    currency,
     projectionTimeUnit,
     setProjectionTimeUnit,
     projectionTimeAmount,
     setProjectionTimeAmount
-  } = useConfig();
+  } = useProjection();
   
   const [chartPeriod, setChartPeriod] = useState<'3m' | '6m' | '1y' | 'all'>('1y');
   const [showProjection, setShowProjection] = useState(true);
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area');
   const [isLoading, setIsLoading] = useState(true);
   const [customTimeAmount, setCustomTimeAmount] = useState(projectionTimeAmount.toString());
+  const [useCumulativeBalance, setUseCumulativeBalance] = useState(true);
   
   const userFinances = currentUser ? finances[currentUser.id] : undefined;
   const futureTransactions = getFutureTransactions();
@@ -150,7 +153,8 @@ const CashFlow = () => {
       datesToShow.push(dateForPeriod);
     }
     
-    return datesToShow.map(date => {
+    let accumulatedBalance = 0;
+    const chartDataItems = datesToShow.map((date, index) => {
       const periodStart = date;
       
       // Get transactions for this period
@@ -203,7 +207,14 @@ const CashFlow = () => {
         investmentProjection = getProjectedInvestmentReturn(timeFromNow);
       }
       
-      const balance = totalIncome - totalExpense;
+      const periodBalance = totalIncome - totalExpense;
+      
+      // Accumulate balance if the cumulative option is enabled
+      if (useCumulativeBalance) {
+        accumulatedBalance += periodBalance;
+      } else {
+        accumulatedBalance = periodBalance; // Reset for non-cumulative view
+      }
       
       let totalInvestmentValue;
       if (isSameMonth(date, today)) {
@@ -224,12 +235,14 @@ const CashFlow = () => {
         period: getFormattedDate(date, projectionTimeUnit),
         income: totalIncome,
         expense: totalExpense,
-        balance,
+        balance: useCumulativeBalance ? accumulatedBalance : periodBalance,
         investment: totalInvestmentValue,
         date: date,
         isFuture: isAfter(date, today)
       };
     });
+    
+    return chartDataItems;
   };
   
   const chartData = prepareChartData();
@@ -432,7 +445,7 @@ const CashFlow = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -443,6 +456,18 @@ const CashFlow = () => {
                       )}
                     >
                       Mostrar Projeção
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setUseCumulativeBalance(!useCumulativeBalance)}
+                      className={cn(
+                        "border-gray-600",
+                        useCumulativeBalance && "bg-finance-blue text-white"
+                      )}
+                    >
+                      Saldo Acumulativo
                     </Button>
                   </div>
                 </div>

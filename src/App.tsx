@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'sonner';
 import { FinanceProvider } from './context/FinanceContext';
 import { ConfigProvider } from './context/ConfigContext';
+import { ProjectionProvider } from './hooks/use-projection';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AddTransaction from './pages/AddTransaction';
@@ -34,29 +35,31 @@ function App() {
   return (
     <Router>
       <ConfigProvider>
-        <FinanceProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/add-transaction" element={<AddTransaction />} />
-            <Route path="/expenses" element={<Expenses />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/all-transactions" element={<AllTransactions />} />
-            <Route path="/future-transactions" element={<FutureTransactions />} />
-            <Route path="/future-transactions-graph" element={<FutureTransactionsGraph />} />
-            <Route path="/investments" element={<Investments />} />
-            <Route path="/investment-returns" element={<InvestmentReturns />} />
-            <Route path="/user-comparison" element={<UserComparison />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/cash-flow" element={<CashFlow />} />
-            <Route path="/add-income" element={<AddIncome />} />
-            <Route path="/simulation" element={<SimulationPage />} />
-            <Route path="/simulator" element={<Simulator />} />
-            <Route path="/" element={<Navigate replace to="/dashboard" />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster position="top-center" />
-        </FinanceProvider>
+        <ProjectionProvider>
+          <FinanceProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/add-transaction" element={<AddTransaction />} />
+              <Route path="/expenses" element={<Expenses />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/all-transactions" element={<AllTransactions />} />
+              <Route path="/future-transactions" element={<FutureTransactions />} />
+              <Route path="/future-transactions-graph" element={<FutureTransactionsGraph />} />
+              <Route path="/investments" element={<Investments />} />
+              <Route path="/investment-returns" element={<InvestmentReturns />} />
+              <Route path="/user-comparison" element={<UserComparison />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/cash-flow" element={<CashFlow />} />
+              <Route path="/add-income" element={<AddIncome />} />
+              <Route path="/simulation" element={<SimulationPage />} />
+              <Route path="/simulator" element={<Simulator />} />
+              <Route path="/" element={<Navigate replace to="/dashboard" />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Toaster position="top-center" />
+          </FinanceProvider>
+        </ProjectionProvider>
       </ConfigProvider>
     </Router>
   );
