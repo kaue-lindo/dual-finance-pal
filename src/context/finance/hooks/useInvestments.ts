@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -331,18 +332,19 @@ export const useInvestments = (
     if (!targetUserId) return 0;
     
     const userFinances = finances[targetUserId];
-    if (!userFinances || !userFinances.investments) return 0;
+    if (!userFinances || !userFinances.investments || !Array.isArray(userFinances.investments)) return 0;
     
     // Use a simple numerical accumulator to avoid type recursion
     let totalReturn = 0;
     
-    // Iterate over each investment using a for loop instead of reduce
+    // Iterate over each investment using a standard for-of loop
     for (const investment of userFinances.investments) {
       // Skip finalized investments
       if (investment.isFinalized) {
         continue;
       }
       
+      // Safely extract and convert rate to number if needed
       const rateValue = typeof investment.rate === 'string' ? 
         parseFloat(investment.rate) : investment.rate;
       
@@ -355,9 +357,9 @@ export const useInvestments = (
         monthlyRate = Math.pow(1 + rate, 1/12) - 1;
       }
       
+      // Calculate based on compound or simple interest
       let returnAmount = 0;
       
-      // Calculate based on compound or simple interest
       if (investment.isCompound) {
         // Compound interest formula: P(1 + r)^t - P
         returnAmount = principal * Math.pow(1 + monthlyRate, months) - principal;
