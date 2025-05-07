@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -326,41 +325,64 @@ export const useInvestments = (
     }
   };
 
-  // Fixed version of getProjectedInvestmentReturn to avoid infinite type recursion
+  // Completely rewritten version of getProjectedInvestmentReturn to avoid type recursion
   const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
+    // Determine which user ID to use
     const targetUserId = userId || (currentUser ? currentUser.id : '');
-    if (!targetUserId) return 0;
+    if (!targetUserId || !finances[targetUserId]) {
+      return 0;
+    }
     
     const userFinances = finances[targetUserId];
-    if (!userFinances || !userFinances.investments || !Array.isArray(userFinances.investments)) return 0;
     
-    // Use a simple numerical accumulator to avoid type recursion
+    // Early return if no investments or investments is not an array
+    if (!userFinances?.investments || !Array.isArray(userFinances.investments) || userFinances.investments.length === 0) {
+      return 0;
+    }
+    
+    // Use simple variables with explicit types to avoid recursion
     let totalReturn = 0;
     
-    // Iterate over each investment using a standard for-of loop
-    for (const investment of userFinances.investments) {
+    // Use standard for loop with index for maximum type safety
+    for (let i = 0; i < userFinances.investments.length; i++) {
+      const investment = userFinances.investments[i];
+      
       // Skip finalized investments
-      if (investment.isFinalized) {
+      if (investment.isFinalized === true) {
         continue;
       }
       
-      // Safely extract and convert rate to number if needed
-      const rateValue = typeof investment.rate === 'string' ? 
-        parseFloat(investment.rate) : investment.rate;
-      
-      const rate = rateValue / 100; // Convert percentage to decimal
-      const principal = investment.amount;
-      
-      let monthlyRate = rate;
-      if (investment.period === 'annual') {
-        // Convert annual rate to monthly rate
-        monthlyRate = Math.pow(1 + rate, 1/12) - 1;
+      // Handle rate safely (could be string or number)
+      let rateValue: number;
+      if (typeof investment.rate === 'string') {
+        rateValue = parseFloat(investment.rate);
+        if (isNaN(rateValue)) {
+          rateValue = 0; // Default if parsing fails
+        }
+      } else if (typeof investment.rate === 'number') {
+        rateValue = investment.rate;
+      } else {
+        rateValue = 0; // Default for any other type
       }
       
-      // Calculate based on compound or simple interest
+      // Convert percentage to decimal
+      const rate = rateValue / 100;
+      
+      // Get principal amount
+      const principal = typeof investment.amount === 'number' ? investment.amount : 0;
+      
+      // Calculate monthly rate based on period
+      let monthlyRate: number;
+      if (investment.period === 'annual') {
+        monthlyRate = Math.pow(1 + rate, 1/12) - 1;
+      } else {
+        monthlyRate = rate; // Already monthly
+      }
+      
+      // Calculate return amount based on compound or simple interest
       let returnAmount = 0;
       
-      if (investment.isCompound) {
+      if (investment.isCompound === true) {
         // Compound interest formula: P(1 + r)^t - P
         returnAmount = principal * Math.pow(1 + monthlyRate, months) - principal;
       } else {
@@ -368,6 +390,7 @@ export const useInvestments = (
         returnAmount = principal * monthlyRate * months;
       }
       
+      // Add to total return
       totalReturn += returnAmount;
     }
     
