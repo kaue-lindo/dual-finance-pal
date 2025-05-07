@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { useFinance } from '@/context/finance/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
-import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, addMonths, isAfterDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
@@ -24,12 +25,14 @@ const Dashboard = () => {
     getFutureTransactions, 
     finances,
     getTotalInvestments,
+    getProjectedInvestmentReturn,
   } = useFinance();
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activePeriod, setActivePeriod] = useState<'day' | 'week' | 'month'>('day');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isNextMonth, setIsNextMonth] = useState(false);
   
   useEffect(() => {
     if (currentUser) {
@@ -38,6 +41,16 @@ const Dashboard = () => {
       navigate('/login');
     }
   }, [currentUser, fetchTransactions, navigate]);
+
+  useEffect(() => {
+    // Check if current month is the next month relative to today
+    const today = new Date();
+    const nextMonth = addMonths(today, 1);
+    setIsNextMonth(
+      currentMonth.getMonth() === nextMonth.getMonth() && 
+      currentMonth.getFullYear() === nextMonth.getFullYear()
+    );
+  }, [currentMonth]);
   
   if (!currentUser) {
     return null;
@@ -120,37 +133,69 @@ const Dashboard = () => {
   const { totalIncome, totalExpense } = calculateIncomeAndExpense();
   const balance = totalIncome - totalExpense;
 
-  // Calculate cumulative balance from previous periods
+  // Improved function to calculate cumulative balance
   const calculateCumulativeBalance = () => {
-    // Get all transactions up to the displayed period
     const today = new Date();
-    const displayDate = new Date(currentMonth); // The date we're displaying
+    const displayDate = new Date(currentMonth);
     
-    let endDate: Date;
+    // Determine if we're looking at future months or past months
+    const isFutureMonth = displayDate.getMonth() > today.getMonth() || 
+                          (displayDate.getMonth() === today.getMonth() && 
+                           displayDate.getFullYear() > today.getFullYear());
     
-    if (activePeriod === 'day') {
-      endDate = endOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
-    } else if (activePeriod === 'week') {
-      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
-      endDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate() + 6);
-      endDate = endOfDay(endDate);
+    // Get current balance from all transactions up to today
+    const currentBalance = userFinances.balance || 0;
+    
+    if (!isFutureMonth) {
+      // For past or current month, show actual balance
+      let endDate: Date;
+      
+      if (activePeriod === 'day') {
+        endDate = endOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
+      } else if (activePeriod === 'week') {
+        const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+        endDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate() + 6);
+        endDate = endOfDay(endDate);
+      } else {
+        endDate = endOfMonth(displayDate);
+      }
+      
+      // Filter transactions up to end date
+      const allTransactions = futureTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return transactionDate <= endDate;
+      });
+      
+      const uniqueTransactions = getUniqueTransactionsByMonth(allTransactions, 'cumulative-calc');
+      const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueTransactions);
+      
+      return totalIncome - totalExpense;
     } else {
-      endDate = endOfMonth(displayDate);
+      // For future months, add projected income/expenses
+      // First, get all projected transactions for the month
+      const startOfDisplayMonth = startOfMonth(displayDate);
+      const endOfDisplayMonth = endOfMonth(displayDate);
+      
+      // Filter transactions for the future month
+      const futureMonthTransactions = futureTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return transactionDate >= startOfDisplayMonth && transactionDate <= endOfDisplayMonth;
+      });
+      
+      // Calculate projected balance changes
+      const uniqueTransactions = getUniqueTransactionsByMonth(futureMonthTransactions, 'future-month-calc');
+      const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueTransactions);
+      
+      // Calculate projected investment growth for this month
+      const monthsSinceToday = 
+        (displayDate.getFullYear() - today.getFullYear()) * 12 + 
+        (displayDate.getMonth() - today.getMonth());
+      
+      const projectedInvestmentReturn = getProjectedInvestmentReturn(monthsSinceToday);
+      
+      // Cumulative balance = current balance + (future income - future expenses) + investment returns
+      return currentBalance + (totalIncome - totalExpense) + projectedInvestmentReturn;
     }
-    
-    // Filter all transactions up to the end date
-    const allTransactions = futureTransactions.filter(t => {
-      const transactionDate = new Date(t.date);
-      return transactionDate <= endDate;
-    });
-    
-    // Use a unique prefix for this calculation
-    const uniqueTransactions = getUniqueTransactionsByMonth(allTransactions, 'cumulative-calc');
-    
-    // Calculate totals
-    const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueTransactions);
-    
-    return totalIncome - totalExpense;
   };
 
   const cumulativeBalance = calculateCumulativeBalance();
@@ -246,8 +291,15 @@ const Dashboard = () => {
         </div>
         
         <div className="text-center mb-6">
-          <p className="text-sm text-gray-400 mb-1">Saldo Total</p>
+          <p className="text-sm text-gray-400 mb-1">
+            {isNextMonth ? "Saldo Projetado" : "Saldo Total"}
+          </p>
           <p className="text-3xl font-bold text-white">{formatCurrency(cumulativeBalance)}</p>
+          {isNextMonth && (
+            <p className="text-xs text-finance-blue mt-1">
+              Inclui projeções de receitas, despesas e retornos de investimentos
+            </p>
+          )}
         </div>
         
         <div className="flex justify-between items-center mb-4">

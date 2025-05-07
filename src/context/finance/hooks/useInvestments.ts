@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -326,7 +325,7 @@ export const useInvestments = (
     }
   };
 
-  // Fix the problematic getProjectedInvestmentReturn function that causes the infinite type issue
+  // Fixed version of getProjectedInvestmentReturn to avoid infinite type recursion
   const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
     const targetUserId = userId || (currentUser ? currentUser.id : '');
     if (!targetUserId) return 0;
@@ -334,10 +333,10 @@ export const useInvestments = (
     const userFinances = finances[targetUserId];
     if (!userFinances || !userFinances.investments) return 0;
     
-    // Complete rewrite to avoid infinite type instantiation
+    // Use a simple numerical accumulator to avoid type recursion
     let totalReturn = 0;
     
-    // Explicitly iterate over the array instead of using reduce to prevent type recursion
+    // Iterate over each investment using a for loop instead of reduce
     for (let i = 0; i < userFinances.investments.length; i++) {
       const investment = userFinances.investments[i];
       
@@ -346,7 +345,10 @@ export const useInvestments = (
         continue;
       }
       
-      const rate = investment.rate / 100; // Convert percentage to decimal
+      const rateValue = typeof investment.rate === 'string' ? 
+        parseFloat(investment.rate) : investment.rate;
+      
+      const rate = rateValue / 100; // Convert percentage to decimal
       const principal = investment.amount;
       
       let monthlyRate = rate;
