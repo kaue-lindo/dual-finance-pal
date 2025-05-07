@@ -51,6 +51,8 @@ function App() {
               <Route path="/user-comparison" element={<UserComparison />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/cash-flow" element={<CashFlow />} />
+              {/* Add redirect for any "cashflow" URL to "/cash-flow" for consistency */}
+              <Route path="/cashflow" element={<Navigate replace to="/cash-flow" />} />
               <Route path="/add-income" element={<AddIncome />} />
               <Route path="/simulation" element={<SimulationPage />} />
               <Route path="/simulator" element={<Simulator />} />

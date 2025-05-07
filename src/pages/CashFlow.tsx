@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -9,10 +8,7 @@ import {
   TrendingUp, 
   ArrowDown, 
   ArrowUp, 
-  Plus,
-  RefreshCw,
   Calendar,
-  Search
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -32,9 +28,20 @@ import {
 import { useFinance } from '@/context/FinanceContext';
 import { useConfig } from '@/context/ConfigContext';
 import { useProjection } from '@/hooks/use-projection';
-import { format, addMonths, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, 
-  subYears, addYears, isSameDay, addDays, addWeeks } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { 
+  format, 
+  addMonths, 
+  startOfMonth, 
+  endOfMonth, 
+  isSameMonth, 
+  isAfter, 
+  isBefore, 
+  subYears, 
+  addYears, 
+  isSameDay, 
+  addDays, 
+  addWeeks 
+} from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { formatCurrencyValue, getCurrencyLocale } from '@/utils/currencyUtils';
 import BottomNav from '@/components/ui/bottom-nav';

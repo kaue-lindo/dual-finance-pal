@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -333,11 +334,16 @@ export const useInvestments = (
     const userFinances = finances[targetUserId];
     if (!userFinances || !userFinances.investments) return 0;
     
-    // Calculate the total projected return for all investments
-    // Fix: Explicitly define the accumulator type and investment parameter type
-    return userFinances.investments.reduce((total: number, investment: any) => {
+    // Complete rewrite to avoid infinite type instantiation
+    let totalReturn = 0;
+    
+    // Explicitly iterate over the array instead of using reduce to prevent type recursion
+    for (let i = 0; i < userFinances.investments.length; i++) {
+      const investment = userFinances.investments[i];
+      
+      // Skip finalized investments
       if (investment.isFinalized) {
-        return total; // Skip finalized investments
+        continue;
       }
       
       const rate = investment.rate / 100; // Convert percentage to decimal
@@ -360,8 +366,10 @@ export const useInvestments = (
         returnAmount = principal * monthlyRate * months;
       }
       
-      return total + returnAmount;
-    }, 0);
+      totalReturn += returnAmount;
+    }
+    
+    return totalReturn;
   };
 
   const getTotalInvestments = (userId?: string): number => {
