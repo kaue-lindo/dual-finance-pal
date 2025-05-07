@@ -337,9 +337,7 @@ export const useInvestments = (
     let totalReturn = 0;
     
     // Iterate over each investment using a for loop instead of reduce
-    for (let i = 0; i < userFinances.investments.length; i++) {
-      const investment = userFinances.investments[i];
-      
+    for (const investment of userFinances.investments) {
       // Skip finalized investments
       if (investment.isFinalized) {
         continue;

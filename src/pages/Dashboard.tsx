@@ -11,7 +11,7 @@ import { useFinance } from '@/context/finance/FinanceContext';
 import BottomNav from '@/components/ui/bottom-nav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import QuickActions from '@/components/QuickActions';
-import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, addMonths, isAfterDay } from 'date-fns';
+import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
