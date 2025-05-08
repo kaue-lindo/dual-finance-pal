@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Menu, MoreVertical, LineChart } from 'lucide-react';
+import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Menu, MoreVertical, LineChart } from 'lucide-react';
 import { formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
 import TransactionsList from '@/components/TransactionsList';
 import { useFinance } from '@/context/finance/FinanceContext';
@@ -161,6 +162,12 @@ const Dashboard = () => {
     } else {
       endDate = endOfMonth(displayDate);
     }
+    
+    // Get all transactions up to the end date
+    const allTransactionsUpToDate = futureTransactions.filter(transaction => {
+      const date = new Date(transaction.date);
+      return date <= endDate;
+    });
     
     // Calculate accumulated balance from all transactions up to end date
     // Group by month and type to properly count recurring transactions
