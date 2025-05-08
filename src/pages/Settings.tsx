@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useFinance } from '@/context/FinanceContext';
 import { useConfig } from '@/context/ConfigContext';
 import { CurrencyType } from '@/utils/currencyUtils';
@@ -26,8 +25,7 @@ const Settings = () => {
   const { 
     currency, 
     setCurrency, 
-    companyInfo, 
-    updateCompanyInfo 
+    companyInfo
   } = useConfig();
   
   const [name, setName] = useState('');
@@ -35,11 +33,6 @@ const Settings = () => {
   const [phone, setPhone] = useState('');
   const [photo, setPhoto] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(currency);
-  
-  // Company information
-  const [companyName, setCompanyName] = useState(companyInfo.name);
-  const [companyEmail, setCompanyEmail] = useState(companyInfo.contactEmail);
-  const [companyDescription, setCompanyDescription] = useState(companyInfo.description);
   
   useEffect(() => {
     if (currentUser) {
@@ -65,16 +58,6 @@ const Settings = () => {
       console.error('Error updating profile:', error);
       toast.error('Erro ao atualizar perfil');
     }
-  };
-  
-  const handleSaveCompanyInfo = () => {
-    updateCompanyInfo({
-      name: companyName,
-      contactEmail: companyEmail,
-      description: companyDescription
-    });
-    
-    toast.success('Informações da empresa atualizadas!');
   };
   
   const handleSaveAppSettings = () => {
@@ -226,50 +209,28 @@ const Settings = () => {
             </Card>
           </TabsContent>
           
-          {/* Company Tab */}
+          {/* Company Tab - Now read-only */}
           <TabsContent value="company">
             <Card className="bg-gradient-to-br from-finance-dark-card to-finance-dark-lighter border-none p-4 mb-4">
               <h2 className="text-lg font-semibold text-white mb-4">Informações da Empresa</h2>
               
               <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-300 mb-1">Nome da Empresa</label>
-                  <div className="flex">
-                    <Input 
-                      value={companyName} 
-                      onChange={(e) => setCompanyName(e.target.value)} 
-                      className="finance-input"
-                      placeholder="Nome da empresa"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-gray-300 mb-1">Email de Contato</label>
-                  <div className="flex">
-                    <Input 
-                      value={companyEmail} 
-                      onChange={(e) => setCompanyEmail(e.target.value)} 
-                      className="finance-input"
-                      placeholder="contato@empresa.com"
-                      type="email"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-gray-300 mb-1">Sobre a Dual Finance</label>
-                  <div className="flex">
-                    <Textarea 
-                      value={companyDescription} 
-                      onChange={(e) => setCompanyDescription(e.target.value)} 
-                      className="finance-input min-h-[100px]"
-                      placeholder="Descreva sua empresa"
-                    />
-                  </div>
-                </div>
-                
                 <div className="bg-finance-dark-lighter/50 rounded-md p-4 border border-white/5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Building className="w-5 h-5 text-finance-blue" />
+                    <h3 className="text-sm font-medium text-white">{companyInfo.name}</h3>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mb-4 text-sm text-gray-300">
+                    <Mail className="w-4 h-4 text-finance-blue" />
+                    <span>{companyInfo.contactEmail}</span>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-white mb-2">Sobre a Empresa</h3>
+                    <p className="text-sm text-gray-300">{companyInfo.description}</p>
+                  </div>
+                  
                   <h3 className="text-sm font-medium text-white mb-3">Sobre nós</h3>
                   <p className="text-sm text-gray-300 mb-3">
                     A Dual Finance é uma plataforma inovadora de gestão financeira fundada em 2024. 
@@ -293,13 +254,6 @@ const Settings = () => {
                     © 2024 Dual Finance. Todos os direitos reservados.
                   </p>
                 </div>
-                
-                <Button 
-                  className="w-full bg-gradient-to-r from-finance-blue to-purple-500 hover:opacity-90"
-                  onClick={handleSaveCompanyInfo}
-                >
-                  Salvar Informações
-                </Button>
               </div>
             </Card>
           </TabsContent>

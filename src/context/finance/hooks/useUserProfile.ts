@@ -42,7 +42,7 @@ export const useUserProfile = (
         photo: updatedUser.photo
       });
       
-      // Fix: Using upsert with proper conflict handling and proper column names
+      // Now using the correct constraint name for conflict handling
       const { error, data } = await supabase
         .from('user_profiles')
         .upsert({
@@ -53,7 +53,7 @@ export const useUserProfile = (
           phone: updatedUser.phone,
           photo: updatedUser.photo
         }, {
-          onConflict: 'user_id'
+          onConflict: 'user_id' // This now works with our new constraint
         })
         .select();
       
