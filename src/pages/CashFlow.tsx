@@ -40,9 +40,7 @@ import {
   addYears, 
   isSameDay, 
   addDays, 
-  addWeeks, 
-  startOfWeek, 
-  endOfWeek 
+  addWeeks 
 } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { formatCurrencyValue, getCurrencyLocale } from '@/utils/currencyUtils';
@@ -177,9 +175,8 @@ const CashFlow = () => {
           case 'days':
             return isSameDay(transactionDate, date);
           case 'weeks':
-            // Calculate week start and end dates
-            const weekStart = startOfWeek(date, { weekStartsOn: 0 }); // Start on Sunday
-            const weekEnd = endOfWeek(date, { weekStartsOn: 0 }); // End on Saturday
+            const weekStart = startOfMonth(date);
+            const weekEnd = endOfMonth(date);
             return isAfter(transactionDate, weekStart) && isBefore(transactionDate, weekEnd);
           case 'months':
             return isSameMonth(transactionDate, date);
@@ -197,28 +194,23 @@ const CashFlow = () => {
       let investmentProjection = 0;
       let timeFromNow = 0;
       
-      // Calculate equivalent months from today for investment projection
+      // Calculate months equivalent from now for the investment projection
       switch (projectionTimeUnit) {
         case 'days':
-          // Convert days to months (approximate)
           timeFromNow = Math.round((date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000) / 30);
           break;
         case 'weeks':
-          // Convert weeks to months (approximate)
           timeFromNow = Math.round((date.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000) / 4);
           break;
         case 'months':
-          // Direct month calculation
           timeFromNow = (date.getFullYear() - today.getFullYear()) * 12 + date.getMonth() - today.getMonth();
           break;
         case 'years':
-          // Years to months
           timeFromNow = (date.getFullYear() - today.getFullYear()) * 12;
           break;
       }
       
       if (showProjection && timeFromNow >= 0) {
-        // Calculate investment projection based on equivalent months
         investmentProjection = getProjectedInvestmentReturn(timeFromNow);
       }
       
@@ -232,17 +224,16 @@ const CashFlow = () => {
       }
       
       let totalInvestmentValue;
-      // For current month use actual calculated value
       if (isSameMonth(date, today)) {
         totalInvestmentValue = getTotalInvestmentsWithReturns();
       } else {
-        // For future dates, add projected returns to base investment
+        // For future dates, we add the projected returns to the base investment
         const baseInvestment = getTotalInvestments();
         
         if (isAfter(date, today)) {
           totalInvestmentValue = baseInvestment + investmentProjection;
         } else {
-          // For past dates, just show base investment (no historical data)
+          // For past dates, just show the base investment since we don't have historical data
           totalInvestmentValue = baseInvestment;
         }
       }

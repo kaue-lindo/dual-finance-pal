@@ -68,30 +68,4 @@ function Calendar({
 }
 Calendar.displayName = "Calendar";
 
-// Add the CalendarDateRangePicker component
-interface CalendarDateRangePickerProps {
-  date?: Date;
-  onDateChange?: (date: Date | undefined) => void;
-  mode?: "single" | "range" | "multiple";
-  showDate?: boolean;
-}
-
-function CalendarDateRangePicker({
-  date,
-  onDateChange,
-  mode = "single",
-  showDate = true
-}: CalendarDateRangePickerProps) {
-  return (
-    <div>
-      <Calendar
-        mode={mode}
-        selected={date}
-        onSelect={onDateChange}
-        initialFocus
-      />
-    </div>
-  );
-}
-
-export { Calendar, CalendarDateRangePicker };
+export { Calendar };
