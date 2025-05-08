@@ -77,13 +77,14 @@ export const useInvestments = (
     return Promise.resolve();
   };
 
-  // Finalize an investment
-  const finalizeInvestment = async (investmentId: string, finalAmount: number) => {
+  // Finalize an investment - fixed return type to match expected signature
+  const finalizeInvestment = async (investmentId: string) => {
     if (!currentUser) {
       console.warn('Cannot finalize investment: No current user');
       return Promise.resolve();
     }
 
+    // Fixed implementation to work with the required signature
     setFinances(prevFinances => {
       const updatedFinances = { ...prevFinances };
       const userFinances = updatedFinances[currentUser.id];
@@ -96,7 +97,6 @@ export const useInvestments = (
               return {
                 ...i,
                 isFinalized: true,
-                finalizedAmount: finalAmount,
                 finalizedDate: new Date().toISOString(),
               };
             }

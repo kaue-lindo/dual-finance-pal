@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDateRangePicker } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent, CalendarDateRangePicker } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -11,7 +12,6 @@ import {
 } from "@/components/ui/popover"
 import { cn, formatCurrency } from '@/lib/utils';
 import { useFinance } from '@/context/FinanceContext';
-import { TransactionType } from '@/context/finance/types';
 import { CalendarIcon, ChevronsUpDown } from "lucide-react";
 import { format } from 'date-fns';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
@@ -19,6 +19,12 @@ import { PopoverClose } from '@radix-ui/react-popover';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '@/components/ui/bottom-nav';
+
+// Define TransactionType enum here since we're having issues importing it
+enum TransactionTypes {
+  INCOME = "income",
+  EXPENSE = "expense"
+}
 
 const Dashboard = () => {
   const { 
@@ -93,17 +99,18 @@ const Dashboard = () => {
   const balance = calculateBalance();
 
   const calculateCumulativeBalance = (transactions: any[], targetDate: Date) => {
-    const allTransactionsUpToDate = transactions.filter(trans => {
+    // Filter transactions up to target date
+    const transactionsUpToDate = transactions.filter(trans => {
       const transDate = new Date(trans.date);
       return transDate <= targetDate;
     });
     
     // Calculate balance from all transactions up to target date
-    return allTransactionsUpToDate.reduce((balance, transaction) => {
+    return transactionsUpToDate.reduce((balance, transaction) => {
       // Check if it's an income or expense
-      if (transaction.type === TransactionType.INCOME) {
+      if (transaction.type === TransactionTypes.INCOME) {
         return balance + transaction.amount;
-      } else if (transaction.type === TransactionType.EXPENSE) {
+      } else if (transaction.type === TransactionTypes.EXPENSE) {
         return balance - transaction.amount;
       }
       return balance;
@@ -131,7 +138,7 @@ const Dashboard = () => {
     }
 
     return futureTransactions.slice(0, 3).map((transaction, index) => {
-      const isIncome = transaction.type === TransactionType.INCOME;
+      const isIncome = transaction.type === TransactionTypes.INCOME;
       // Remove references to transaction.recurring
       return (
         <div key={index} className="flex items-center justify-between p-3 border-b border-gray-800">
@@ -262,7 +269,9 @@ const Dashboard = () => {
                   mode="single"
                   showDate={false}
                 />
-                <PopoverClose>Close</PopoverClose>
+                <PopoverClose asChild>
+                  <Button variant="ghost" className="w-full">Close</Button>
+                </PopoverClose>
               </PopoverContent>
             </Popover>
           </div>
