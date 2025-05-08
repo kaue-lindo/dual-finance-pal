@@ -139,8 +139,8 @@ const Dashboard = () => {
     
     // Determine if we're looking at future months or past months
     const isFutureMonth = displayDate.getMonth() > today.getMonth() || 
-                          (displayDate.getMonth() === today.getMonth() && 
-                           displayDate.getFullYear() > today.getFullYear());
+                        (displayDate.getMonth() === today.getMonth() && 
+                         displayDate.getFullYear() > today.getFullYear());
     
     // Get ALL transactions up to the end of the period we're viewing
     let endDate: Date;
@@ -163,16 +163,37 @@ const Dashboard = () => {
     }
     
     // Calculate accumulated balance from all transactions up to end date
-    // This is the key change - we get ALL transactions, not just for the current period
-    const allTransactionsUpToDate = futureTransactions.filter(t => {
-      const transactionDate = new Date(t.date);
-      return transactionDate <= endDate;
+    // Group by month and type to properly count recurring transactions
+    const transactionsByMonth: Record<string, {income: number, expense: number}> = {};
+    
+    allTransactionsUpToDate.forEach(transaction => {
+      const date = new Date(transaction.date);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      
+      if (!transactionsByMonth[monthKey]) {
+        transactionsByMonth[monthKey] = { income: 0, expense: 0 };
+      }
+      
+      if (transaction.type === 'income') {
+        // Skip counting duplicate recurring incomes in the same month
+        if (!transaction.recurring || !transactionsByMonth[monthKey].income) {
+          transactionsByMonth[monthKey].income += transaction.amount;
+        }
+      } else if (transaction.type === 'expense') {
+        // Skip counting duplicate recurring expenses in the same month
+        if (!transaction.recurring || !transactionsByMonth[monthKey].expense) {
+          transactionsByMonth[monthKey].expense += transaction.amount;
+        }
+      }
     });
     
-    const uniqueTransactions = getUniqueTransactionsByMonth(allTransactionsUpToDate, 'cumulative-balance-calc');
-    const { totalIncome, totalExpense } = calculatePeriodTotals(uniqueTransactions);
+    // Calculate final balance
+    let cumulativeBalance = userFinances.balance || 0;
     
-    let cumulativeBalance = totalIncome - totalExpense;
+    // Add all income and subtract all expenses from all months
+    Object.values(transactionsByMonth).forEach(({ income, expense }) => {
+      cumulativeBalance += income - expense;
+    });
     
     // If it's a future month, add projected investment returns
     if (isFutureMonth) {

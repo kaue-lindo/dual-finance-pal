@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type ProjectionTimeUnit = 'days' | 'weeks' | 'months' | 'years';
+export type ProjectionTimeUnit = 'days' | 'weeks' | 'months' | 'years';
 
 interface ProjectionConfig {
   projectionTimeUnit: ProjectionTimeUnit;

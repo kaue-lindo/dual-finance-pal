@@ -84,3 +84,35 @@ export const calculateInvestmentReturn = (
   // Return only the growth (not the principal)
   return futureValue - investment.amount;
 };
+
+// Helper function to convert between time units (normalized to months)
+export const convertToMonths = (amount: number, unit: string): number => {
+  switch (unit) {
+    case 'days':
+      return amount / 30;
+    case 'weeks':
+      return amount / 4;
+    case 'months':
+      return amount;
+    case 'years':
+      return amount * 12;
+    default:
+      return amount;
+  }
+};
+
+// Helper function to convert from months to any time unit
+export const convertFromMonths = (months: number, targetUnit: string): number => {
+  switch (targetUnit) {
+    case 'days':
+      return months * 30;
+    case 'weeks':
+      return months * 4;
+    case 'months':
+      return months;
+    case 'years':
+      return months / 12;
+    default:
+      return months;
+  }
+};
