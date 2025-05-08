@@ -1,542 +1,337 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Calendar } from 'lucide-react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Menu, MoreVertical, LineChart } from 'lucide-react';
-import { formatCurrency, formatCompactCurrency, cn } from '@/lib/utils';
-import TransactionsList from '@/components/TransactionsList';
-import { useFinance } from '@/context/finance/FinanceContext';
+import { CalendarDateRangePicker } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn, formatCurrency } from '@/lib/utils';
+import { useFinance } from '@/context/FinanceContext';
+import { TransactionType } from '@/context/finance/types';
+import { CalendarIcon, ChevronsUpDown } from "lucide-react";
+import { format } from 'date-fns';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { PopoverClose } from '@radix-ui/react-popover';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import BottomNav from '@/components/ui/bottom-nav';
-import { useIsMobile } from '@/hooks/use-mobile';
-import QuickActions from '@/components/QuickActions';
-import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, addMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const { 
     currentUser, 
-    fetchTransactions, 
+    finances, 
     getFutureTransactions, 
-    finances,
-    getTotalInvestments,
-    getProjectedInvestmentReturn,
+    fetchTransactions,
+    deleteTransaction,
+    getUniqueTransactionsByMonth,
+    supabaseUser,
+    selectedProfile,
+    selectProfile,
+    isAuthenticated,
+    loading
   } = useFinance();
-  
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [activePeriod, setActivePeriod] = useState<'day' | 'week' | 'month'>('day');
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isNextMonth, setIsNextMonth] = useState(false);
-  
+  const navigate = useNavigate();
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [futureTransactions, setFutureTransactions] = useState<any[] | null>(null);
+  const [profiles, setProfiles] = useState([
+    {
+      id: supabaseUser?.id,
+      name: supabaseUser?.email
+    }
+  ]);
+  const [open, setOpen] = React.useState(false)
+
   useEffect(() => {
-    if (currentUser) {
-      fetchTransactions();
-    } else {
+    if (!currentUser) {
       navigate('/login');
+      return;
     }
-  }, [currentUser, fetchTransactions, navigate]);
+  }, [currentUser, navigate]);
 
   useEffect(() => {
-    // Check if current month is the next month relative to today
-    const today = new Date();
-    const nextMonth = addMonths(today, 1);
-    setIsNextMonth(
-      currentMonth.getMonth() === nextMonth.getMonth() && 
-      currentMonth.getFullYear() === nextMonth.getFullYear()
+    if (currentUser && date) {
+      const future = getFutureTransactions(date);
+      setFutureTransactions(future);
+    }
+  }, [currentUser, date, getFutureTransactions]);
+
+  useEffect(() => {
+    if (supabaseUser) {
+      setProfiles([
+        {
+          id: supabaseUser?.id,
+          name: supabaseUser?.email
+        }
+      ])
+    }
+  }, [supabaseUser])
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <div>Not authenticated</div>;
+  }
+
+  const userFinances = finances[currentUser.id];
+  const transactions = userFinances ? [...userFinances.incomes, ...userFinances.expenses] : [];
+
+  const calculateBalance = () => {
+    if (!userFinances) return 0;
+    
+    let balance = 0;
+    userFinances.incomes.forEach(income => balance += income.amount);
+    userFinances.expenses.forEach(expense => balance -= expense.amount);
+    return balance;
+  };
+
+  const balance = calculateBalance();
+
+  const calculateCumulativeBalance = (transactions: any[], targetDate: Date) => {
+    const allTransactionsUpToDate = transactions.filter(trans => {
+      const transDate = new Date(trans.date);
+      return transDate <= targetDate;
+    });
+    
+    // Calculate balance from all transactions up to target date
+    return allTransactionsUpToDate.reduce((balance, transaction) => {
+      // Check if it's an income or expense
+      if (transaction.type === TransactionType.INCOME) {
+        return balance + transaction.amount;
+      } else if (transaction.type === TransactionType.EXPENSE) {
+        return balance - transaction.amount;
+      }
+      return balance;
+    }, 0);
+  };
+
+  const formatDateForDisplay = (date: Date | undefined) => {
+    return date ? format(date, 'MMM yyyy') : 'Select a Date';
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    try {
+      await deleteTransaction(transactionId);
+      toast.success("Transação excluída com sucesso");
+      await fetchTransactions();
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast.error("Erro ao excluir transação");
+    }
+  };
+
+  const renderFutureTransactions = () => {
+    if (!futureTransactions || futureTransactions.length === 0) {
+      return null;
+    }
+
+    return futureTransactions.slice(0, 3).map((transaction, index) => {
+      const isIncome = transaction.type === TransactionType.INCOME;
+      // Remove references to transaction.recurring
+      return (
+        <div key={index} className="flex items-center justify-between p-3 border-b border-gray-800">
+          <div className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+              isIncome ? 'bg-green-500/20' : 'bg-red-500/20'
+            }`}>
+              {isIncome ? (
+                <ArrowUp className="w-4 h-4 text-green-500" />
+              ) : (
+                <ArrowDown className="w-4 h-4 text-red-500" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">{transaction.description}</p>
+              <p className="text-xs text-gray-400">
+                {new Date(transaction.date).toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className={`font-medium ${isIncome ? 'text-green-500' : 'text-red-500'}`}>
+              {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
+            </p>
+          </div>
+        </div>
+      );
+    });
+  };
+
+  const renderBottomCards = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <Card className="finance-card">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold text-white mb-2">Receita Total</h3>
+            <p className="text-2xl font-bold text-green-500">{formatCurrency(userFinances?.incomes.reduce((sum, income) => sum + income.amount, 0) || 0)}</p>
+          </div>
+        </Card>
+        
+        <Card className="finance-card">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold text-white mb-2">Despesa Total</h3>
+            <p className="text-2xl font-bold text-red-500">{formatCurrency(userFinances?.expenses.reduce((sum, expense) => sum + expense.amount, 0) || 0)}</p>
+          </div>
+        </Card>
+      </div>
     );
-  }, [currentMonth]);
-  
-  if (!currentUser) {
-    return null;
-  }
-  
-  const userFinances = finances[currentUser.id] || { incomes: [], expenses: [], balance: 0 };
-  const totalInvestments = getTotalInvestments();
-  
-  const formattedDate = format(currentMonth, 'MMMM, yyyy', { locale: ptBR });
-  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-  
-  const goToPreviousMonth = () => {
-    const prevMonth = new Date(currentMonth);
-    prevMonth.setMonth(prevMonth.getMonth() - 1);
-    setCurrentMonth(prevMonth);
   };
-  
-  const goToNextMonth = () => {
-    const nextMonth = new Date(currentMonth);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    setCurrentMonth(nextMonth);
-  };
-  
-  const goToCurrentMonth = () => {
-    setCurrentMonth(new Date());
-  };
-  
-  const futureTransactions = getFutureTransactions();
-  
-  const firstDayOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const lastDayOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-  
-  const filterTransactionsByPeriod = () => {
-    const today = new Date();
-    const displayDate = new Date(currentMonth); // The date we're displaying
-    
-    let startDate: Date, endDate: Date;
-    
-    // Adjust for displaying different periods (day, week, month)
-    if (activePeriod === 'day') {
-      // For day view, use the current date from the month we're viewing
-      startDate = startOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
-      endDate = endOfDay(startDate);
-    } else if (activePeriod === 'week') {
-      // For week view, get the week containing today, but in the month we're viewing
-      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
-      startDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate());
-      endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
-      endDate = endOfDay(endDate);
-    } else {
-      // For month view, use the entire month we're viewing
-      startDate = startOfMonth(displayDate);
-      endDate = endOfMonth(displayDate);
-    }
-    
-    // Filter transactions that fall within the date range
-    return futureTransactions.filter(t => {
-      const transactionDate = new Date(t.date);
-      return transactionDate >= startDate && transactionDate <= endDate;
-    });
-  };
-  
-  const filteredTransactions = filterTransactionsByPeriod();
-  
-  const calculateIncomeAndExpense = () => {
-    const transactions = filterTransactionsByPeriod();
-    
-    // Use a unique prefix based on the current period to ensure proper deduplication
-    const periodPrefix = activePeriod === 'day' ? 'day-calc' : 
-                         activePeriod === 'week' ? 'week-calc' : 'month-calc';
-    
-    // Deduplicate transactions first
-    const uniqueTransactions = getUniqueTransactionsByMonth(transactions, periodPrefix);
-    
-    // Calculate totals using our utility function
-    return calculatePeriodTotals(uniqueTransactions);
-  };
-
-  const { totalIncome, totalExpense } = calculateIncomeAndExpense();
-  const balance = totalIncome - totalExpense;
-
-  // Improved function to calculate cumulative balance
-  const calculateCumulativeBalance = () => {
-    const today = new Date();
-    const displayDate = new Date(currentMonth);
-    
-    // Determine if we're looking at future months or past months
-    const isFutureMonth = displayDate.getMonth() > today.getMonth() || 
-                        (displayDate.getMonth() === today.getMonth() && 
-                         displayDate.getFullYear() > today.getFullYear());
-    
-    // Get ALL transactions up to the end of the period we're viewing
-    let endDate: Date;
-    
-    if (activePeriod === 'day') {
-      if (isFutureMonth) {
-        // For future days, show the projected balance for that day
-        const day = today.getDate();
-        endDate = endOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), day));
-      } else {
-        // For current or past days, show actual balance
-        endDate = endOfDay(new Date(displayDate.getFullYear(), displayDate.getMonth(), today.getDate()));
-      }
-    } else if (activePeriod === 'week') {
-      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-      endDate = new Date(displayDate.getFullYear(), displayDate.getMonth(), weekStart.getDate() + 6);
-      endDate = endOfDay(endDate);
-    } else {
-      endDate = endOfMonth(displayDate);
-    }
-    
-    // Get all transactions up to the end date
-    const allTransactionsUpToDate = futureTransactions.filter(transaction => {
-      const date = new Date(transaction.date);
-      return date <= endDate;
-    });
-    
-    // Calculate accumulated balance from all transactions up to end date
-    // Group by month and type to properly count recurring transactions
-    const transactionsByMonth: Record<string, {income: number, expense: number}> = {};
-    
-    allTransactionsUpToDate.forEach(transaction => {
-      const date = new Date(transaction.date);
-      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-      
-      if (!transactionsByMonth[monthKey]) {
-        transactionsByMonth[monthKey] = { income: 0, expense: 0 };
-      }
-      
-      if (transaction.type === 'income') {
-        // Skip counting duplicate recurring incomes in the same month
-        if (!transaction.recurring || !transactionsByMonth[monthKey].income) {
-          transactionsByMonth[monthKey].income += transaction.amount;
-        }
-      } else if (transaction.type === 'expense') {
-        // Skip counting duplicate recurring expenses in the same month
-        if (!transaction.recurring || !transactionsByMonth[monthKey].expense) {
-          transactionsByMonth[monthKey].expense += transaction.amount;
-        }
-      }
-    });
-    
-    // Calculate final balance
-    let cumulativeBalance = userFinances.balance || 0;
-    
-    // Add all income and subtract all expenses from all months
-    Object.values(transactionsByMonth).forEach(({ income, expense }) => {
-      cumulativeBalance += income - expense;
-    });
-    
-    // If it's a future month, add projected investment returns
-    if (isFutureMonth) {
-      const monthsSinceToday = 
-        (displayDate.getFullYear() - today.getFullYear()) * 12 + 
-        (displayDate.getMonth() - today.getMonth());
-      
-      const projectedInvestmentReturn = getProjectedInvestmentReturn(monthsSinceToday);
-      cumulativeBalance += projectedInvestmentReturn;
-    }
-    
-    return cumulativeBalance;
-  };
-
-  const cumulativeBalance = calculateCumulativeBalance();
-  
-  const currentDay = new Date().getDate();
-  const month = currentMonth.getMonth();
-  const year = currentMonth.getFullYear();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  
-  const calendarDays = [];
-  for (let i = 0; i < firstDayOfMonth; i++) {
-    calendarDays.push(null);
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    calendarDays.push(i);
-  }
-  
-  const getTransactionsForDay = (day: number) => {
-    const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
-    const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
-    
-    // Filter transactions for this day
-    const transactionsForDay = futureTransactions.filter(t => {
-      const date = new Date(t.date);
-      return date >= startOfDay && date <= endOfDay;
-    });
-    
-    // Apply deduplication using the utility function with a unique prefix for this day
-    return getUniqueTransactionsByMonth(transactionsForDay, `day-${day}-${month}-${year}`);
-  };
-  
-  const checkIsToday = (day: number) => {
-    const today = new Date();
-    return day === today.getDate() && 
-           month === today.getMonth() && 
-           year === today.getFullYear();
-  };
-
-  const showDayTransactions = (day: number) => {
-    const date = new Date(year, month, day);
-    setSelectedDay(date);
-    setDialogOpen(true);
-  };
-  
-  const getSelectedDayTransactions = () => {
-    if (!selectedDay) return [];
-    
-    const startOfSelectedDay = new Date(selectedDay);
-    startOfSelectedDay.setHours(0, 0, 0, 0);
-    
-    const endOfSelectedDay = new Date(selectedDay);
-    endOfSelectedDay.setHours(23, 59, 59, 999);
-    
-    // Filter transactions for the selected day
-    const transactionsForDay = futureTransactions.filter(t => {
-      const date = new Date(t.date);
-      return date >= startOfSelectedDay && date <= endOfSelectedDay;
-    });
-    
-    // Apply deduplication using the utility function with a unique prefix for the selected day
-    const formattedDay = format(selectedDay, 'yyyy-MM-dd');
-    return getUniqueTransactionsByMonth(transactionsForDay, `selected-day-${formattedDay}`);
-  };
-
-  // Calculate totals for the selected day
-  const getSelectedDayTotals = () => {
-    if (!selectedDay) return { totalIncome: 0, totalExpense: 0 };
-    
-    const transactions = getSelectedDayTransactions();
-    return calculatePeriodTotals(transactions);
-  };
-
-  const currentMonthName = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
-  const capitalizedMonthName = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
   return (
-    <div className="min-h-screen pb-20 bg-finance-dark">
-      <div className="finance-card rounded-b-xl p-4">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <span className="text-xl font-bold text-white mr-2">Olá, {currentUser.name || 'Usuário'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <QuickActions 
-              trigger={
-                <Button variant="ghost" size="icon" className="navbar-icon">
-                  <Menu size={24} className="text-white" />
-                </Button>
-              }
-            />
-          </div>
-        </div>
-        
-        <div className="text-center mb-6">
-          <p className="text-sm text-gray-400 mb-1">
-            {isNextMonth ? "Saldo Projetado" : "Saldo Acumulado"}
-          </p>
-          <p className="text-3xl font-bold text-white">{formatCurrency(cumulativeBalance)}</p>
-          {isNextMonth && (
-            <p className="text-xs text-finance-blue mt-1">
-              Inclui projeções de receitas, despesas e retornos de investimentos
-            </p>
-          )}
-        </div>
-        
+    <div className="min-h-screen bg-finance-dark pb-20">
+      <div className="finance-card rounded-b-xl">
         <div className="flex justify-between items-center mb-4">
-          <Button variant="ghost" size="icon" onClick={goToPreviousMonth} className="text-white">
-            <ChevronLeft size={20} />
-          </Button>
-          <div 
-            className="flex gap-1 items-center cursor-pointer"
-            onClick={goToCurrentMonth}
-          >
-            <Calendar size={16} className="text-finance-blue" />
-            <span className="text-white font-medium">{capitalizedDate}</span>
-          </div>
-          <Button variant="ghost" size="icon" onClick={goToNextMonth} className="text-white">
-            <ChevronRight size={20} />
-          </Button>
-        </div>
-        
-        <div className="flex justify-center items-center mt-4 mb-2">
-          <div className="inline-flex rounded-md overflow-hidden border border-gray-700">
-            <button
-              className={cn(
-                "px-4 py-2 text-sm transition-colors",
-                activePeriod === 'day' 
-                  ? "bg-finance-blue text-white" 
-                  : "bg-finance-dark-lighter text-gray-300 hover:bg-finance-dark-card"
-              )}
-              onClick={() => setActivePeriod('day')}
-            >
-              Dia
-            </button>
-            <button
-              className={cn(
-                "px-4 py-2 text-sm transition-colors",
-                activePeriod === 'week' 
-                  ? "bg-finance-blue text-white" 
-                  : "bg-finance-dark-lighter text-gray-300 hover:bg-finance-dark-card"
-              )}
-              onClick={() => setActivePeriod('week')}
-            >
-              Semana
-            </button>
-            <button
-              className={cn(
-                "px-4 py-2 text-sm transition-colors",
-                activePeriod === 'month' 
-                  ? "bg-finance-blue text-white" 
-                  : "bg-finance-dark-lighter text-gray-300 hover:bg-finance-dark-card"
-              )}
-              onClick={() => setActivePeriod('month')}
-            >
-              Mês
-            </button>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          <Card className="bg-finance-dark-lighter border-none">
-            <div className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={16} className="text-green-500" />
-                <p className="text-gray-400 text-sm">Entradas</p>
-              </div>
-              <p className="text-xl font-bold text-green-500">{formatCurrency(totalIncome)}</p>
-            </div>
-          </Card>
-          
-          <Card className="bg-finance-dark-lighter border-none">
-            <div className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingDown size={16} className="text-red-500" />
-                <p className="text-gray-400 text-sm">Saídas</p>
-              </div>
-              <p className="text-xl font-bold text-red-500">{formatCurrency(totalExpense)}</p>
-            </div>
-          </Card>
-          
-          <Card className="bg-finance-dark-lighter border-none">
-            <div className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <LineChart size={16} className="text-blue-500" />
-                <p className="text-gray-400 text-sm">Investimentos</p>
-              </div>
-              <p className="text-xl font-bold text-blue-500">{formatCurrency(totalInvestments)}</p>
-            </div>
-          </Card>
-        </div>
-      </div>
-            
-      <div className="px-4 mt-6">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-bold text-white">Calendário</h2>
-            <span className="text-gray-400 text-sm">{capitalizedMonthName}</span>
-          </div>
-          
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
-              <div key={index} className="text-center text-gray-400 text-xs">
-                {day}
-              </div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-7 gap-1">
-            {calendarDays.map((day, index) => {
-              if (day === null) {
-                return <div key={`empty-${index}`} className="h-10" />;
-              }
-              
-              const transactions = getTransactionsForDay(day);
-              const hasIncome = transactions.some(t => t.type === 'income');
-              const hasExpense = transactions.some(t => t.type === 'expense');
-              const todayIndicator = checkIsToday(day);
-              
-              return (
-                <div
-                  key={`day-${day}`}
-                  className={cn(
-                    "h-10 rounded-full flex flex-col items-center justify-center cursor-pointer relative",
-                    todayIndicator && "bg-finance-blue text-white font-bold",
-                    !todayIndicator && "hover:bg-finance-dark-lighter"
-                  )}
-                  onClick={() => showDayTransactions(day)}
+          <div>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-[200px] justify-between"
                 >
-                  <span className={cn(
-                    "text-sm",
-                    todayIndicator ? "text-white" : "text-gray-300"
-                  )}>
-                    {day}
-                  </span>
-                  
-                  <div className="flex gap-1 mt-1">
-                    {hasIncome && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                    )}
-                    {hasExpense && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  {selectedProfile ? (profiles.find((profile) => profile.id === selectedProfile)?.name) : "Select profile..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandList>
+                    <CommandEmpty>No profiles found.</CommandEmpty>
+                    <CommandGroup>
+                      {profiles.map((profile) => (
+                        <CommandItem
+                          key={profile.id}
+                          value={profile.name}
+                          onSelect={() => {
+                            selectProfile(profile.id)
+                            setOpen(false)
+                          }}
+                        >
+                          {profile.name}
+                          {selectedProfile === profile.id ? (
+                            <CheckIcon className="ml-auto h-4 w-4" />
+                          ) : null}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                  <CommandSeparator />
+                  <CommandList>
+                    <CommandGroup>
+                      <CommandItem onSelect={() => {
+                        setOpen(false)
+                        navigate('/profiles')
+                      }}>
+                        Manage profiles
+                      </CommandItem>
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <div className="w-10"></div>
         </div>
-        
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-bold text-white">Transações</h2>
-            <Button 
-              variant="ghost" 
-              className="text-finance-blue hover:text-finance-blue/80 hover:bg-transparent p-0 h-auto"
-              onClick={() => navigate('/transactions')}
-            >
-              Ver Todas
-            </Button>
+
+        <div className="flex justify-between items-center">
+          <div className="w-full">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"ghost"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formatDateForDisplay(date)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <CalendarDateRangePicker
+                  date={date}
+                  onDateChange={setDate}
+                  mode="single"
+                  showDate={false}
+                />
+                <PopoverClose>Close</PopoverClose>
+              </PopoverContent>
+            </Popover>
           </div>
-          
-          <TransactionsList 
-            transactions={filteredTransactions.slice(0, 5)} 
-            emptyMessage="Nenhuma transação neste período"
-          />
         </div>
       </div>
-      
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-finance-dark-card text-white border-gray-700 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white text-xl">
-              {selectedDay && format(selectedDay, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedDay && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <Card className="bg-finance-dark-lighter border-none">
-                <div className="p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp size={16} className="text-green-500" />
-                    <p className="text-gray-400 text-xs">Entradas</p>
-                  </div>
-                  <p className="text-lg font-bold text-green-500">{formatCurrency(getSelectedDayTotals().totalIncome)}</p>
-                </div>
-              </Card>
-              
-              <Card className="bg-finance-dark-lighter border-none">
-                <div className="p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingDown size={16} className="text-red-500" />
-                    <p className="text-gray-400 text-xs">Saídas</p>
-                  </div>
-                  <p className="text-lg font-bold text-red-500">{formatCurrency(getSelectedDayTotals().totalExpense)}</p>
-                </div>
-              </Card>
-              
-              <Card className="bg-finance-dark-lighter border-none">
-                <div className="p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Wallet size={16} className="text-gray-300" />
-                    <p className="text-gray-400 text-xs">Saldo</p>
-                  </div>
-                  <p className="text-lg font-bold text-gray-300">{formatCurrency(getSelectedDayTotals().totalIncome - getSelectedDayTotals().totalExpense)}</p>
-                </div>
-              </Card>
+
+      <div className="mt-6 px-4">
+        <Card className="finance-card">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-finance-blue flex items-center justify-center">
+                <Calendar size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Saldo Atual</h2>
+                <p className="text-gray-400">
+                  {date ? `Em ${new Date(date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}` : 'Selecione um mês'}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-3xl font-bold text-white">{formatCurrency(calculateCumulativeBalance(transactions, date || new Date()))}</p>
+            </div>
+          </div>
+        </Card>
+
+        {renderBottomCards()}
+
+        <div className="mt-6">
+          <div className="flex justify-between items-center px-1 mb-3">
+            <h2 className="text-lg font-bold text-white">Próximas Transações</h2>
+            {futureTransactions && futureTransactions.length > 3 && (
+              <Button variant="link" className="text-sm">
+                Ver todas
+              </Button>
+            )}
+          </div>
+          {futureTransactions && futureTransactions.length > 0 ? (
+            <Card className="finance-card">
+              {renderFutureTransactions()}
+            </Card>
+          ) : (
+            <div className="mt-4 text-center">
+              <p className="text-gray-400">Nenhuma transação futura encontrada para este mês.</p>
             </div>
           )}
-          
-          <div className="py-2">
-            <h3 className="text-lg font-medium mb-3">Transações do dia</h3>
-            <TransactionsList 
-              transactions={getSelectedDayTransactions()} 
-              emptyMessage="Nenhuma transação neste dia"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-      
+        </div>
+      </div>
       <BottomNav />
     </div>
   );
 };
 
 export default Dashboard;
+
+const CheckIcon = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+};

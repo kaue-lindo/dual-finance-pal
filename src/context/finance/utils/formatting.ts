@@ -26,3 +26,10 @@ export function formatDate(date: Date): string {
     year: 'numeric',
   }).format(date);
 }
+
+/**
+ * Generate a unique ID
+ */
+export function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}

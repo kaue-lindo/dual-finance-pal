@@ -15,10 +15,10 @@ export const useInvestments = (
   const { projectionTimeUnit, projectionTimeAmount } = useProjection();
 
   // Add a new investment
-  const addInvestment = (investment: Omit<Investment, 'id'>) => {
+  const addInvestment = async (investment: Omit<Investment, 'id'>) => {
     if (!currentUser) {
       console.warn('Cannot add investment: No current user');
-      return;
+      return Promise.resolve();
     }
 
     const id = generateId();
@@ -44,15 +44,15 @@ export const useInvestments = (
     if (fetchTransactions) {
       fetchTransactions();
     }
-
-    return newInvestment;
+    
+    return Promise.resolve();
   };
 
   // Delete an investment
-  const deleteInvestment = (investmentId: string) => {
+  const deleteInvestment = async (investmentId: string) => {
     if (!currentUser) {
       console.warn('Cannot delete investment: No current user');
-      return;
+      return Promise.resolve();
     }
 
     setFinances(prevFinances => {
@@ -73,13 +73,15 @@ export const useInvestments = (
     if (fetchTransactions) {
       fetchTransactions();
     }
+    
+    return Promise.resolve();
   };
 
   // Finalize an investment
-  const finalizeInvestment = (investmentId: string, finalAmount: number) => {
+  const finalizeInvestment = async (investmentId: string, finalAmount: number) => {
     if (!currentUser) {
       console.warn('Cannot finalize investment: No current user');
-      return;
+      return Promise.resolve();
     }
 
     setFinances(prevFinances => {
@@ -110,6 +112,8 @@ export const useInvestments = (
     if (fetchTransactions) {
       fetchTransactions();
     }
+    
+    return Promise.resolve();
   };
 
   // Get total investments
