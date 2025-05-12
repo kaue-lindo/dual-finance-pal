@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { format, isToday, startOfDay, endOfDay, startOfWeek, endOfWeek, isBefore
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getUniqueTransactionsByMonth, calculatePeriodTotals } from '@/utils/transaction-utils';
+import { CalendarDateRangePicker } from '@/components/ui/calendar';
 
 const Dashboard = () => {
   const navigate = useNavigate();
