@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -134,8 +135,7 @@ export const useInvestments = (
             category: 'investment_value',
             date: futureDate.toISOString(),
             recurring_type: 'investment-value',
-            source_category: 'investment',
-            parent_investment_id: investment.id
+            source_category: 'investment'
           });
       }
     } catch (error) {
@@ -181,7 +181,7 @@ export const useInvestments = (
         .eq('user_id', currentUser.id)
         .eq('auth_id', sessionData.session.user.id)
         .eq('source_category', 'investment')
-        .eq('parent_investment_id', id);
+        .eq('type', 'investment_value');
       
       toast.success('Investimento removido com sucesso');
       
@@ -274,8 +274,7 @@ export const useInvestments = (
           amount: investment.amount,
           category: 'investment_principal',
           date: today.toISOString(),
-          source_category: 'investment',
-          parent_investment_id: id
+          source_category: 'investment'
         });
       
       // Add the returns as a separate income entry
@@ -291,8 +290,7 @@ export const useInvestments = (
           amount: returnValue,
           category: 'investment_returns',
           date: today.toISOString(),
-          source_category: 'investment',
-          parent_investment_id: id
+          source_category: 'investment'
         });
       
       toast.success('Investimento finalizado com sucesso');
@@ -353,8 +351,7 @@ export const useInvestments = (
     }
   };
 
-  // Fix the recursive type issue by explicitly defining the return type
-  // and simplifying the implementation to avoid complex type inference
+  // Define the return type as number to avoid excessive type instantiation
   const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
     // Determine which user ID to use
     const targetUserId = userId || (currentUser ? currentUser.id : '');

@@ -1,7 +1,7 @@
 
 import { User } from './constants';
 
-export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'other';
+export type IncomeCategory = 'salary' | 'food-allowance' | 'transportation-allowance' | 'investment_returns' | 'investment_principal' | 'other';
 
 export type RecurringType = 'daily' | 'weekly' | 'monthly';
 
@@ -67,6 +67,50 @@ export type FutureTransaction = {
   parent_investment_id?: string;
   parentId?: string; // Added to track the original transaction's ID
 };
+
+export interface SimulationData {
+  description: string;
+  amount: string;
+  category: string;
+  installments: string;
+  customInstallments: string;
+  isRecurring: boolean;
+  recurringType: 'monthly' | 'weekly';
+  date: Date | undefined;
+  useInvestments: boolean;
+  simulationMonths: number; // Simulation months option
+}
+
+export interface SimulationResults {
+  currentBalance: number;
+  afterExpense: number;
+  monthlyData: SimulationDataPoint[];
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlyPayment: number;
+  monthlyDeficit: number;
+  totalExpense: number;
+}
+
+export interface SimulationDataPoint {
+  month: string;
+  balance: number;
+  withExpense: number;
+  investments: number;
+}
+
+export interface CategoryData {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface FinancialSummary {
+  currentBalance: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  totalInvestments: number;
+}
 
 export interface FinanceContextType {
   currentUser: User | null;
