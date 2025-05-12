@@ -353,7 +353,8 @@ export const useInvestments = (
     }
   };
 
-  // Fix: Break the recursive type dependency by explicitly defining the return type
+  // Fix the recursive type issue by explicitly defining the return type
+  // and simplifying the implementation to avoid complex type inference
   const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
     // Determine which user ID to use
     const targetUserId = userId || (currentUser ? currentUser.id : '');
