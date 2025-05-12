@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Calculator, Repeat, TrendingUp, CalendarIcon } from 'lucide-react';
+import { Calculator, Repeat, TrendingUp, CalendarIcon, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { SimulationData, FinancialSummary } from './types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/context/finance/utils/formatting';
 
 interface SimulationFormProps {
   simulationData: SimulationData;
@@ -167,6 +167,29 @@ const SimulationForm: React.FC<SimulationFormProps> = ({
             )}
           </div>
         )}
+
+        <div>
+          <Label htmlFor="simulationMonths" className="text-white flex items-center gap-1">
+            <BarChart3 size={16} className="text-finance-blue" />
+            <span>Período de Simulação</span>
+          </Label>
+          <Select
+            value={simulationData.simulationMonths?.toString() || "6"}
+            onValueChange={(value) => updateSimulationData({ simulationMonths: parseInt(value) })}
+          >
+            <SelectTrigger className="finance-input mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-finance-dark-lighter border-finance-dark">
+              <SelectItem value="3">3 meses</SelectItem>
+              <SelectItem value="6">6 meses</SelectItem>
+              <SelectItem value="12">12 meses</SelectItem>
+              <SelectItem value="18">18 meses</SelectItem>
+              <SelectItem value="24">24 meses</SelectItem>
+              <SelectItem value="36">36 meses</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div>
           <Label className="text-white">Data Inicial</Label>

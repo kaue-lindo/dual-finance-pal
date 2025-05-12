@@ -1,8 +1,10 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Investment, FutureTransaction, IncomeCategory } from '../types';
 import { calculateInvestmentReturn, calculateInvestmentGrowthForMonth } from '../utils/projections';
+import { generateId } from '../utils/formatting';
 
 export const useInvestments = (
   currentUser: any,
@@ -204,7 +206,7 @@ export const useInvestments = (
     }
   };
 
-  // New function to finalize an investment and add its total value to balance
+  // Improved function to finalize an investment and add its total value to balance
   const finalizeInvestment = async (id: string) => {
     if (!currentUser) return;
     
@@ -233,6 +235,7 @@ export const useInvestments = (
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;
       
+      // Calculate final investment value (principal + returns)
       const finalValue = calculateInvestmentGrowthForMonth(
         investment.amount, 
         investment.rate, 
@@ -240,6 +243,9 @@ export const useInvestments = (
         Math.max(0, monthsDiff), 
         isCompound
       );
+
+      // Calculate just the return value (without principal)
+      const returnValue = finalValue - investment.amount;
       
       // Mark investment as finalized in Supabase
       const { error: updateError } = await supabase
@@ -256,26 +262,39 @@ export const useInvestments = (
         return;
       }
       
-      // Add the finalized investment value as income
-      const { error: incomeError } = await supabase
+      // Add the principal amount as income (original investment)
+      const principalIncomeId = generateId();
+      await supabase
         .from('finances')
         .insert({
+          id: principalIncomeId,
           user_id: currentUser.id,
           auth_id: sessionData.session.user.id,
           type: 'income',
-          description: `Resgate do investimento: ${investment.description}`,
-          amount: finalValue,
+          description: `Resgate principal: ${investment.description}`,
+          amount: investment.amount,
+          category: 'investment_principal',
+          date: today.toISOString(),
+          source_category: 'investment',
+          parent_investment_id: id
+        });
+      
+      // Add the returns as a separate income entry
+      const returnsIncomeId = generateId();
+      await supabase
+        .from('finances')
+        .insert({
+          id: returnsIncomeId,
+          user_id: currentUser.id,
+          auth_id: sessionData.session.user.id,
+          type: 'income',
+          description: `Rendimento de: ${investment.description}`,
+          amount: returnValue,
           category: 'investment_returns',
           date: today.toISOString(),
           source_category: 'investment',
-          parent_investment_id: investment.id
+          parent_investment_id: id
         });
-      
-      if (incomeError) {
-        console.error('Error adding investment income:', incomeError);
-        toast.error('Erro ao adicionar rendimento do investimento');
-        return;
-      }
       
       toast.success('Investimento finalizado com sucesso');
       
@@ -295,10 +314,20 @@ export const useInvestments = (
           return inv;
         });
         
-        const newIncome = {
-          id: `${id}-finalized-${Date.now()}`,
-          description: `Resgate do investimento: ${investment.description}`,
-          amount: finalValue,
+        // Add principal as income
+        const principalIncome = {
+          id: principalIncomeId,
+          description: `Resgate principal: ${investment.description}`,
+          amount: investment.amount,
+          date: today,
+          category: 'investment_principal' as IncomeCategory
+        };
+
+        // Add returns as income
+        const returnsIncome = {
+          id: returnsIncomeId,
+          description: `Rendimento de: ${investment.description}`,
+          amount: returnValue,
           date: today,
           category: 'investment_returns' as IncomeCategory
         };
@@ -308,7 +337,7 @@ export const useInvestments = (
           [currentUser.id]: {
             ...currentFinances,
             investments: updatedInvestments,
-            incomes: [...currentFinances.incomes, newIncome],
+            incomes: [...currentFinances.incomes, principalIncome, returnsIncome],
             balance: currentFinances.balance + finalValue
           },
         };
@@ -325,7 +354,7 @@ export const useInvestments = (
     }
   };
 
-  // Completely rewritten version of getProjectedInvestmentReturn to avoid type recursion
+  // Fixed version of getProjectedInvestmentReturn to avoid type recursion
   const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
     // Determine which user ID to use
     const targetUserId = userId || (currentUser ? currentUser.id : '');
@@ -340,7 +369,6 @@ export const useInvestments = (
       return 0;
     }
     
-    // Use simple variables with explicit types to avoid recursion
     let totalReturn = 0;
     
     // Use standard for loop with index for maximum type safety
@@ -431,7 +459,7 @@ export const useInvestments = (
       }
       
       const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                         (today.getMonth() - startDate.getMonth());
+                       (today.getMonth() - startDate.getMonth());
       
       const isPeriodMonthly = investment.period === 'monthly';
       const isCompound = investment.isCompound !== false;

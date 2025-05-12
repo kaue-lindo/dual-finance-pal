@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,7 +37,8 @@ const Simulator = () => {
     isRecurring: false,
     recurringType: 'monthly',
     date: new Date(),
-    useInvestments: false
+    useInvestments: false,
+    simulationMonths: 6 // Default to 6 months
   });
   
   const [activeTab, setActiveTab] = useState('simulate');
@@ -106,7 +108,8 @@ const Simulator = () => {
       futureTransactions,
       totalInvestments,
       getProjectedInvestmentReturn,
-      true
+      true,
+      simulationData.simulationMonths || 6
     );
 
     let afterExpenseBalance = currentBalance - (simulationData.isRecurring ? monthlyPayment : expenseAmount);
@@ -168,7 +171,8 @@ const Simulator = () => {
         isRecurring: false,
         recurringType: 'monthly',
         date: new Date(),
-        useInvestments: false
+        useInvestments: false,
+        simulationMonths: 6
       });
       
       setFinancialData({

@@ -42,7 +42,8 @@ export const generateSimulationData = (
   futureTransactions: FutureTransaction[],
   totalInvestments: number,
   getProjectedInvestmentReturn: (months: number) => number,
-  simulatedExpense: boolean = true
+  simulatedExpense: boolean = true,
+  simulationMonths: number = 6 // Default to 6 months but now configurable
 ): SimulationDataPoint[] => {
   const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const currentMonth = new Date().getMonth();
@@ -60,7 +61,7 @@ export const generateSimulationData = (
   const normalIncomeTransactions = incomeTransactions.filter(t => t.category !== 'investment-return');
   
   // Create the simulation data points for each month
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < simulationMonths; i++) {
     const monthIndex = (currentMonth + i) % 12;
     const monthYear = currentYear + Math.floor((currentMonth + i) / 12);
     const monthDate = new Date(monthYear, monthIndex, 1);
