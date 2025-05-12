@@ -11,7 +11,7 @@ export interface SimulationData {
   recurringType: 'monthly' | 'weekly';
   date: Date | undefined;
   useInvestments: boolean;
-  simulationMonths: number; // Add simulation months option
+  simulationMonths: number; // Simulation months option
 }
 
 export interface SimulationResults {

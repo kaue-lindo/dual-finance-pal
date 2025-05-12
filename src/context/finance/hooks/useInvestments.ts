@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -354,7 +353,7 @@ export const useInvestments = (
     }
   };
 
-  // Fixed version of getProjectedInvestmentReturn to avoid type recursion
+  // Fix: Break the recursive type dependency by explicitly defining the return type
   const getProjectedInvestmentReturn = (months: number, userId?: string): number => {
     // Determine which user ID to use
     const targetUserId = userId || (currentUser ? currentUser.id : '');
